@@ -7,7 +7,8 @@ const bcrypt = require("bcryptjs");
 const path = require("path");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
 
 // ====== CONFIG ======
 const POSTBACK_SECRET = "CHANGE_THIS_POSTBACK_SECRET"; // <- change this to something random & secret
