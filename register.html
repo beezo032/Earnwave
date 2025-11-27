@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EarnWave | Sign Up</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">EarnWave</div>
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="offers.html">Offers</a>
+    <a href="withdraw.html">Withdraw</a>
+    <a href="profile.html">Profile</a>
+    <a href="login.html">Login</a>
+    <a href="register.html">Sign Up</a>
+</div>
+
+<div class="main">
+    <h1>Create an Account</h1>
+
+    <div class="card" style="max-width: 400px; margin-top: 20px;">
+        <form id="registerForm">
+            <label>Username</label><br>
+            <input type="text" id="regUsername" required
+                   style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:none;">
+            <br>
+
+            <label>Email</label><br>
+            <input type="email" id="regEmail" required
+                   style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:none;">
+            <br>
+
+            <label>Password</label><br>
+            <input type="password" id="regPassword" required minlength="6"
+                   style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:none;">
+            <br>
+
+            <button type="submit">Sign Up</button>
+        </form>
+
+        <p id="registerMessage" style="margin-top:10px; color:#ffb3b3;"></p>
+
+        <p style="margin-top:15px;">
+            Already have an account?
+            <a href="login.html" style="color:#4fc3ff;">Login here</a>
+        </p>
+    </div>
+</div>
+
+<script>
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById("regUsername").value.trim();
+    const email = document.getElementById("regEmail").value.trim();
+    const password = document.getElementById("regPassword").value;
+
+    const msg = document.getElementById("registerMessage");
+    msg.textContent = "";
+
+    try {
+        const res = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            msg.textContent = data.error || "Registration failed.";
+            return;
+        }
+
+        msg.style.color = "#93f5ff";
+        msg.textContent = "Account created! Redirecting...";
+        setTimeout(() => {
+            window.location.href = "dashboard.html";
+        }, 800);
+
+    } catch (err) {
+        console.error(err);
+        msg.textContent = "Network error.";
+    }
+});
+</script>
+
+</body>
+</html>

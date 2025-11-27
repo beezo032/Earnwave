@@ -1,0 +1,204 @@
+/* ========== GLOBAL RESET ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Poppins", Arial, sans-serif;
+    background: linear-gradient(135deg, #0b0f19, #0e1624, #0c1c33, #0b0f19);
+    background-size: 400% 400%;
+    animation: gradientShift 14s ease infinite;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+}
+
+/* Animated Background */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ========== SIDEBAR ========== */
+.sidebar {
+    width: 230px;
+    background: rgba(255, 255, 255, 0.03);
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 20px;
+    top: 0;
+    bottom: 0;
+    position: fixed;
+}
+
+.logo {
+    font-size: 28px;
+    font-weight: 800;
+    color: #00b2ff;
+    margin-bottom: 30px;
+}
+
+.sidebar a {
+    display: block;
+    padding: 14px 10px;
+    color: #c9d6ff;
+    text-decoration: none;
+    font-size: 18px;
+    border-left: 3px solid transparent;
+    transition: 0.25s;
+}
+
+.sidebar a:hover {
+    border-left: 4px solid #00b2ff;
+    background: rgba(0, 178, 255, 0.08);
+    color: #fff;
+}
+
+/* ========== MAIN CONTENT ========== */
+.main {
+    margin-left: 260px;
+    padding: 40px;
+    width: 100%;
+}
+
+/* ========== HERO SECTION ========== */
+.hero-section {
+    margin-top: 40px;
+    padding: 80px 40px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-title {
+    font-size: 50px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.gradient-text {
+    background: linear-gradient(90deg, #00b2ff, #4fc3ff, #93f5ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    font-size: 20px;
+    opacity: 0.85;
+    margin-bottom: 25px;
+}
+
+/* CTA BUTTON */
+.cta-btn {
+    padding: 18px 40px;
+    font-size: 20px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #00b2ff, #0077ff);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 18px #00b2ff;
+    transition: 0.3s;
+}
+
+.cta-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px #00c6ff;
+}
+
+/* ========== CARDS ========== */
+.card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 178, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 25px rgba(0, 194, 255, 0.3);
+}
+
+/* ========== FEATURES GRID ========== */
+.features {
+    display: grid;
+    margin-top: 60px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px;
+}
+
+/* ========== BUTTONS (GLOBAL) ========== */
+button {
+    background: linear-gradient(135deg, #00b2ff, #0077ff);
+    padding: 12px 25px;
+    border-radius: 8px;
+    border: none;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: 0.25s;
+    box-shadow: 0 0 12px #00b2ff;
+}
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px #4fc3ff;
+}
+
+/* ========== FLOATING SHAPES (HERO) ========== */
+.floating-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    animation: float 10s infinite alternate ease-in-out;
+    opacity: 0.5;
+}
+
+.shape1 { width: 180px; height: 180px; background: #00b2ff; top: -40px; left: 120px; animation-duration: 11s; }
+.shape2 { width: 220px; height: 220px; background: #0077ff; top: 200px; left: -80px; animation-duration: 13s; }
+.shape3 { width: 140px; height: 140px; background: #4fc3ff; top: 300px; right: 0; animation-duration: 9s; }
+.shape4 { width: 200px; height: 200px; background: #93f5ff; top: 20px; right: 200px; opacity: 0.25; animation-duration: 15s; }
+
+@keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(40px, 60px) scale(1.2); }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 900px) {
+
+    .sidebar {
+        position: fixed;
+        width: 180px;
+    }
+
+    .main {
+        margin-left: 200px;
+    }
+
+    .hero-title {
+        font-size: 38px;
+    }
+}
+
+@media (max-width: 650px) {
+
+    .sidebar {
+        display: none;
+    }
+
+    .main {
+        margin-left: 0;
+        padding: 20px;
+    }
+
+    .hero-section {
+        padding: 60px 20px;
+    }
+}
+
