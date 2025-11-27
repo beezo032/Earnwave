@@ -11,7 +11,8 @@ const PORT = process.env.PORT || 3000;
 
 
 // ====== CONFIG ======
-const POSTBACK_SECRET = "CHANGE_THIS_POSTBACK_SECRET"; // <- change this to something random & secret
+const POSTBACK_SECRET = "k3jhf8sd8f7sd8f7sd8f7sdf87sdf"; 
+ // <- change this to something random & secret
 
 // ====== DATABASE SETUP ======
 const db = new sqlite3.Database("./earnwave.db");
