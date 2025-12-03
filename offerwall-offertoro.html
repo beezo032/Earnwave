@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>EarnWave | AdGem Offerwall</title>
+    <title>EarnWave | OfferToro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -29,20 +29,20 @@
 </div>
 
 <div class="main">
-    <h1>AdGem Offerwall</h1>
+    <h1>OfferToro Offerwall</h1>
     <p id="userInfo" style="opacity:0.8; margin-bottom:10px;"></p>
 
     <div class="card" style="padding:0; margin-top:20px;">
-        <iframe id="adgemFrame" class="offerwall-frame"></iframe>
+        <iframe id="offerToroFrame" class="offerwall-frame"></iframe>
     </div>
 </div>
 
 <script>
-const ADGEM_BASE_URL = "https://api.adgem.com/v1/wall?appid=31542&playerid="; // Replace with your AdGem wall URL if needed
+const OFFERTORO_BASE_URL = "https://www.offertoro.com/ifr/show/APP_ID/USER_ID/"; // Replace APP_ID with your placement id
 
-async function loadAdGem() {
+async function loadOfferToro() {
     const info = document.getElementById("userInfo");
-    const frame = document.getElementById("adgemFrame");
+    const frame = document.getElementById("offerToroFrame");
 
     try {
         const res = await fetch("/api/me");
@@ -58,7 +58,7 @@ async function loadAdGem() {
 
         info.innerHTML = "Logged in as: <strong style='color:#4fc3ff;'>" + user.username + "</strong>";
 
-        const url = ADGEM_BASE_URL + encodeURIComponent(user.id);
+        const url = OFFERTORO_BASE_URL.replace("USER_ID", encodeURIComponent(user.id));
         frame.src = url;
 
     } catch (err) {
@@ -67,7 +67,7 @@ async function loadAdGem() {
     }
 }
 
-loadAdGem();
+loadOfferToro();
 </script>
 
 </body>
