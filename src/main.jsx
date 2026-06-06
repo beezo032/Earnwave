@@ -245,17 +245,17 @@ function Landing({ navigate }) {
         <div className="hero-orbit" aria-hidden="true" />
         <div className="container hero-grid">
           <div className="hero-copy-block">
-            <div className="eyebrow"><ShieldCheck size={16} /> Reviewed payouts - verified tracking - daily rewards</div>
-            <h1>Earn smarter from offers, surveys, games, and everyday momentum.</h1>
-            <p className="hero-copy">EarnWave blends a trusted fintech wallet, Discord-like engagement, and premium offer discovery into one clean rewards platform for adults 18-55.</p>
+            <div className="eyebrow"><ShieldCheck size={16} /> Verified accounts - reviewed payouts - transparent rewards</div>
+            <h1>The smarter way to turn free time into real rewards.</h1>
+            <p className="hero-copy">EarnWave brings premium offer discovery, account protection, progress tracking, and payout confidence into one modern rewards experience.</p>
             <div className="actions">
-              <button className="btn xl" onClick={() => navigate("/signup")}>Start Earning <ArrowRight size={18} /></button>
-              <button className="btn alt xl" onClick={() => navigate("/offers")}>Explore Offers</button>
+              <button className="btn xl" onClick={() => navigate("/signup")}>Create Verified Account <ArrowRight size={18} /></button>
+              <button className="btn alt xl" onClick={() => navigate("/offers")}>Explore Reward Options</button>
             </div>
             <div className="trust-strip">
-              <Metric value="$0.50" label="Minimum cashout" />
-              <Metric value="24h" label="Target review window" />
-              <Metric value="4.8/5" label="Member experience" />
+              <Metric value="$0.50" label="Starter cashout path" />
+              <Metric value="Review" label="Every withdrawal checked" />
+              <Metric value="Verified" label="Account-first earning" />
             </div>
           </div>
           <div className="hero-product" aria-label="Animated earnings dashboard preview">
@@ -263,12 +263,12 @@ function Landing({ navigate }) {
               <div className="window-top"><span /><span /><span /><strong>EarnWave Live</strong></div>
               <div className="balance-panel hero-balance">
                 <div>
-                  <p>Available balance</p>
+                  <p>Ready to cash out</p>
                   <div className="balance count-up">$48.75</div>
                 </div>
                 <span className="tag blue"><TrendingUp size={14} /> +18.4%</span>
                 <Meter value={76} />
-                <p>76% toward today&apos;s bonus tier</p>
+                <p>76% toward today&apos;s progress tier</p>
               </div>
               <div className="hero-chart">
                 {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%` }} />)}
@@ -300,11 +300,23 @@ function Landing({ navigate }) {
 
       <section>
         <div className="container">
-          <SectionTitle title="Built for every kind of earner" copy="A simple rewards flow with enough depth for students, gamers, side hustlers, remote workers, crypto users, and budget-conscious adults." />
+          <SectionTitle title="How EarnWave works" copy="A simple, transparent flow designed to keep members informed from signup to payout." />
+          <div className="process-grid">
+            <div className="card process-card"><span className="rank">1</span><h3>Verify your account</h3><p>Create your profile, confirm your email, and start with a trusted account foundation.</p></div>
+            <div className="card process-card"><span className="rank">2</span><h3>Choose reward paths</h3><p>Browse surveys, games, apps, and bonuses with clear reward values and provider labels.</p></div>
+            <div className="card process-card"><span className="rank">3</span><h3>Track progress</h3><p>Follow completions, streaks, referrals, and account activity from your member dashboard.</p></div>
+            <div className="card process-card"><span className="rank">4</span><h3>Cash out confidently</h3><p>Submit withdrawals into a review-first payout flow built for trust and accountability.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="container">
+          <SectionTitle title="Built for modern earners" copy="A focused rewards flow for students, gamers, side hustlers, remote workers, survey users, crypto users, and budget-conscious adults." />
           <div className="cards">
-            <Feature icon={<Gamepad2 />} title="High-intent offer discovery" copy="Clear reward values, expected time, provider labels, and category filters reduce hesitation and increase completion." />
-            <Feature icon={<ShieldCheck />} title="Trust-first operations" copy="Ledger history, reviewed withdrawals, fraud flags, and transparent payout states make the platform feel accountable." />
-            <Feature icon={<Sparkles />} title="Daily engagement loops" copy="Streaks, levels, referrals, leaderboards, and bonus codes encourage repeat usage without overwhelming the experience." />
+            <Feature icon={<Gamepad2 />} title="Clear reward discovery" copy="Reward value, provider, category, difficulty, and timing are shown up front so members can choose with confidence." />
+            <Feature icon={<ShieldCheck />} title="Trust-first by design" copy="Verified accounts, ledger history, fraud review, and payout status make the platform feel accountable from day one." />
+            <Feature icon={<Sparkles />} title="Momentum without noise" copy="Streaks, levels, referrals, leaderboards, and bonus codes encourage daily progress without clutter." />
           </div>
         </div>
       </section>
@@ -312,7 +324,7 @@ function Landing({ navigate }) {
       <section className="split-section">
         <div className="container split-grid">
           <div>
-            <SectionTitle title="Security that feels visible" copy="EarnWave shows the signals that make users comfortable: reviewed payouts, protected accounts, fraud detection, and support access." />
+            <SectionTitle title="Safety users can see" copy="EarnWave makes trust visible with verified accounts, reviewed payouts, fraud signals, support access, and transparent account controls." />
             <div className="security-list">
               {["VPN/proxy detection", "Device fingerprinting", "Duplicate account checks", "Withdrawal review queue"].map(item => (
                 <div className="security-row" key={item}><CheckCircle size={18} /><span>{item}</span></div>
@@ -331,7 +343,7 @@ function Landing({ navigate }) {
 
       <section>
         <div className="container">
-          <SectionTitle title="Payments users already trust" copy="Support familiar cashout paths while keeping review-first controls in place." />
+          <SectionTitle title="Payouts with confidence built in" copy="Members can choose familiar redemption paths while EarnWave keeps manual review and auditability in place." />
           <div className="payment-grid">
             <PaymentMethod icon={<CreditCard />} title="PayPal Payouts" copy="Fast digital cashouts after moderation approval." />
             <PaymentMethod icon={<Gift />} title="Tremendous cards" copy="Gift card delivery for flexible reward redemption." />
@@ -343,16 +355,16 @@ function Landing({ navigate }) {
 
       <section className="stats-section">
         <div className="container stats-hero">
-          <Metric value="6" label="Offerwall providers integrated" />
+          <Metric value="6" label="Provider paths supported" />
           <Metric value="100%" label="Payouts reviewed first" />
-          <Metric value="18-55" label="Age range supported" />
-          <Metric value="4" label="Growth loops built in" />
+          <Metric value="18-55" label="Designed across generations" />
+          <Metric value="Daily" label="Progress loops built in" />
         </div>
       </section>
 
       <section>
         <div className="container">
-          <SectionTitle title="People use rewards differently" copy="The interface stays clear and credible whether someone is earning between classes, after work, or as a daily side routine." />
+          <SectionTitle title="Designed around real routines" copy="EarnWave stays clear and credible whether someone earns between classes, after work, during game time, or as a steady side routine." />
           <div className="testimonial-grid">
             {testimonials.map(item => <Testimonial key={item.name} {...item} />)}
           </div>
@@ -362,7 +374,7 @@ function Landing({ navigate }) {
       <section>
         <div className="container split-grid">
           <div>
-            <SectionTitle title="Top earners this week" copy="Social proof without chaos: visible momentum, clear rewards, and a path for new users to join the leaderboard." />
+            <SectionTitle title="Momentum you can feel" copy="Social proof stays clean: visible activity, clear rewards, and a simple path for new members to start building progress." />
             <div className="top-earners">
               {[
                 { name: "WaveHunter", amount: 184.2, badge: "Games" },
@@ -393,8 +405,8 @@ function Landing({ navigate }) {
             {faqs.map(([question, answer], index) => <FaqItem key={question} question={question} answer={answer} defaultOpen={index === 0} />)}
           </div>
           <div className="final-cta">
-            <h2>Start with one offer. Build a daily earning rhythm.</h2>
-            <button className="btn xl" onClick={() => navigate("/signup")}>Join Free <ArrowRight size={18} /></button>
+            <h2>Start verified. Track progress. Cash out confidently.</h2>
+            <button className="btn xl" onClick={() => navigate("/signup")}>Create Your Account <ArrowRight size={18} /></button>
           </div>
         </div>
       </section>
@@ -512,12 +524,12 @@ function Dashboard({ api, navigate }) {
 
   return (
     <DashboardLayout active="Dashboard" navigate={navigate} api={api}>
-      <DashboardTop kicker="Member dashboard" title={`Welcome back, ${user.name}`} copy="Your balance, best offers, streaks, referrals, and payout actions in one calm workspace." action={<button className="btn" onClick={() => navigate("/wallet")}>Cash Out <ArrowRight size={17} /></button>} />
+      <DashboardTop kicker="Member dashboard" title={`Welcome back, ${user.name}`} copy="Track progress, choose the next best offer, and manage rewards from one focused workspace." action={<button className="btn" onClick={() => navigate("/wallet")}>Review Payouts <ArrowRight size={17} /></button>} />
       <div className="dashboard-hero-card">
         <div className="balance-card">
           <p>Available Balance</p>
           <strong>{money(user.balance)}</strong>
-          <span>Manual review protects every withdrawal before payout automation runs.</span>
+          <span>Every withdrawal is reviewed before payout automation runs.</span>
           <div className="actions">
             <button className="btn" onClick={() => navigate("/offers")}>Find Offers</button>
             <button className="btn alt" onClick={() => navigate("/wallet")}>Withdraw</button>
@@ -559,7 +571,7 @@ function Dashboard({ api, navigate }) {
       </div>
       <div className="workspace-grid">
         <div className="card">
-          <SectionTitle title="Recommended offers" copy="Sorted for value, speed, category variety, and repeat engagement." action={<span className="tag">Tracking on</span>} />
+          <SectionTitle title="Recommended next steps" copy="Reward options organized around value, time, category, and confidence." action={<span className="tag">Tracking ready</span>} />
           <div className="offers-grid compact">{demoOffers.slice(0, 4).map(offer => <OfferCard key={offer.id} offer={offer} actionLabel={`Start +${money(offer.reward)}`} />)}</div>
         </div>
         <SideRail
@@ -604,7 +616,7 @@ function WalletPage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Wallet" navigate={navigate} api={api}>
-      <DashboardTop kicker="Wallet" title="Payout center" copy="Review balance, choose a method, and track cashout requests." action={<span className="tag">Minimum $0.50</span>} />
+      <DashboardTop kicker="Wallet" title="Payout center" copy="Review your balance, choose a redemption method, and follow every request from review to completion." action={<span className="tag">Minimum $0.50</span>} />
       <div className="wallet-grid">
         <div className="card">
           <p>Available Balance</p>
@@ -658,7 +670,7 @@ function HowItWorksPage({ navigate }) {
   return (
     <main className="page">
       <div className="container">
-        <DashboardTop kicker="How it works" title="A simple earning loop with real operational controls." copy="The user journey stays clear while the backend handles tracking, risk, payout review, and auditability." action={<button className="btn" onClick={() => navigate("/signup")}>Start Earning</button>} />
+        <DashboardTop kicker="How it works" title="A clear path from offer to payout." copy="EarnWave keeps the member journey simple while the platform handles tracking, risk checks, payout review, and records behind the scenes." action={<button className="btn" onClick={() => navigate("/signup")}>Create Account</button>} />
         <div className="process-grid">
           {steps.map(([title, copy], index) => (
             <div className="card process-card" key={title}>
@@ -688,7 +700,7 @@ function TrustPage({ navigate, api }) {
   return (
     <main className="page">
       <div className="container">
-        <DashboardTop kicker="Trust center" title="Transparent systems for rewards, fraud, support, and payouts." copy="EarnWave should feel accountable before a user ever starts an offer." action={<button className="btn alt" onClick={() => navigate("/legal")}>View Policies</button>} />
+        <DashboardTop kicker="Trust center" title="Clear systems for rewards, support, and payouts." copy="EarnWave is built to feel accountable before a member ever starts an offer." action={<button className="btn alt" onClick={() => navigate("/legal")}>View Policies</button>} />
         <div className="cards">
           <Feature icon={<Lock />} title="Reviewed payouts" copy="Every withdrawal enters review before payout automation can dispatch." />
           <Feature icon={<Activity />} title="Ledger history" copy="Credits and debits are recorded with reference IDs and balance-after snapshots." />
@@ -752,7 +764,7 @@ function SettingsPage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Settings" navigate={navigate} api={api}>
-      <DashboardTop kicker="Account" title="Settings and security" copy="Give users confidence that their account, payout alerts, and verification status are under control." />
+      <DashboardTop kicker="Account" title="Settings and security" copy="Manage verification, payout alerts, and account preferences with clarity." />
       <div className="workspace-grid">
         <div className="card">
           <SectionTitle title="Security status" copy={user.email} action={<span className={security?.emailVerified || user.email_verified ? "tag" : "tag amber"}>{security?.emailVerified || user.email_verified ? "Verified" : "Unverified"}</span>} />
@@ -807,7 +819,7 @@ function ReferralPage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Referrals" navigate={navigate} api={api}>
-      <DashboardTop kicker="Growth" title="Referral center" copy="Turn happy users into acquisition. Share one clean link, track referrals, and reward daily momentum." action={<button className="btn" onClick={() => navigator.clipboard?.writeText(growth.referralUrl)}>Copy Link</button>} />
+      <DashboardTop kicker="Growth" title="Referral center" copy="Share EarnWave with people who already trust your recommendations, then track progress in one place." action={<button className="btn" onClick={() => navigator.clipboard?.writeText(growth.referralUrl)}>Copy Link</button>} />
       <div className="dashboard-hero-card referral-hero">
         <div className="balance-card">
           <p>Your referral code</p>
@@ -852,7 +864,7 @@ function LeaderboardPage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Leaderboard" navigate={navigate} api={api}>
-      <DashboardTop kicker="Community" title="Leaderboard" copy="A polished competitive layer for gamers, survey earners, and daily side-hustle users." action={<span className="tag"><Flame size={14} /> Weekly reset</span>} />
+      <DashboardTop kicker="Community" title="Leaderboard" copy="A clean competitive layer for members building consistent reward progress." action={<span className="tag"><Flame size={14} /> Weekly reset</span>} />
       <div className="leaderboard-stage">
         {leaderboard.slice(0, 3).map((row, index) => (
           <div className={`podium-card podium-${index + 1}`} key={row.name}>
@@ -904,7 +916,7 @@ function ProfilePage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Profile" navigate={navigate} api={api}>
-      <DashboardTop kicker="Account" title="Profile settings" copy="Keep your account information current." />
+      <DashboardTop kicker="Account" title="Profile settings" copy="Choose how your EarnWave account appears across referrals, support, and community surfaces." />
       <div className="wallet-grid">
         <form className="card form-grid" onSubmit={saveProfile}>
           <label>Display name<input value={profile.name} onChange={event => setProfile({ ...profile, name: event.target.value })} required /></label>
@@ -932,7 +944,7 @@ function ProfilePage({ navigate, api }) {
 function SupportPage({ navigate, api }) {
   const [form, setForm] = useState({ subject: "", category: "general", message: "" });
   const [tickets, setTickets] = useState([]);
-  const [notice, setNotice] = useState("Open a ticket for offer tracking, payout review, account, or fraud questions.");
+  const [notice, setNotice] = useState("Open a ticket for offer tracking, payout review, account access, or trust and safety questions.");
 
   useEffect(() => {
     api.request("/account/support/tickets").then(data => setTickets(data.tickets || [])).catch(() => {});
@@ -955,7 +967,7 @@ function SupportPage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Support" navigate={navigate} api={api}>
-      <DashboardTop kicker="Help" title="Support center" copy="Create and track support tickets." />
+      <DashboardTop kicker="Help" title="Support center" copy="Create a ticket, keep the conversation organized, and give the team the context needed to help." />
       <div className="wallet-grid">
         <form className="card form-grid" onSubmit={submitTicket}>
           <label>Subject<input value={form.subject} onChange={event => setForm({ ...form, subject: event.target.value })} /></label>
@@ -1123,7 +1135,7 @@ function AdminPage({ navigate, api }) {
           ]).map(item => [item.subject, item.category, item.priority, item.status])} />
         </div>
         <div className="card">
-          <SectionTitle title="Email outbox" copy="Local preview of verification, reset, payout, and support emails before a provider is connected." />
+          <SectionTitle title="Email outbox" copy="Delivery trail for verification, reset, payout, and support messages." />
           <DataTable rows={(emails.length ? emails : [
             { to_email: "member@example.com", subject: "Verify your EarnWave account", status: "queued", provider: "local" },
             { to_email: "member@example.com", subject: "Reset your EarnWave password", status: "queued", provider: "local" }
@@ -1316,7 +1328,7 @@ function AuthPage({ mode, api, navigate }) {
     const params = new URLSearchParams(window.location.search);
     return { name: "", username: "", email: "", password: "", referralCode: params.get("ref") || "" };
   });
-  const [notice, setNotice] = useState("Create your account and check your inbox for a verification link.");
+  const [notice, setNotice] = useState("Create a verified account before entering EarnWave.");
 
   async function submit(event) {
     event.preventDefault();
@@ -1340,8 +1352,8 @@ function AuthPage({ mode, api, navigate }) {
       <div className="container">
         <form className="card form-card" onSubmit={submit}>
           <button type="button" className="logo auth-logo ghost" onClick={() => navigate("/")}><BrandLogo /></button>
-          <h2>{mode === "signup" ? "Create account" : "Welcome back"}</h2>
-          <p>{mode === "signup" ? "Create your account, then verify your email before login." : "Log in to your rewards dashboard."}</p>
+          <h2>{mode === "signup" ? "Create your account" : "Welcome back"}</h2>
+          <p>{mode === "signup" ? "Verify your email first, then enter your rewards dashboard." : "Log in to continue building your reward progress."}</p>
           {mode === "signup" && <label>Name<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} required /></label>}
           {mode === "signup" && <label>Username<input value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} minLength="3" maxLength="24" required /></label>}
           <label>Email<input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} required /></label>
