@@ -42,13 +42,18 @@ async function createAuthToken({ userId, type, hours = 24 }) {
 async function sendVerificationEmail(user) {
   const row = await createAuthToken({ userId: user.id, type: "email_verification", hours: 48 });
   const link = `${env.PUBLIC_URL}/verify-email?token=${row.token}`;
-  await queueEmail({
+  const email = await queueEmail({
     userId: user.id,
     to: user.email,
     subject: "Verify your EarnWave account",
     body: `Welcome to EarnWave. Verify your email here: ${link}`
   });
-  return { sent: true, previewToken: row.token, previewUrl: link };
+  return {
+    sent: email.status === "sent",
+    status: email.status,
+    provider: email.provider,
+    ...(env.NODE_ENV === "production" ? {} : { previewToken: row.token, previewUrl: link })
+  };
 }
 
 async function requestPasswordReset(email) {
@@ -59,13 +64,18 @@ async function requestPasswordReset(email) {
   if (!user) return { sent: true };
   const row = await createAuthToken({ userId: user.id, type: "password_reset", hours: 2 });
   const link = `${env.PUBLIC_URL}/reset-password?token=${row.token}`;
-  await queueEmail({
+  const delivery = await queueEmail({
     userId: user.id,
     to: user.email,
     subject: "Reset your EarnWave password",
     body: `Reset your EarnWave password here: ${link}`
   });
-  return { sent: true, previewToken: row.token, previewUrl: link };
+  return {
+    sent: delivery.status === "sent",
+    status: delivery.status,
+    provider: delivery.provider,
+    ...(env.NODE_ENV === "production" ? {} : { previewToken: row.token, previewUrl: link })
+  };
 }
 
 async function consumeToken(token, type) {
