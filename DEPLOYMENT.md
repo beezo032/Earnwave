@@ -50,13 +50,14 @@ The repo includes `render.yaml`, which can create:
 - Generated `JWT_SECRET` and `SESSION_SECRET`
 - `DATABASE_URL` and `REDIS_URL` wired automatically
 - `getearnwave.com` and `www.getearnwave.com` custom domain entries
+- Startup migrations, with admin bootstrap when `ADMIN_EMAIL` and `ADMIN_PASSWORD` are configured
 
 In Render:
 
 1. Go to **New > Blueprint**.
 2. Connect `beezo032/Earnwave`.
 3. Select `render.yaml`.
-4. Enter `ADMIN_EMAIL` and `ADMIN_PASSWORD` when prompted.
+4. Enter `ADMIN_EMAIL` and `ADMIN_PASSWORD` when prompted. If you skip them, deployment still works, but no admin user is created until those env vars are added and the service is redeployed.
 5. Create the Blueprint.
 6. After the service is created, open the custom domain settings and copy Render's DNS targets into Namecheap.
 

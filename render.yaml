@@ -9,7 +9,6 @@ services:
     region: oregon
     branch: main
     buildCommand: npm install && npm --prefix backend install && npm run build
-    preDeployCommand: npm --prefix backend run migrate && npm --prefix backend run bootstrap:admin
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
