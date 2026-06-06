@@ -11,6 +11,7 @@ const env = {
   PUBLIC_URL: process.env.PUBLIC_URL || "http://localhost:5000",
   EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || "",
   EMAIL_FROM: process.env.EMAIL_FROM || "EarnWave <hello@getearnwave.com>",
+  SUPPORT_EMAIL: process.env.SUPPORT_EMAIL || "getearnwave@gmail.com",
   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",

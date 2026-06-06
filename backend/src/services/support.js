@@ -1,6 +1,7 @@
 const { query } = require("../db/postgres");
 const { env } = require("../config/env");
 const { supportTickets, supportMessages } = require("../db/demoStore");
+const { queueEmail } = require("./email");
 
 function serializeTicket(row) {
   return {
@@ -17,6 +18,7 @@ function serializeTicket(row) {
 }
 
 async function createTicket({ userId, subject, category, message }) {
+  let ticket;
   if (!env.DATABASE_URL) {
     const row = {
       id: String(supportTickets.length + 1),
@@ -31,15 +33,35 @@ async function createTicket({ userId, subject, category, message }) {
     };
     supportTickets.unshift(row);
     supportMessages.push({ ticket_id: row.id, sender_id: userId, message, internal: false, created_at: row.created_at });
-    return row;
+    ticket = row;
+  } else {
+    const result = await query(
+      "INSERT INTO support_tickets (user_id, subject, category, message, priority) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [userId, subject, category, message, category === "payout" ? "high" : "normal"]
+    );
+    await query("INSERT INTO support_messages (ticket_id, sender_id, message) VALUES ($1, $2, $3)", [result.rows[0].id, userId, message]);
+    ticket = serializeTicket(result.rows[0]);
   }
 
-  const result = await query(
-    "INSERT INTO support_tickets (user_id, subject, category, message, priority) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [userId, subject, category, message, category === "payout" ? "high" : "normal"]
-  );
-  await query("INSERT INTO support_messages (ticket_id, sender_id, message) VALUES ($1, $2, $3)", [result.rows[0].id, userId, message]);
-  return serializeTicket(result.rows[0]);
+  await queueEmail({
+    userId,
+    to: env.SUPPORT_EMAIL,
+    subject: `[EarnWave Support] ${ticket.category}: ${ticket.subject}`,
+    body: [
+      "A new EarnWave support ticket was created.",
+      "",
+      `Ticket ID: ${ticket.id}`,
+      `User ID: ${ticket.user_id}`,
+      `Category: ${ticket.category}`,
+      `Priority: ${ticket.priority}`,
+      `Subject: ${ticket.subject}`,
+      "",
+      "Message:",
+      ticket.message
+    ].join("\n")
+  });
+
+  return ticket;
 }
 
 async function listTickets(userId, isAdmin = false) {

@@ -51,7 +51,8 @@ Production email delivery supports Resend. Verify `getearnwave.com` in Resend, t
 ```bash
 EMAIL_PROVIDER=resend
 EMAIL_FROM=EarnWave <hello@getearnwave.com>
+SUPPORT_EMAIL=getearnwave@gmail.com
 RESEND_API_KEY=re_your_key_here
 ```
 
-Without those env vars, verification and reset messages are kept in the admin email outbox for local/demo review.
+Without those env vars, verification, reset, and support messages are kept in the admin email outbox for local/demo review.
