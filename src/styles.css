@@ -350,6 +350,30 @@ input:focus, select:focus, textarea:focus {
 .payout-list { display: grid; gap: 10px; margin-top: 12px; }
 .payout-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .wallet-grid, .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.wallet-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.wallet-summary-grid .mini-stat {
+  background:
+    linear-gradient(135deg, rgba(50,230,161,.10), rgba(69,200,255,.055)),
+    rgba(255,255,255,.045);
+}
+.wallet-clarity-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.wallet-clarity-list .row {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.045);
+}
+.wallet-history-card { grid-column: 1 / -1; }
 .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
 .method { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; background: rgba(255, 255, 255, .05); }
 .form-grid { display: grid; gap: 12px; }
@@ -401,7 +425,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
     background: rgba(6, 9, 15, .84);
     backdrop-filter: blur(16px);
   }
-  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .method-grid, .dashboard-hero-card, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
+  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .wallet-summary-grid, .method-grid, .dashboard-hero-card, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
   .leaderboard-stage { grid-template-columns: 1fr; }
   .earner-row { grid-template-columns: 42px 1fr; }
   .earner-row .reward { grid-column: 2; }
