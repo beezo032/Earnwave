@@ -374,6 +374,18 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255,255,255,.045);
 }
 .wallet-history-card { grid-column: 1 / -1; }
+.support-help-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.support-help-grid .card {
+  min-height: 190px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
 .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
 .method { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; background: rgba(255, 255, 255, .05); }
 .form-grid { display: grid; gap: 12px; }
@@ -425,7 +437,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
     background: rgba(6, 9, 15, .84);
     backdrop-filter: blur(16px);
   }
-  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .wallet-summary-grid, .method-grid, .dashboard-hero-card, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
+  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .wallet-summary-grid, .support-help-grid, .method-grid, .dashboard-hero-card, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
   .leaderboard-stage { grid-template-columns: 1fr; }
   .earner-row { grid-template-columns: 42px 1fr; }
   .earner-row .reward { grid-column: 2; }
