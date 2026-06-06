@@ -37,3 +37,9 @@ http://localhost:5000/api/health
 ```
 
 For launch readiness, PostgreSQL, Redis, and admin bootstrap should be true. Offerwalls and payout providers require real partner credentials.
+
+## Render Deployment
+
+This repo includes `render.yaml` for Render Blueprint deployment. It creates the web service, Postgres, and Redis-compatible Key Value service, then runs migrations and admin bootstrap before starting the app.
+
+In Render, choose **New > Blueprint**, connect this repo, select `render.yaml`, and provide `ADMIN_EMAIL` plus `ADMIN_PASSWORD` when prompted.
