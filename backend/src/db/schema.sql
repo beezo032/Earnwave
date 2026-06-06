@@ -222,7 +222,6 @@ CREATE INDEX IF NOT EXISTS idx_user_devices_device_hash ON user_devices(device_h
 CREATE INDEX IF NOT EXISTS idx_suspicious_activity_status ON suspicious_activity(status);
 CREATE INDEX IF NOT EXISTS idx_suspicious_activity_user ON suspicious_activity(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id);
