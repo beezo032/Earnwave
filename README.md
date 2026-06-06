@@ -43,3 +43,15 @@ For launch readiness, PostgreSQL, Redis, and admin bootstrap should be true. Off
 This repo includes `render.yaml` for Render Blueprint deployment. It creates the web service, Postgres, and Redis-compatible Key Value service, then runs migrations and admin bootstrap before starting the app.
 
 In Render, choose **New > Blueprint**, connect this repo, select `render.yaml`, and provide `ADMIN_EMAIL` plus `ADMIN_PASSWORD` when prompted.
+
+## Email Verification
+
+Production email delivery supports Resend. Verify `getearnwave.com` in Resend, then add these Render env vars:
+
+```bash
+EMAIL_PROVIDER=resend
+EMAIL_FROM=EarnWave <hello@getearnwave.com>
+RESEND_API_KEY=re_your_key_here
+```
+
+Without those env vars, verification and reset messages are kept in the admin email outbox for local/demo review.

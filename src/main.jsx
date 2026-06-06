@@ -736,7 +736,15 @@ function SettingsPage({ navigate, api }) {
   async function sendVerification() {
     try {
       const result = await api.request("/auth/verify-email/send", { method: "POST", body: "{}" });
-      setNotice(`Verification email queued. Demo preview: ${result.verification.previewUrl}`);
+      if (result.verification?.previewUrl) {
+        setNotice(`Verification email ready. Local preview: ${result.verification.previewUrl}`);
+      } else if (result.verification?.status === "sent") {
+        setNotice("Verification email sent. Check your inbox.");
+      } else if (result.verification?.status === "failed") {
+        setNotice("Verification email could not be sent. Check email provider settings in Render.");
+      } else {
+        setNotice("Verification email queued in the admin outbox. Connect an email provider to send it.");
+      }
     } catch (error) {
       setNotice(error.message);
     }
@@ -1156,7 +1164,7 @@ function AnalyticsPage({ navigate, api }) {
 }
 
 function VerifyEmailPage({ api, navigate }) {
-  const [notice, setNotice] = useState("Paste your verification token or open the link from the local email outbox.");
+  const [notice, setNotice] = useState("Open the verification link from your email, or paste the token from a local preview.");
   const [token, setToken] = useState(() => new URLSearchParams(window.location.search).get("token") || "");
 
   async function submit(event) {
@@ -1175,13 +1183,21 @@ function VerifyEmailPage({ api, navigate }) {
 
 function ForgotPasswordPage({ api, navigate }) {
   const [email, setEmail] = useState("");
-  const [notice, setNotice] = useState("Enter your email and EarnWave will queue a reset link.");
+  const [notice, setNotice] = useState("Enter your email and EarnWave will send a reset link.");
 
   async function submit(event) {
     event.preventDefault();
     try {
       const result = await api.request("/auth/password/forgot", { method: "POST", body: JSON.stringify({ email }) });
-      setNotice(result.previewUrl ? `Reset email queued. Demo preview: ${result.previewUrl}` : "If that email exists, a reset link was queued.");
+      if (result.previewUrl) {
+        setNotice(`Reset email ready. Local preview: ${result.previewUrl}`);
+      } else if (result.status === "sent") {
+        setNotice("If that email exists, a reset link has been sent.");
+      } else if (result.status === "failed") {
+        setNotice("Reset email could not be sent. Check email provider settings in Render.");
+      } else {
+        setNotice("If that email exists, a reset link was queued in the admin outbox.");
+      }
     } catch (error) {
       setNotice(error.message);
     }
@@ -1257,7 +1273,7 @@ function AuthPage({ mode, api, navigate }) {
     const params = new URLSearchParams(window.location.search);
     return { name: "", email: "", password: "", referralCode: params.get("ref") || "" };
   });
-  const [notice, setNotice] = useState("Use the backend API when configured; demo mode keeps local previews clickable.");
+  const [notice, setNotice] = useState("Create your account and check your inbox for a verification link.");
 
   async function submit(event) {
     event.preventDefault();
