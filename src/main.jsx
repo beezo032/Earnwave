@@ -878,16 +878,22 @@ function LeaderboardPage({ navigate, api }) {
 }
 
 function ProfilePage({ navigate, api }) {
-  const user = api.session?.user || { name: "EarnWave User", email: "demo@example.com" };
-  const [name, setName] = useState(user.name || "");
-  const [notice, setNotice] = useState("Update your display name and review your account status.");
+  const user = api.session?.user || { name: "EarnWave User", username: "earnwave_user", email: "demo@example.com" };
+  const [profile, setProfile] = useState({
+    name: user.name || "",
+    username: user.username || "",
+    bio: user.bio || "",
+    country: user.country || "",
+    timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+  });
+  const [notice, setNotice] = useState("Update your username, display name, and public profile info.");
 
   async function saveProfile(event) {
     event.preventDefault();
     try {
       const result = await api.request("/account/profile", {
         method: "PATCH",
-        body: JSON.stringify({ name })
+        body: JSON.stringify(profile)
       });
       api.save({ ...api.session, user: result.user });
       setNotice("Profile updated.");
@@ -901,15 +907,21 @@ function ProfilePage({ navigate, api }) {
       <DashboardTop kicker="Account" title="Profile settings" copy="Keep your account information current." />
       <div className="wallet-grid">
         <form className="card form-grid" onSubmit={saveProfile}>
-          <label>Display name<input value={name} onChange={event => setName(event.target.value)} /></label>
+          <label>Display name<input value={profile.name} onChange={event => setProfile({ ...profile, name: event.target.value })} required /></label>
+          <label>Username<input value={profile.username} onChange={event => setProfile({ ...profile, username: event.target.value })} minLength="3" maxLength="24" required /></label>
           <label>Email<input value={user.email || ""} disabled /></label>
+          <label>Country<input value={profile.country} onChange={event => setProfile({ ...profile, country: event.target.value })} placeholder="United States" /></label>
+          <label>Timezone<input value={profile.timezone} onChange={event => setProfile({ ...profile, timezone: event.target.value })} /></label>
+          <label>Bio<textarea value={profile.bio} onChange={event => setProfile({ ...profile, bio: event.target.value })} maxLength="280" placeholder="Tell us what kind of rewards you like." /></label>
           <button className="btn" type="submit">Save Profile</button>
           <div className="notice">{notice}</div>
         </form>
         <div className="card">
           <h3>Account status</h3>
           <div className="row"><span>Role</span><span className="pill">{user.role || "user"}</span></div>
+          <div className="row"><span>Username</span><span className="pill">{user.username || "Needed"}</span></div>
           <div className="row"><span>Status</span><span className="pill">{user.status || "active"}</span></div>
+          <div className="row"><span>Email</span><span className={user.email_verified ? "pill" : "pill amber"}>{user.email_verified ? "Verified" : "Unverified"}</span></div>
           <div className="row"><span>Referral code</span><span className="pill">{user.referral_code || "Generated after login"}</span></div>
         </div>
       </div>
@@ -1164,21 +1176,52 @@ function AnalyticsPage({ navigate, api }) {
 }
 
 function VerifyEmailPage({ api, navigate }) {
+  const params = new URLSearchParams(window.location.search);
   const [notice, setNotice] = useState("Open the verification link from your email, or paste the token from a local preview.");
-  const [token, setToken] = useState(() => new URLSearchParams(window.location.search).get("token") || "");
+  const [token, setToken] = useState(() => params.get("token") || "");
+  const [email, setEmail] = useState(() => params.get("email") || "");
 
   async function submit(event) {
     event.preventDefault();
     try {
       const result = await api.request("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) });
       if (api.session) api.save({ ...api.session, user: result.user });
-      setNotice("Email verified. Your account trust status is updated.");
+      setNotice("Email verified. You can log in now.");
     } catch (error) {
       setNotice(error.message);
     }
   }
 
-  return <TokenForm title="Verify email" copy="Confirm account ownership to increase trust before payouts." token={token} setToken={setToken} notice={notice} submit={submit} button="Verify Email" navigate={navigate} />;
+  async function resend(event) {
+    event.preventDefault();
+    try {
+      await api.request("/auth/verify-email/resend", { method: "POST", body: JSON.stringify({ email }) });
+      setNotice("Verification email sent if that account exists.");
+    } catch (error) {
+      setNotice(error.message);
+    }
+  }
+
+  return (
+    <main className="form-page">
+      <div className="container">
+        <form className="card form-card" onSubmit={submit}>
+          <button type="button" className="logo auth-logo ghost" onClick={() => navigate("/")}><BrandLogo /></button>
+          <h2>Verify email</h2>
+          <p>Confirm your email before logging in to EarnWave.</p>
+          <label>Token<input value={token} onChange={event => setToken(event.target.value)} required /></label>
+          <button className="btn" type="submit">Verify Email</button>
+          <button className="btn alt" type="button" onClick={() => navigate("/login")}>Go to Login</button>
+          <div className="notice">{notice}</div>
+        </form>
+        <form className="card form-card" onSubmit={resend}>
+          <h2>Resend link</h2>
+          <label>Email<input type="email" value={email} onChange={event => setEmail(event.target.value)} required /></label>
+          <button className="btn alt" type="submit">Resend Verification</button>
+        </form>
+      </div>
+    </main>
+  );
 }
 
 function ForgotPasswordPage({ api, navigate }) {
@@ -1271,7 +1314,7 @@ function TokenForm({ title, copy, token, setToken, notice, submit, button, navig
 function AuthPage({ mode, api, navigate }) {
   const [form, setForm] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return { name: "", email: "", password: "", referralCode: params.get("ref") || "" };
+    return { name: "", username: "", email: "", password: "", referralCode: params.get("ref") || "" };
   });
   const [notice, setNotice] = useState("Create your account and check your inbox for a verification link.");
 
@@ -1279,13 +1322,17 @@ function AuthPage({ mode, api, navigate }) {
     event.preventDefault();
     const endpoint = mode === "signup" ? "/auth/signup" : "/auth/login";
     try {
-      const session = await api.request(endpoint, { method: "POST", body: JSON.stringify(form) });
-      api.save(session);
+      const result = await api.request(endpoint, { method: "POST", body: JSON.stringify(form) });
+      if (mode === "signup") {
+        setNotice(result.message || "Account created. Verify your email before logging in.");
+        navigate(`/verify-email?email=${encodeURIComponent(form.email)}`);
+        return;
+      }
+      api.save(result);
+      navigate("/dashboard");
     } catch (error) {
-      api.save({ token: null, user: { id: "demo", name: form.name || "EarnWave User", email: form.email, balance: 48.75, total_earned: 320.4, role: "user" } });
-      setNotice("Demo session started because the API or credentials were not available.");
+      setNotice(error.message);
     }
-    navigate("/dashboard");
   }
 
   return (
@@ -1294,8 +1341,9 @@ function AuthPage({ mode, api, navigate }) {
         <form className="card form-card" onSubmit={submit}>
           <button type="button" className="logo auth-logo ghost" onClick={() => navigate("/")}><BrandLogo /></button>
           <h2>{mode === "signup" ? "Create account" : "Welcome back"}</h2>
-          <p>{mode === "signup" ? "Join the rewards marketplace." : "Log in to your rewards dashboard."}</p>
+          <p>{mode === "signup" ? "Create your account, then verify your email before login." : "Log in to your rewards dashboard."}</p>
           {mode === "signup" && <label>Name<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} required /></label>}
+          {mode === "signup" && <label>Username<input value={form.username} onChange={event => setForm({ ...form, username: event.target.value })} minLength="3" maxLength="24" required /></label>}
           <label>Email<input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} required /></label>
           <label>Password<input type="password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} required /></label>
           {mode === "signup" && <label>Referral code<input value={form.referralCode} onChange={event => setForm({ ...form, referralCode: event.target.value })} placeholder="Optional" /></label>}
@@ -1349,6 +1397,41 @@ function AdminGuard({ api, navigate, children }) {
           <h2>Admin access required</h2>
           <p>This area is hidden from regular users and requires an admin session.</p>
           <button className="btn" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function AuthRequired({ api, navigate, children }) {
+  if (api.session?.token && api.session?.user?.role === "admin") return children;
+  if (api.session?.token && api.session?.user?.email_verified) return children;
+
+  if (api.session?.token && api.session?.user && !api.session.user.email_verified) {
+    return (
+      <main className="page">
+        <div className="container">
+          <div className="card form-card">
+            <div className="icon"><Mail size={20} /></div>
+            <h2>Verify your email</h2>
+            <p>You need to verify your email before entering your account dashboard.</p>
+            <button className="btn" onClick={() => navigate(`/verify-email?email=${encodeURIComponent(api.session.user.email || "")}`)}>Verify Email</button>
+            <button className="btn alt" onClick={() => { api.logout(); navigate("/login"); }}>Back to Login</button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="page">
+      <div className="container">
+        <div className="card form-card">
+          <div className="icon"><Lock size={20} /></div>
+          <h2>Login required</h2>
+          <p>Create an account, verify your email, then log in to access this area.</p>
+          <button className="btn" onClick={() => navigate("/login")}>Go to Login</button>
+          <button className="btn alt" onClick={() => navigate("/signup")}>Create Account</button>
         </div>
       </div>
     </main>
@@ -1495,13 +1578,13 @@ function App() {
     if (route === "/offers" || route === "/offers.html") return <OffersPage api={api} />;
     if (route === "/how-it-works") return <HowItWorksPage navigate={navigate} />;
     if (route === "/trust") return <TrustPage api={api} navigate={navigate} />;
-    if (route === "/dashboard" || route === "/dashboard.html") return <Dashboard api={api} navigate={navigate} />;
-    if (route === "/wallet" || route === "/wallet.html") return <WalletPage api={api} navigate={navigate} />;
-    if (route === "/referrals") return <ReferralPage api={api} navigate={navigate} />;
+    if (route === "/dashboard" || route === "/dashboard.html") return <AuthRequired api={api} navigate={navigate}><Dashboard api={api} navigate={navigate} /></AuthRequired>;
+    if (route === "/wallet" || route === "/wallet.html") return <AuthRequired api={api} navigate={navigate}><WalletPage api={api} navigate={navigate} /></AuthRequired>;
+    if (route === "/referrals") return <AuthRequired api={api} navigate={navigate}><ReferralPage api={api} navigate={navigate} /></AuthRequired>;
     if (route === "/leaderboard") return <LeaderboardPage api={api} navigate={navigate} />;
-    if (route === "/profile") return <ProfilePage api={api} navigate={navigate} />;
-    if (route === "/settings") return <SettingsPage api={api} navigate={navigate} />;
-    if (route === "/support") return <SupportPage api={api} navigate={navigate} />;
+    if (route === "/profile") return <AuthRequired api={api} navigate={navigate}><ProfilePage api={api} navigate={navigate} /></AuthRequired>;
+    if (route === "/settings") return <AuthRequired api={api} navigate={navigate}><SettingsPage api={api} navigate={navigate} /></AuthRequired>;
+    if (route === "/support") return <AuthRequired api={api} navigate={navigate}><SupportPage api={api} navigate={navigate} /></AuthRequired>;
     if (route === "/legal") return <LegalPage />;
     if (route === "/admin" || route === "/admin.html") return <AdminGuard api={api} navigate={navigate}><AdminPage api={api} navigate={navigate} /></AdminGuard>;
     if (route === "/analytics") return <AdminGuard api={api} navigate={navigate}><AnalyticsPage api={api} navigate={navigate} /></AdminGuard>;

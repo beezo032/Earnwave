@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const {
   buildLaunchUrl,
   normalizeCallback,
@@ -15,7 +15,7 @@ offerwallRouter.get("/providers", (req, res) => {
   res.json({ providers: publicProviders() });
 });
 
-offerwallRouter.get("/:provider/launch", requireAuth, (req, res, next) => {
+offerwallRouter.get("/:provider/launch", requireAuth, requireVerifiedEmail, (req, res, next) => {
   try {
     const provider = req.params.provider.toLowerCase();
     const launch = buildLaunchUrl(provider, {

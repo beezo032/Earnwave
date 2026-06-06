@@ -20,10 +20,10 @@ async function bootstrapAdmin() {
   const referralCode = `ADMIN${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
   const result = await query(
-    `INSERT INTO users (name, email, password_hash, referral_code, role)
-     VALUES ($1, $2, $3, $4, 'admin')
+    `INSERT INTO users (name, email, password_hash, referral_code, role, email_verified)
+     VALUES ($1, $2, $3, $4, 'admin', true)
      ON CONFLICT (email)
-     DO UPDATE SET role = 'admin', password_hash = EXCLUDED.password_hash
+     DO UPDATE SET role = 'admin', password_hash = EXCLUDED.password_hash, email_verified = true
      RETURNING id, email, role`,
     [name, email, passwordHash, referralCode]
   );

@@ -8,10 +8,15 @@ function makeReferralCode(name = "EW") {
   return `${base}${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+function normalizeUsername(value = "") {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24);
+}
+
 function serializeUser(user) {
   return {
     id: user.id,
     name: user.name,
+    username: user.username,
     email: user.email,
     role: user.role,
     status: user.status || "active",
@@ -19,6 +24,9 @@ function serializeUser(user) {
     marketing_opt_in: user.marketing_opt_in !== false,
     payout_alerts: user.payout_alerts !== false,
     security_alerts: user.security_alerts !== false,
+    bio: user.bio || "",
+    country: user.country || "",
+    timezone: user.timezone || "",
     fraud_score: user.fraud_score || 0,
     referral_code: user.referral_code,
     referred_by: user.referred_by,
@@ -31,9 +39,13 @@ function serializeUser(user) {
   };
 }
 
-async function createUser({ name, email, password, referralCode }) {
+async function createUser({ name, username: rawUsername, email, password, referralCode }) {
+  const username = normalizeUsername(rawUsername || name);
+  if (username.length < 3) throw new Error("Username must be at least 3 characters");
+
   if (!env.DATABASE_URL) {
     const user = await createDemoUser({ name, email, password, role: "user" });
+    user.username = username;
     user.referral_code = user.referral_code || makeReferralCode(name);
     if (referralCode) {
       const referrer = [...users.values()].find(item => item.referral_code === referralCode);
@@ -47,8 +59,8 @@ async function createUser({ name, email, password, referralCode }) {
     ? await query("SELECT id FROM users WHERE referral_code = $1", [referralCode])
     : { rows: [] };
   const result = await query(
-    "INSERT INTO users (name, email, password_hash, referral_code, referred_by) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [name, email, passwordHash, makeReferralCode(name), referrer.rows[0]?.id || null]
+    "INSERT INTO users (name, username, email, password_hash, referral_code, referred_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [name, username, email, passwordHash, makeReferralCode(name), referrer.rows[0]?.id || null]
   );
 
   if (referrer.rows[0]?.id) {
@@ -63,6 +75,7 @@ async function verifyUser(email, password) {
     const found = [...users.values()].find(user => user.email === email) || await createDemoUser({ name: "EarnWave User", email, password, role: "user" });
     const valid = await bcrypt.compare(password, found.password_hash);
     if (!valid) throw new Error("Invalid login details");
+    if (!found.email_verified && found.role !== "admin") throw new Error("Verify your email before logging in.");
     return serializeUser(found);
   }
 
@@ -70,6 +83,9 @@ async function verifyUser(email, password) {
   const user = result.rows[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
     throw new Error("Invalid login details");
+  }
+  if (!user.email_verified && user.role !== "admin") {
+    throw new Error("Verify your email before logging in.");
   }
   return serializeUser(user);
 }
@@ -84,4 +100,14 @@ async function findUserById(id) {
   return result.rows[0] ? serializeUser(result.rows[0]) : null;
 }
 
-module.exports = { createUser, verifyUser, findUserById, serializeUser };
+async function findUserByEmail(email) {
+  if (!env.DATABASE_URL) {
+    const user = [...users.values()].find(item => item.email === email);
+    return user ? serializeUser(user) : null;
+  }
+
+  const result = await query("SELECT * FROM users WHERE email = $1", [email]);
+  return result.rows[0] ? serializeUser(result.rows[0]) : null;
+}
+
+module.exports = { createUser, findUserByEmail, normalizeUsername, verifyUser, findUserById, serializeUser };

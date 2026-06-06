@@ -1,6 +1,6 @@
 const express = require("express");
 const { z } = require("zod");
-const { requireAuth, adminOnly } = require("../middleware/auth");
+const { requireAuth, requireVerifiedEmail, adminOnly } = require("../middleware/auth");
 const { listLedgerEntries } = require("../services/ledger");
 const { createTicket, listTickets, replyToTicket } = require("../services/support");
 const { getAccountSecurity } = require("../services/authLifecycle");
@@ -9,7 +9,7 @@ const { getPreferences, updatePreferences, updateProfile } = require("../service
 
 const accountRouter = express.Router();
 
-accountRouter.get("/transactions", requireAuth, async (req, res, next) => {
+accountRouter.get("/transactions", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ transactions: await listLedgerEntries(req.user.id) });
   } catch (error) {
@@ -17,16 +17,22 @@ accountRouter.get("/transactions", requireAuth, async (req, res, next) => {
   }
 });
 
-accountRouter.patch("/profile", requireAuth, async (req, res, next) => {
+accountRouter.patch("/profile", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
-    const body = z.object({ name: z.string().min(2).max(100) }).parse(req.body);
-    res.json({ user: await updateProfile({ userId: req.user.id, name: body.name }) });
+    const body = z.object({
+      name: z.string().min(2).max(100),
+      username: z.string().min(3).max(24),
+      bio: z.string().max(280).optional(),
+      country: z.string().max(80).optional(),
+      timezone: z.string().max(80).optional()
+    }).parse(req.body);
+    res.json({ user: await updateProfile({ userId: req.user.id, ...body }) });
   } catch (error) {
     next(error);
   }
 });
 
-accountRouter.get("/security", requireAuth, async (req, res, next) => {
+accountRouter.get("/security", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ security: await getAccountSecurity(req.user.id) });
   } catch (error) {
@@ -34,7 +40,7 @@ accountRouter.get("/security", requireAuth, async (req, res, next) => {
   }
 });
 
-accountRouter.get("/preferences", requireAuth, async (req, res, next) => {
+accountRouter.get("/preferences", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ preferences: await getPreferences(req.user.id) });
   } catch (error) {
@@ -42,7 +48,7 @@ accountRouter.get("/preferences", requireAuth, async (req, res, next) => {
   }
 });
 
-accountRouter.patch("/preferences", requireAuth, async (req, res, next) => {
+accountRouter.patch("/preferences", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const body = z.object({
       marketing_opt_in: z.boolean().optional(),
@@ -55,7 +61,7 @@ accountRouter.patch("/preferences", requireAuth, async (req, res, next) => {
   }
 });
 
-accountRouter.get("/support/tickets", requireAuth, async (req, res, next) => {
+accountRouter.get("/support/tickets", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ tickets: await listTickets(req.user.id, req.user.role === "admin") });
   } catch (error) {
@@ -63,7 +69,7 @@ accountRouter.get("/support/tickets", requireAuth, async (req, res, next) => {
   }
 });
 
-accountRouter.post("/support/tickets", requireAuth, async (req, res, next) => {
+accountRouter.post("/support/tickets", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const body = z.object({
       subject: z.string().min(3).max(140),

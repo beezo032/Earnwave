@@ -1,13 +1,14 @@
 const express = require("express");
 const { z } = require("zod");
 const { createToken, requireAuth } = require("../middleware/auth");
-const { createUser, verifyUser, findUserById } = require("../services/users");
+const { createUser, verifyUser, findUserByEmail, findUserById } = require("../services/users");
 const { requestPasswordReset, resetPassword, sendVerificationEmail, verifyEmailToken } = require("../services/authLifecycle");
 const { buildRisk, duplicateAccountSignals, flagSuspiciousActivity, registerDevice } = require("../services/fraud");
 
 const authRouter = express.Router();
 const authSchema = z.object({
   name: z.string().min(2).optional(),
+  username: z.string().min(3).max(24).optional(),
   email: z.string().email(),
   password: z.string().min(6),
   referralCode: z.string().max(32).optional()
@@ -15,7 +16,7 @@ const authSchema = z.object({
 
 authRouter.post("/signup", async (req, res, next) => {
   try {
-    const input = authSchema.extend({ name: z.string().min(2) }).parse(req.body);
+    const input = authSchema.extend({ name: z.string().min(2), username: z.string().min(3).max(24) }).parse(req.body);
     const duplicateSignals = await duplicateAccountSignals({ email: input.email, req });
     const risk = await buildRisk(req, { duplicateSignals });
     const user = await createUser(input);
@@ -29,9 +30,13 @@ authRouter.post("/signup", async (req, res, next) => {
         metadata: { email: input.email }
       });
     }
-    const token = createToken(user);
-    req.session.user = { id: user.id, email: user.email, role: user.role };
-    res.json({ token, user, risk, verification });
+    res.status(201).json({
+      ok: true,
+      message: "Account created. Verify your email before logging in.",
+      email: user.email,
+      risk,
+      verification
+    });
   } catch (error) {
     next(error);
   }
@@ -67,6 +72,17 @@ authRouter.post("/verify-email/send", requireAuth, async (req, res, next) => {
   try {
     const user = await findUserById(req.user.id);
     res.json({ verification: await sendVerificationEmail(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.post("/verify-email/resend", async (req, res, next) => {
+  try {
+    const body = z.object({ email: z.string().email() }).parse(req.body);
+    const user = await findUserByEmail(body.email);
+    if (!user || user.email_verified) return res.json({ sent: true });
+    res.json({ sent: true, verification: await sendVerificationEmail(user) });
   } catch (error) {
     next(error);
   }

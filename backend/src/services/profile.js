@@ -1,17 +1,27 @@
 const { query } = require("../db/postgres");
 const { env } = require("../config/env");
 const { users } = require("../db/demoStore");
-const { serializeUser } = require("./users");
+const { normalizeUsername, serializeUser } = require("./users");
 
-async function updateProfile({ userId, name }) {
+async function updateProfile({ userId, name, username, bio = "", country = "", timezone = "" }) {
+  const normalizedUsername = normalizeUsername(username || name);
+  if (normalizedUsername.length < 3) throw new Error("Username must be at least 3 characters");
+
   if (!env.DATABASE_URL) {
     const user = users.get(String(userId));
     if (!user) throw new Error("User not found");
     user.name = name;
+    user.username = normalizedUsername;
+    user.bio = bio;
+    user.country = country;
+    user.timezone = timezone;
     return serializeUser(user);
   }
 
-  const result = await query("UPDATE users SET name = $1 WHERE id = $2 RETURNING *", [name, userId]);
+  const result = await query(
+    "UPDATE users SET name = $1, username = $2, bio = $3, country = $4, timezone = $5 WHERE id = $6 RETURNING *",
+    [name, normalizedUsername, bio, country, timezone, userId]
+  );
   if (!result.rows[0]) throw new Error("User not found");
   return serializeUser(result.rows[0]);
 }

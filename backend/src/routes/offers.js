@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const { listOffers, completeOffer } = require("../services/offers");
 const { cacheGet, cacheSet } = require("../cache/redis");
 const { buildRisk, flagSuspiciousActivity } = require("../services/fraud");
@@ -19,7 +19,7 @@ offerRouter.get("/public", async (req, res, next) => {
   }
 });
 
-offerRouter.get("/", requireAuth, async (req, res, next) => {
+offerRouter.get("/", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ offers: await listOffers() });
   } catch (error) {
@@ -27,7 +27,7 @@ offerRouter.get("/", requireAuth, async (req, res, next) => {
   }
 });
 
-offerRouter.post("/:id/complete", requireAuth, async (req, res, next) => {
+offerRouter.post("/:id/complete", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const risk = await buildRisk(req, { highValue: true });
     const completion = await completeOffer({ userId: req.user.id, offerId: req.params.id, risk });

@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
+  username TEXT UNIQUE,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   referral_code TEXT UNIQUE,
@@ -19,6 +20,9 @@ CREATE TABLE IF NOT EXISTS users (
   marketing_opt_in BOOLEAN NOT NULL DEFAULT true,
   payout_alerts BOOLEAN NOT NULL DEFAULT true,
   security_alerts BOOLEAN NOT NULL DEFAULT true,
+  bio TEXT NOT NULL DEFAULT '',
+  country TEXT NOT NULL DEFAULT '',
+  timezone TEXT NOT NULL DEFAULT '',
   fraud_score INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -218,6 +222,7 @@ CREATE INDEX IF NOT EXISTS idx_user_devices_device_hash ON user_devices(device_h
 CREATE INDEX IF NOT EXISTS idx_suspicious_activity_status ON suspicious_activity(status);
 CREATE INDEX IF NOT EXISTS idx_suspicious_activity_user ON suspicious_activity(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id);
