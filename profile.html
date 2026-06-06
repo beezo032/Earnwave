@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EarnWave | Profile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">EarnWave</div>
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="offers.html">Offers</a>
+    <a href="withdraw.html">Withdraw</a>
+    <a href="profile.html">Profile</a>
+    <a href="login.html">Login</a>
+    <a href="register.html">Sign Up</a>
+</div>
+
+<div class="main">
+
+    <h1>Your Profile</h1>
+    <p id="userDisplay" style="opacity:0.9; margin-bottom:20px;"></p>
+
+    <div class="card" style="max-width: 420px; margin-top: 20px;">
+        <h2>Account Info</h2>
+
+        <p><strong>Username:</strong> <span id="pUsername">loading...</span></p>
+        <p><strong>Email:</strong> <span id="pEmail">loading...</span></p>
+        <p><strong>Member Since:</strong> <span id="pJoined">loading...</span></p>
+
+        <button style="margin-top:10px;">Edit Profile (Coming Soon)</button>
+        <button id="logoutBtn" style="margin-top:10px;">Logout</button>
+    </div>
+
+</div>
+
+<script>
+async function loadUser() {
+    try {
+        const res = await fetch("/api/me");
+
+        if (!res.ok) {
+            document.getElementById("userDisplay").innerHTML = 
+                "Not logged in. <a href='login.html' style='color:#4fc3ff;'>Login</a>";
+            document.getElementById("logoutBtn").style.display = "none";
+            return;
+        }
+
+        const data = await res.json();
+        const u = data.user;
+
+        document.getElementById("userDisplay").innerHTML = 
+            "Logged in as: <strong style='color:#4fc3ff;'>" + u.username + "</strong>";
+
+        // Fill profile fields
+        document.getElementById("pUsername").textContent = u.username;
+        document.getElementById("pEmail").textContent = u.email;
+        document.getElementById("pJoined").textContent = new Date(u.createdAt).toDateString();
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+loadUser();
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await fetch("/api/logout", { method: "POST" });
+    window.location.href = "login.html";
+});
+</script>
+
+</body>
+</html>
+
