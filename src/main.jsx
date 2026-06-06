@@ -1018,15 +1018,42 @@ function SupportPage({ navigate, api }) {
     }
   }
 
+  function startMissingRewardClaim() {
+    setForm({
+      subject: "Missing reward claim",
+      category: "offer",
+      message: "I completed an offer but the reward is missing. Offer/provider: \nCompletion date: \nExpected reward: \nDetails:"
+    });
+    setNotice("Missing reward claim started. Add the offer/provider, completion date, and expected reward before submitting.");
+  }
+
   return (
     <DashboardLayout active="Support" navigate={navigate} api={api}>
-      <DashboardTop kicker="Help" title="Support center" copy="Create a ticket, keep the conversation organized, and give the team the context needed to help." />
+      <DashboardTop kicker="Need help?" title="Support center" copy="Open a support ticket, report missing rewards, and keep every conversation organized." action={<button className="btn" onClick={startMissingRewardClaim}>Missing Reward Claim</button>} />
+      <div className="support-help-grid">
+        <div className="card">
+          <div className="icon"><Mail size={18} /></div>
+          <h3>Need help?</h3>
+          <p>Use support for reward tracking, payout review, account access, verification, or trust and safety questions.</p>
+        </div>
+        <div className="card">
+          <div className="icon"><PackageCheck size={18} /></div>
+          <h3>Open support ticket</h3>
+          <p>Share the details once and track the status here while the team reviews your case.</p>
+        </div>
+        <div className="card">
+          <div className="icon"><Search size={18} /></div>
+          <h3>Missing reward claim</h3>
+          <p>For missing credits, include the offer name, provider, completion date, and expected reward amount.</p>
+          <button className="btn alt" onClick={startMissingRewardClaim}>Start Claim</button>
+        </div>
+      </div>
       <div className="wallet-grid">
         <form className="card form-grid" onSubmit={submitTicket}>
           <label>Subject<input value={form.subject} onChange={event => setForm({ ...form, subject: event.target.value })} /></label>
           <label>Category<select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}><option>general</option><option>offer</option><option>payout</option><option>account</option><option>fraud</option></select></label>
-          <label>Message<input value={form.message} onChange={event => setForm({ ...form, message: event.target.value })} placeholder="Tell us what happened" /></label>
-          <button className="btn" type="submit">Create Ticket</button>
+          <label>Message<textarea value={form.message} onChange={event => setForm({ ...form, message: event.target.value })} placeholder="Tell us what happened, including provider, dates, screenshots, and expected reward amount when relevant." /></label>
+          <button className="btn" type="submit">Open Support Ticket</button>
           <div className="notice">{notice}</div>
         </form>
         <div className="card">
