@@ -18,8 +18,14 @@ async function migrate({ closePool = true } = {}) {
       ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS marketing_opt_in BOOLEAN NOT NULL DEFAULT true,
       ADD COLUMN IF NOT EXISTS payout_alerts BOOLEAN NOT NULL DEFAULT true,
-      ADD COLUMN IF NOT EXISTS security_alerts BOOLEAN NOT NULL DEFAULT true;
+      ADD COLUMN IF NOT EXISTS security_alerts BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
+      ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '';
   `);
+
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");
 
   await pool.query(`
     INSERT INTO bonus_codes (code, reward_cents, xp_reward, max_redemptions)

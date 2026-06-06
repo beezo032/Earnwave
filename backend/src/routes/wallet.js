@@ -1,6 +1,6 @@
 const express = require("express");
 const { z } = require("zod");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const { createWithdrawal, listWithdrawals } = require("../services/wallet");
 const { buildRisk, flagSuspiciousActivity } = require("../services/fraud");
 
@@ -12,7 +12,7 @@ const withdrawalSchema = z.object({
   destinationValue: z.string().min(3).max(255)
 });
 
-walletRouter.get("/withdrawals", requireAuth, async (req, res, next) => {
+walletRouter.get("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ withdrawals: await listWithdrawals(req.user.id) });
   } catch (error) {
@@ -20,7 +20,7 @@ walletRouter.get("/withdrawals", requireAuth, async (req, res, next) => {
   }
 });
 
-walletRouter.post("/withdrawals", requireAuth, async (req, res, next) => {
+walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const input = withdrawalSchema.parse(req.body);
     const risk = await buildRisk(req, { highValue: input.amount >= 25, withdrawalAmount: input.amount, balance: Number(req.body.balance || 0) });

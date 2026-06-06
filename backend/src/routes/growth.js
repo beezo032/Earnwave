@@ -1,11 +1,11 @@
 const express = require("express");
 const { z } = require("zod");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const { claimDailyStreak, getGrowthProfile, leaderboard, redeemBonusCode } = require("../services/growth");
 
 const growthRouter = express.Router();
 
-growthRouter.get("/me", requireAuth, async (req, res, next) => {
+growthRouter.get("/me", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json({ growth: await getGrowthProfile(req.user.id) });
   } catch (error) {
@@ -13,7 +13,7 @@ growthRouter.get("/me", requireAuth, async (req, res, next) => {
   }
 });
 
-growthRouter.post("/streak/claim", requireAuth, async (req, res, next) => {
+growthRouter.post("/streak/claim", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     res.json(await claimDailyStreak(req.user.id));
   } catch (error) {
@@ -21,7 +21,7 @@ growthRouter.post("/streak/claim", requireAuth, async (req, res, next) => {
   }
 });
 
-growthRouter.post("/bonus-codes/redeem", requireAuth, async (req, res, next) => {
+growthRouter.post("/bonus-codes/redeem", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const body = z.object({ code: z.string().min(2).max(64) }).parse(req.body);
     res.json(await redeemBonusCode(req.user.id, body.code));

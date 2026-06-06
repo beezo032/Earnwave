@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { env } = require("../config/env");
+const { findUserById } = require("../services/users");
 
 function createToken(user) {
   return jwt.sign({ id: user.id, email: user.email, role: user.role }, env.JWT_SECRET, { expiresIn: "7d" });
@@ -30,4 +31,18 @@ function adminOnly(req, res, next) {
   next();
 }
 
-module.exports = { createToken, requireAuth, adminOnly };
+async function requireVerifiedEmail(req, res, next) {
+  try {
+    const user = await findUserById(req.user.id);
+    if (!user) return res.status(401).json({ message: "Authentication required" });
+    if (user.role === "admin" || user.email_verified) {
+      req.account = user;
+      return next();
+    }
+    return res.status(403).json({ message: "Verify your email before accessing your account." });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { createToken, requireAuth, requireVerifiedEmail, adminOnly };

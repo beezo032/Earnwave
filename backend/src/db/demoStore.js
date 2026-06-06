@@ -36,6 +36,7 @@ async function createDemoUser({ name, email, password, role = "admin" }) {
   const user = {
     id: String(users.size + 1),
     name,
+    username: email.split("@")[0].replace(/[^a-z0-9_]/gi, "").slice(0, 24) || `user${users.size + 1}`,
     email,
     password_hash: await bcrypt.hash(password, 10),
     balance: 48.75,
@@ -46,6 +47,9 @@ async function createDemoUser({ name, email, password, role = "admin" }) {
     marketing_opt_in: true,
     payout_alerts: true,
     security_alerts: true,
+    bio: "",
+    country: "",
+    timezone: "",
     fraud_score: 0,
     referral_code: `EW${String(users.size + 1).padStart(5, "0")}`,
     referred_by: null,
