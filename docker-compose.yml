@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: earnwave
+      POSTGRES_PASSWORD: earnwave
+      POSTGRES_DB: earnwave
+    ports:
+      - "5432:5432"
+    volumes:
+      - earnwave_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - earnwave_redis:/data
+
+volumes:
+  earnwave_postgres:
+  earnwave_redis:

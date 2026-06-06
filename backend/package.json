@@ -1,0 +1,30 @@
+{
+  "name": "earnwave-backend",
+  "version": "2.0.0",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "db:check": "node src/db/check.js",
+    "migrate": "node src/db/migrate.js",
+    "bootstrap:admin": "node src/scripts/bootstrapAdmin.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-redis": "^8.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.13.1",
+    "redis": "^4.7.0",
+    "sqlite3": "^5.1.7",
+    "stripe": "^17.5.0",
+    "zod": "^3.24.1"
+  }
+}
