@@ -474,7 +474,7 @@ function OffersPage({ api }) {
 }
 
 function Dashboard({ api, navigate }) {
-  const user = api.session?.user || { name: "EarnWave User", balance: 48.75, total_earned: 320.4 };
+  const [user, setUser] = useState(api.session?.user || { name: "EarnWave User", balance: 48.75, total_earned: 320.4 });
   const [growth, setGrowth] = useState({
     referralCode: user.referral_code || "WAVE2026",
     referralUrl: `${window.location.origin}/signup?ref=${user.referral_code || "WAVE2026"}`,
@@ -493,14 +493,28 @@ function Dashboard({ api, navigate }) {
   const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
 
   useEffect(() => {
+    refreshUser();
     api.request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
     api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
   }, []);
+
+  async function refreshUser() {
+    try {
+      const data = await api.request("/auth/me");
+      if (data.user) {
+        setUser(data.user);
+        if (api.session) api.save({ ...api.session, user: data.user });
+      }
+    } catch (error) {
+      // Dashboard can still render from the current session if refresh fails.
+    }
+  }
 
   async function claimStreak() {
     try {
       const result = await api.request("/growth/streak/claim", { method: "POST", body: "{}" });
       if (result.growth) setGrowth(result.growth);
+      if (result.claimed) await refreshUser();
       setGrowthNotice(result.claimed ? `Streak claimed: +${money(result.reward)} and +${result.xp} XP.` : result.message);
     } catch (error) {
       setGrowthNotice(error.message);
@@ -515,6 +529,7 @@ function Dashboard({ api, navigate }) {
         body: JSON.stringify({ code: bonusCode })
       });
       if (result.growth) setGrowth(result.growth);
+      await refreshUser();
       setBonusCode("");
       setGrowthNotice(`Code ${result.code} redeemed: +${money(result.reward)} and +${result.xp} XP.`);
     } catch (error) {
@@ -589,7 +604,7 @@ function Dashboard({ api, navigate }) {
 }
 
 function WalletPage({ navigate, api }) {
-  const user = api.session?.user || { balance: 48.75 };
+  const [walletUser, setWalletUser] = useState(api.session?.user || { balance: 48.75 });
   const minimumCashout = 0.5;
   const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amount: "", destinationType: "EMAIL", destinationValue: "" });
   const [notice, setNotice] = useState("All cashouts enter review before approval.");
@@ -600,6 +615,12 @@ function WalletPage({ navigate, api }) {
   ]);
 
   useEffect(() => {
+    api.request("/auth/me").then(data => {
+      if (data.user) {
+        setWalletUser(data.user);
+        if (api.session) api.save({ ...api.session, user: data.user });
+      }
+    }).catch(() => {});
     api.request("/account/transactions").then(data => setTransactions(data.transactions || [])).catch(() => {});
     api.request("/wallet/withdrawals").then(data => setWithdrawals(data.withdrawals || [])).catch(() => {});
   }, []);
@@ -615,7 +636,7 @@ function WalletPage({ navigate, api }) {
     try {
       const result = await api.request("/wallet/withdrawals", {
         method: "POST",
-        body: JSON.stringify({ ...withdrawal, balance: user.balance })
+        body: JSON.stringify({ ...withdrawal, balance: walletUser.balance })
       });
       setWithdrawals([result.withdrawal, ...withdrawals]);
       setNotice(`Withdrawal ${result.withdrawal.status}: risk score ${result.risk.score} (${result.risk.signals.join(", ")}).`);
@@ -628,7 +649,7 @@ function WalletPage({ navigate, api }) {
     <DashboardLayout active="Wallet" navigate={navigate} api={api}>
       <DashboardTop kicker="Wallet" title="Payout center" copy="Review your balance, choose a redemption method, and follow every request from review to completion." action={<span className="tag">Minimum $0.50</span>} />
       <div className="wallet-summary-grid">
-        <MiniStat label="Available balance" value={money(user.balance)} />
+        <MiniStat label="Available balance" value={money(walletUser.balance)} />
         <MiniStat label="Pending rewards" value={money(pendingRewards)} />
         <MiniStat label="Minimum cashout" value={money(minimumCashout)} />
         <MiniStat label="Payout status" value={payoutStatus} />
@@ -636,10 +657,10 @@ function WalletPage({ navigate, api }) {
       <div className="wallet-grid">
         <div className="card">
           <p>Available Balance</p>
-          <div className="balance">{money(user.balance)}</div>
+          <div className="balance">{money(walletUser.balance)}</div>
           <Meter value={84} />
           <div className="wallet-clarity-list">
-            <div className="row"><span>Ready to withdraw</span><span className="pill">{money(user.balance)}</span></div>
+            <div className="row"><span>Ready to withdraw</span><span className="pill">{money(walletUser.balance)}</span></div>
             <div className="row"><span>Pending rewards</span><span className="pill blue">{money(pendingRewards)}</span></div>
             <div className="row"><span>Minimum cashout</span><span className="pill amber">{money(minimumCashout)}</span></div>
           </div>
