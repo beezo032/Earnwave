@@ -590,8 +590,10 @@ function Dashboard({ api, navigate }) {
 
 function WalletPage({ navigate, api }) {
   const user = api.session?.user || { balance: 48.75 };
+  const minimumCashout = 0.5;
   const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amount: "", destinationType: "EMAIL", destinationValue: "" });
   const [notice, setNotice] = useState("All cashouts enter review before approval.");
+  const [withdrawals, setWithdrawals] = useState([]);
   const [transactions, setTransactions] = useState([
     { created_at: "2026-06-05", type: "offer_completion", description: "Completed Kingdom Builder", amount: 28.4, direction: "credit" },
     { created_at: "2026-06-04", type: "withdrawal_request", description: "PayPal withdrawal requested", amount: 18.5, direction: "debit" }
@@ -599,7 +601,14 @@ function WalletPage({ navigate, api }) {
 
   useEffect(() => {
     api.request("/account/transactions").then(data => setTransactions(data.transactions || [])).catch(() => {});
+    api.request("/wallet/withdrawals").then(data => setWithdrawals(data.withdrawals || [])).catch(() => {});
   }, []);
+
+  const pendingRewards = transactions
+    .filter(item => ["pending", "held", "review"].includes(String(item.status || "").toLowerCase()))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const latestWithdrawal = withdrawals[0];
+  const payoutStatus = latestWithdrawal?.status || "No withdrawal yet";
 
   async function submitWithdrawal(event) {
     event.preventDefault();
@@ -608,6 +617,7 @@ function WalletPage({ navigate, api }) {
         method: "POST",
         body: JSON.stringify({ ...withdrawal, balance: user.balance })
       });
+      setWithdrawals([result.withdrawal, ...withdrawals]);
       setNotice(`Withdrawal ${result.withdrawal.status}: risk score ${result.risk.score} (${result.risk.signals.join(", ")}).`);
     } catch (error) {
       setNotice(error.message);
@@ -617,11 +627,22 @@ function WalletPage({ navigate, api }) {
   return (
     <DashboardLayout active="Wallet" navigate={navigate} api={api}>
       <DashboardTop kicker="Wallet" title="Payout center" copy="Review your balance, choose a redemption method, and follow every request from review to completion." action={<span className="tag">Minimum $0.50</span>} />
+      <div className="wallet-summary-grid">
+        <MiniStat label="Available balance" value={money(user.balance)} />
+        <MiniStat label="Pending rewards" value={money(pendingRewards)} />
+        <MiniStat label="Minimum cashout" value={money(minimumCashout)} />
+        <MiniStat label="Payout status" value={payoutStatus} />
+      </div>
       <div className="wallet-grid">
         <div className="card">
           <p>Available Balance</p>
           <div className="balance">{money(user.balance)}</div>
           <Meter value={84} />
+          <div className="wallet-clarity-list">
+            <div className="row"><span>Ready to withdraw</span><span className="pill">{money(user.balance)}</span></div>
+            <div className="row"><span>Pending rewards</span><span className="pill blue">{money(pendingRewards)}</span></div>
+            <div className="row"><span>Minimum cashout</span><span className="pill amber">{money(minimumCashout)}</span></div>
+          </div>
           <div className="method-grid">
             <Method title="PayPal" copy="Payouts after approval" />
             <Method title="Tremendous" copy="Gift cards after approval" />
@@ -646,6 +667,17 @@ function WalletPage({ navigate, api }) {
           </form>
         </div>
         <div className="card">
+          <SectionTitle title="Withdrawal history" copy="Every payout request shows its method, amount, and current review status." />
+          <DataTable rows={(withdrawals.length ? withdrawals : [
+            { created_at: "No requests yet", method: "Choose a payout method", amount: 0, status: "Not started" }
+          ]).map(item => [
+            String(item.created_at || "").slice(0, 10) || "New",
+            item.method || "Method",
+            money(item.amount ?? item.amount_cents / 100),
+            item.status || "Pending"
+          ])} />
+        </div>
+        <div className="card wallet-history-card">
           <SectionTitle title="Ledger history" copy="Auditable credits and debits tied to offers, bonuses, streaks, and withdrawals." />
           <DataTable rows={transactions.map(item => [
             String(item.created_at || "").slice(0, 10),
