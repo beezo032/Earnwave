@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { getPool } = require("./postgres");
 
-async function migrate() {
+async function migrate({ closePool = true } = {}) {
   const pool = getPool();
   if (!pool) {
     throw new Error("DATABASE_URL is required to run migrations");
@@ -41,12 +41,18 @@ async function migrate() {
     ON CONFLICT DO NOTHING
   `);
 
-  await pool.end();
+  if (closePool) {
+    await pool.end();
+  }
 }
 
-migrate().then(() => {
-  console.log("PostgreSQL schema is ready.");
-}).catch(error => {
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  migrate().then(() => {
+    console.log("PostgreSQL schema is ready.");
+  }).catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+module.exports = { migrate };

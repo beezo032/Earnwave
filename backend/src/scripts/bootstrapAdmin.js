@@ -31,7 +31,11 @@ async function bootstrapAdmin() {
   console.log(`Admin ready: ${result.rows[0].email} (${result.rows[0].role})`);
 }
 
-bootstrapAdmin().then(() => process.exit(0)).catch(error => {
-  console.error(error.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  bootstrapAdmin().then(() => process.exit(0)).catch(error => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { bootstrapAdmin };

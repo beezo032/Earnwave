@@ -3,8 +3,24 @@ require("dotenv").config();
 const { createApp } = require("./src/app");
 const { env } = require("./src/config/env");
 const { connectRedis } = require("./src/cache/redis");
+const { migrate } = require("./src/db/migrate");
+const { bootstrapAdmin } = require("./src/scripts/bootstrapAdmin");
+
+async function prepareProduction() {
+  if (env.NODE_ENV !== "production" || !env.DATABASE_URL) return;
+
+  await migrate({ closePool: false });
+  console.log("PostgreSQL schema is ready.");
+
+  if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+    await bootstrapAdmin();
+  } else {
+    console.log("Skipping admin bootstrap: ADMIN_EMAIL and ADMIN_PASSWORD are not both configured.");
+  }
+}
 
 async function start() {
+  await prepareProduction();
   await connectRedis();
 
   const app = createApp();
