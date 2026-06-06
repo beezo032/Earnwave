@@ -1,0 +1,42 @@
+const path = require("path");
+
+const env = {
+  NODE_ENV: process.env.NODE_ENV || "development",
+  PORT: Number(process.env.PORT || 5000),
+  JWT_SECRET: process.env.JWT_SECRET || "earnwave_dev_secret_change_me",
+  SESSION_SECRET: process.env.SESSION_SECRET || process.env.JWT_SECRET || "earnwave_session_secret_change_me",
+  DATABASE_URL: process.env.DATABASE_URL || "",
+  REDIS_URL: process.env.REDIS_URL || "",
+  CLIENT_URL: process.env.CLIENT_URL || "http://localhost:5173",
+  PUBLIC_URL: process.env.PUBLIC_URL || "http://localhost:5000",
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID || "",
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET || "",
+  PAYPAL_ENV: process.env.PAYPAL_ENV || "sandbox",
+  TREMENDOUS_API_KEY: process.env.TREMENDOUS_API_KEY || "",
+  TREMENDOUS_ENV: process.env.TREMENDOUS_ENV || "testflight",
+  TREMENDOUS_FUNDING_SOURCE_ID: process.env.TREMENDOUS_FUNDING_SOURCE_ID || "BALANCE",
+  TREMENDOUS_PRODUCT_ID: process.env.TREMENDOUS_PRODUCT_ID || "OKMHM2X2OHYV",
+  CIRCLE_API_KEY: process.env.CIRCLE_API_KEY || "",
+  CIRCLE_ENV: process.env.CIRCLE_ENV || "sandbox",
+  CIRCLE_WALLET_ID: process.env.CIRCLE_WALLET_ID || "",
+  OFFERWALL_SHARED_SECRET: process.env.OFFERWALL_SHARED_SECRET || "",
+  CPX_APP_ID: process.env.CPX_APP_ID || "",
+  CPX_API_KEY: process.env.CPX_API_KEY || "",
+  CPX_SECURE_HASH_SECRET: process.env.CPX_SECURE_HASH_SECRET || "",
+  ADGATE_WALL_URL: process.env.ADGATE_WALL_URL || "",
+  ADGATE_POSTBACK_SECRET: process.env.ADGATE_POSTBACK_SECRET || "",
+  BITLABS_WALL_URL: process.env.BITLABS_WALL_URL || "",
+  BITLABS_APP_SECRET: process.env.BITLABS_APP_SECRET || "",
+  LOOTABLY_WALL_URL: process.env.LOOTABLY_WALL_URL || "",
+  LOOTABLY_POSTBACK_SECRET: process.env.LOOTABLY_POSTBACK_SECRET || "",
+  TIMEWALL_WALL_URL: process.env.TIMEWALL_WALL_URL || "",
+  TIMEWALL_POSTBACK_SECRET: process.env.TIMEWALL_POSTBACK_SECRET || "",
+  AYET_ADSLOT_ID: process.env.AYET_ADSLOT_ID || "",
+  AYET_API_KEY: process.env.AYET_API_KEY || "",
+  AYET_POSTBACK_SECRET: process.env.AYET_POSTBACK_SECRET || "",
+  STATIC_DIR: path.join(__dirname, "..", "..", "..", "dist")
+};
+
+module.exports = { env };
