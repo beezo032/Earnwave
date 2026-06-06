@@ -1,0 +1,59 @@
+# Render Blueprint for EarnWave.
+# Create from Render Dashboard: New > Blueprint > select beezo032/Earnwave.
+
+services:
+  - type: web
+    name: earnwave
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm install && npm --prefix backend install && npm run build
+    preDeployCommand: npm --prefix backend run migrate && npm --prefix backend run bootstrap:admin
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    domains:
+      - getearnwave.com
+      - www.getearnwave.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        value: https://getearnwave.com
+      - key: PUBLIC_URL
+        value: https://getearnwave.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_NAME
+        value: EarnWave Admin
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: earnwave-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: earnwave-redis
+          property: connectionString
+
+  - type: keyvalue
+    name: earnwave-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  - name: earnwave-db
+    plan: free
+    region: oregon
+    databaseName: earnwave
+    user: earnwave
+    postgresMajorVersion: "17"
