@@ -40,8 +40,30 @@ Hosted Postgres works too. Paste its connection string into `backend/.env` as `D
 
 ## Cloud Checklist
 
-1. Create managed PostgreSQL and Redis instances.
-2. Set every variable from `.env.example` in the cloud host.
+### Option A: Render Blueprint
+
+The repo includes `render.yaml`, which can create:
+
+- EarnWave web service
+- Render Postgres database
+- Render Key Value instance for Redis-compatible sessions/cache
+- Generated `JWT_SECRET` and `SESSION_SECRET`
+- `DATABASE_URL` and `REDIS_URL` wired automatically
+- `getearnwave.com` and `www.getearnwave.com` custom domain entries
+
+In Render:
+
+1. Go to **New > Blueprint**.
+2. Connect `beezo032/Earnwave`.
+3. Select `render.yaml`.
+4. Enter `ADMIN_EMAIL` and `ADMIN_PASSWORD` when prompted.
+5. Create the Blueprint.
+6. After the service is created, open the custom domain settings and copy Render's DNS targets into Namecheap.
+
+### Option B: Manual Services
+
+1. Create managed PostgreSQL and Redis/Key Value instances.
+2. Set every variable from `.env.example` in the web service.
 3. Set the production domain variables:
 
 ```bash
