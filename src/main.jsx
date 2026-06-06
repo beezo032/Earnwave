@@ -491,6 +491,12 @@ function Dashboard({ api, navigate }) {
   ]);
   const [bonusCode, setBonusCode] = useState("");
   const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityMetrics, setActivityMetrics] = useState({
+    clicks: 24,
+    downloads: 6,
+    completedOffers: 3
+  });
 
   useEffect(() => {
     refreshUser();
@@ -537,17 +543,25 @@ function Dashboard({ api, navigate }) {
     }
   }
 
+  function trackActivity(type) {
+    setActivityMetrics(previous => ({ ...previous, [type]: previous[type] + 1 }));
+  }
+
   return (
     <DashboardLayout active="Dashboard" navigate={navigate} api={api}>
       <DashboardTop kicker="Member dashboard" title={`Welcome back, ${user.name}`} copy="Track progress, choose the next best offer, and manage rewards from one focused workspace." action={<button className="btn" onClick={() => navigate("/wallet")}>Review Payouts <ArrowRight size={17} /></button>} />
+      <div className="dashboard-notices" aria-label="Dashboard trust notices">
+        <div className="dashboard-notice"><ShieldCheck size={18} /><span>Rewards are verified before payout.</span></div>
+        <div className="dashboard-notice blue"><Lock size={18} /><span>Withdrawals are reviewed for fraud protection.</span></div>
+      </div>
       <div className="dashboard-hero-card">
         <div className="balance-card">
           <p>Available Balance</p>
           <strong>{money(user.balance)}</strong>
           <span>Every withdrawal is reviewed before payout automation runs.</span>
           <div className="actions">
-            <button className="btn" onClick={() => navigate("/offers")}>Find Offers</button>
-            <button className="btn alt" onClick={() => navigate("/wallet")}>Withdraw</button>
+            <button className="btn" onClick={() => { trackActivity("clicks"); navigate("/offers"); }}>Find Offers</button>
+            <button className="btn alt" onClick={() => { trackActivity("clicks"); navigate("/wallet"); }}>Withdraw</button>
           </div>
         </div>
         <div className="analytics-card">
@@ -572,10 +586,33 @@ function Dashboard({ api, navigate }) {
           </ResponsiveContainer>
         </div>
         <div className="notification-card">
-          <div className="feed-title"><Bell size={16} /> Notifications</div>
+          <div className="feed-title notification-title">
+            <button
+              className="notification-bell"
+              type="button"
+              onClick={() => setActivityOpen(!activityOpen)}
+              aria-expanded={activityOpen}
+              aria-label="Toggle activity tracker"
+            >
+              <Bell size={16} />
+              <span className="notification-dot">{activityMetrics.completedOffers}</span>
+            </button>
+            <span>Notifications</span>
+          </div>
           <div className="mini-alert"><Clock size={16} /> Payout reviews usually complete within 24h.</div>
           <div className="mini-alert"><Flame size={16} /> Your streak bonus is ready today.</div>
           <div className="mini-alert"><Star size={16} /> Bonus code WELCOME adds XP.</div>
+          {activityOpen && (
+            <div className="activity-popout">
+              <div className="activity-popout-head">
+                <strong>Activity tracker</strong>
+                <span className="tag blue">Live session</span>
+              </div>
+              <div className="activity-row"><Activity size={16} /><span>Offer clicks</span><strong>{activityMetrics.clicks}</strong></div>
+              <div className="activity-row"><Smartphone size={16} /><span>App downloads</span><strong>{activityMetrics.downloads}</strong></div>
+              <div className="activity-row"><PackageCheck size={16} /><span>Completed offers</span><strong>{activityMetrics.completedOffers}</strong></div>
+            </div>
+          )}
         </div>
       </div>
       <div className="stats">
