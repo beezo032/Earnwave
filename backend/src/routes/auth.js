@@ -6,17 +6,21 @@ const { requestPasswordReset, resetPassword, sendVerificationEmail, verifyEmailT
 const { buildRisk, duplicateAccountSignals, flagSuspiciousActivity, registerDevice } = require("../services/fraud");
 
 const authRouter = express.Router();
-const authSchema = z.object({
-  name: z.string().min(2).optional(),
-  username: z.string().min(3).max(24).optional(),
+const signupSchema = z.object({
+  name: z.string().min(2),
+  username: z.string().min(3).max(24),
   email: z.string().email(),
   password: z.string().min(6),
   referralCode: z.string().max(32).optional()
 });
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6)
+});
 
 authRouter.post("/signup", async (req, res, next) => {
   try {
-    const input = authSchema.extend({ name: z.string().min(2), username: z.string().min(3).max(24) }).parse(req.body);
+    const input = signupSchema.parse(req.body);
     const duplicateSignals = await duplicateAccountSignals({ email: input.email, req });
     const risk = await buildRisk(req, { duplicateSignals });
     const user = await createUser(input);
@@ -44,7 +48,7 @@ authRouter.post("/signup", async (req, res, next) => {
 
 authRouter.post("/login", async (req, res, next) => {
   try {
-    const input = authSchema.parse(req.body);
+    const input = loginSchema.parse(req.body);
     const user = await verifyUser(input.email, input.password);
     const risk = await buildRisk(req);
     await registerDevice({ userId: user.id, req });
