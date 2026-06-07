@@ -58,7 +58,7 @@ const providerAdapters = {
         subid_2: userId
       });
       params.set("secure_hash", md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`));
-      return `https://live-api.cpx-research.com/api/get-surveys.php?${params.toString()}`;
+      return `https://offers.cpx-research.com/index.php?${params.toString()}`;
     },
     verify(req) {
       const payload = payloadFrom(req);

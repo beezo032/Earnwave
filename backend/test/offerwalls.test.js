@@ -36,6 +36,8 @@ test("CPX launch URL includes required user parameters and md5 secure hash", asy
     const url = new URL(payload.url);
 
     assert.equal(payload.configured, true);
+    assert.equal(url.origin, "https://offers.cpx-research.com");
+    assert.equal(url.pathname, "/index.php");
     assert.equal(url.searchParams.get("app_id"), "33553");
     assert.equal(url.searchParams.get("ext_user_id"), user.id);
     assert.equal(url.searchParams.get("username"), "cpxtester");
