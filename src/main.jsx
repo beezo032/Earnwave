@@ -97,6 +97,7 @@ const faqs = [
 
 const defaultOfferwallProviders = {
   cpx: { key: "cpx", name: "CPX Research", enabled: false },
+  theorem: { key: "theorem", name: "TheoremReach", enabled: false },
   adgate: { key: "adgate", name: "AdGate", enabled: false },
   bitlabs: { key: "bitlabs", name: "BitLabs", enabled: false },
   lootably: { key: "lootably", name: "Lootably", enabled: false },

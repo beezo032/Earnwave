@@ -16,6 +16,16 @@ function hmac(value, secret, algorithm = "sha256") {
   return crypto.createHmac(algorithm, secret).update(String(value)).digest("hex");
 }
 
+function hmacBase64Url(value, secret, algorithm = "sha1") {
+  return crypto
+    .createHmac(algorithm, secret)
+    .update(String(value))
+    .digest("base64")
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
 function replaceUser(url, userId) {
   return url.replaceAll("{userId}", encodeURIComponent(userId));
 }
@@ -64,6 +74,46 @@ const providerAdapters = {
         offerId: payload.survey_id || payload.offer_id,
         amount: Number(payload.amount || payload.reward || payload.payout || 0),
         status: payload.status || "approved",
+        raw: payload
+      };
+    }
+  },
+  theorem: {
+    name: "TheoremReach",
+    docs: "https://theoremreach.com/docs/offerwall",
+    enabled: () => Boolean(env.THEOREM_API_KEY && env.THEOREM_PARTNER_ID && env.THEOREM_SECRET_KEY),
+    launch({ userId }) {
+      const params = new URLSearchParams({
+        api_key: env.THEOREM_API_KEY,
+        user_id: userId,
+        transaction_id: crypto.randomUUID(),
+        currency_name_plural: "Points",
+        currency_name_singular: "Point",
+        exchange_rate: "100",
+        external_id: userId,
+        partner_id: env.THEOREM_PARTNER_ID
+      });
+      const urlBeforeHash = `https://theoremreach.com/respondent_entry/direct?${params.toString()}`;
+      params.set("hash", hmacBase64Url(urlBeforeHash, env.THEOREM_SECRET_KEY, "sha1"));
+      return `https://theoremreach.com/respondent_entry/direct?${params.toString()}`;
+    },
+    verify(req) {
+      const payload = payloadFrom(req);
+      if (!env.THEOREM_SECRET_KEY) return { verified: false, reason: "THEOREM_SECRET_KEY not set" };
+      const received = payload.hash;
+      const queryWithoutHash = req.originalUrl.split("?")[1]?.replace(/(^|&)hash=[^&]*/g, "").replace(/^&/, "") || sortedQuery(payload);
+      const urlBeforeHash = `${env.PUBLIC_URL}/api/offerwalls/theorem/callback${queryWithoutHash ? `?${queryWithoutHash}` : ""}`;
+      const expected = hmacBase64Url(urlBeforeHash, env.THEOREM_SECRET_KEY, "sha1");
+      return { verified: received === expected, expected };
+    },
+    normalize(payload) {
+      return {
+        provider: "theorem",
+        userId: payload.external_id || payload.user_id || payload.partner_user_id,
+        transactionId: payload.transaction_id,
+        offerId: payload.survey_id || payload.offer_id || payload.transaction_id,
+        amount: Number(payload.currency || payload.reward || payload.amount || 0),
+        status: payload.debug === "true" ? "debug" : payload.status || "approved",
         raw: payload
       };
     }

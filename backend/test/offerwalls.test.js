@@ -50,3 +50,43 @@ test("CPX launch URL includes required user parameters and md5 secure hash", asy
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+test("TheoremReach launch URL includes required IDs and url-safe hmac hash", async () => {
+  env.DATABASE_URL = "";
+  env.THEOREM_API_KEY = "theorem-api-key";
+  env.THEOREM_PARTNER_ID = "25068";
+  env.THEOREM_SECRET_KEY = "theorem-secret";
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "Theorem Tester", email: "theorem@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/offerwalls/theorem/launch`, {
+      headers: {
+        Authorization: `Bearer ${createToken(user)}`,
+        "x-device-hash": "theorem-device"
+      }
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const url = new URL(payload.url);
+    const hash = url.searchParams.get("hash");
+
+    assert.equal(payload.configured, true);
+    assert.equal(url.searchParams.get("api_key"), "theorem-api-key");
+    assert.equal(url.searchParams.get("partner_id"), "25068");
+    assert.equal(url.searchParams.get("user_id"), user.id);
+    assert.equal(url.searchParams.get("external_id"), user.id);
+    assert.equal(url.searchParams.get("exchange_rate"), "100");
+    assert.equal(url.searchParams.get("currency_name_plural"), "Points");
+    assert.ok(url.searchParams.get("transaction_id"));
+    assert.match(hash, /^[A-Za-z0-9_-]+$/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
