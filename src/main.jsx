@@ -7,6 +7,7 @@ import {
   Bell,
   Bitcoin,
   CheckCircle,
+  ClipboardList,
   Clock,
   CreditCard,
   DollarSign,
@@ -135,6 +136,33 @@ const defaultOfferwallProviders = {
   ayet: { key: "ayet", name: "Ayet Studios", enabled: false }
 };
 
+const surveyProviders = [
+  {
+    key: "cpx",
+    name: "CPX Research",
+    description: "High-volume survey inventory with profile matching, global routing, and fast research tasks.",
+    rewardRange: "40-650 WaveCoins",
+    usdRange: "$0.40-$6.50",
+    averageTime: "5-18 min",
+    gradient: "linear-gradient(135deg, rgba(50,230,161,.22), rgba(69,200,255,.14))"
+  },
+  {
+    key: "theorem",
+    name: "TheoremReach",
+    description: "Trusted survey wall built for qualified responses, clear completion flow, and reliable callbacks.",
+    rewardRange: "50-600 WaveCoins",
+    usdRange: "$0.50-$6.00",
+    averageTime: "6-20 min",
+    gradient: "linear-gradient(135deg, rgba(69,200,255,.22), rgba(255,107,138,.13))"
+  }
+];
+
+function trackEvent(eventName, payload = {}) {
+  const detail = { surface: "earnwave", ...payload };
+  window.dispatchEvent(new CustomEvent(`earnwave:${eventName}`, { detail }));
+  window.dataLayer?.push({ event: `earnwave_${eventName}`, ...detail });
+}
+
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
@@ -260,6 +288,7 @@ function Shell({ route, navigate, api, children }) {
   const isAdmin = api.session?.user?.role === "admin";
   const navItems = [
     ["/offers", "Offers"],
+    ["/surveys", "Surveys"],
     ["/dashboard", "Dashboard"],
     ["/wallet", "Wallet"],
     ["/referrals", "Referrals"]
@@ -275,7 +304,10 @@ function Shell({ route, navigate, api, children }) {
           </button>
           <nav className="nav-links">
             {[...navItems, ...adminItems].map(([path, label]) => (
-              <button key={path} className={route === path ? "active-link" : ""} onClick={() => navigate(path)}>{label}</button>
+              <button key={path} className={route === path ? "active-link" : ""} onClick={() => {
+                if (path === "/surveys") trackEvent("surveys_nav_click", { route: path });
+                navigate(path);
+              }}>{label}</button>
             ))}
             {isAuthed ? (
               <button className="icon-link" onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
@@ -593,6 +625,165 @@ function OffersPage({ api }) {
         </div>
       </div>
     </main>
+  );
+}
+
+export function SurveysPage({ api }) {
+  const user = api.session?.user || {};
+  const [providers, setProviders] = useState(defaultOfferwallProviders);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("Choose a trusted survey provider to launch a secure survey wall.");
+  const [modal, setModal] = useState(null);
+  const balanceWaveCoins = userAmountWaveCoins(user, 48.75);
+
+  useEffect(() => {
+    api.request("/offerwalls/providers").then(data => {
+      setProviders(data.providers || defaultOfferwallProviders);
+    }).catch(() => {}).finally(() => {
+      window.setTimeout(() => setLoading(false), 320);
+    });
+  }, []);
+
+  async function openSurveyProvider(provider) {
+    trackEvent("survey_provider_opened", { provider });
+    try {
+      const launch = await api.request(`/offerwalls/${provider}/launch`);
+      if (!launch.configured) {
+        setNotice(launch.message || "This survey provider is waiting for credentials.");
+        return;
+      }
+      const providerName = providers[provider]?.name || surveyProviders.find(item => item.key === provider)?.name || "Survey provider";
+      setModal({ provider, name: providerName, url: launch.url });
+    } catch (error) {
+      setNotice("Log in with a verified email before opening survey walls.");
+    }
+  }
+
+  function closeModal() {
+    if (modal?.provider) trackEvent("survey_modal_closed", { provider: modal.provider });
+    setModal(null);
+  }
+
+  return (
+    <main className="page surveys-page">
+      <div className="container">
+        <div className="surveys-hero">
+          <div>
+            <div className="eyebrow"><Sparkles size={16} /> Trusted survey earning</div>
+            <h1>Earn WaveCoins with Surveys</h1>
+            <p className="hero-copy">Answer surveys from trusted partners and get rewarded when your responses qualify.</p>
+            <div className="actions">
+              <button className="btn xl" onClick={() => openSurveyProvider("cpx")}>Start Surveys <ArrowRight size={18} /></button>
+              <span className="tag blue"><ShieldCheck size={14} /> Verified providers</span>
+            </div>
+          </div>
+          <div className="survey-balance-card">
+            <span>Your survey balance</span>
+            <strong>{formatBalance(user, balanceWaveCoins)}</strong>
+            {user.preferredBalanceDisplay === "coins" && <p>{money(waveCoinsToUsd(balanceWaveCoins))} USD estimate</p>}
+            <small>100 WaveCoins = $1.00.</small>
+          </div>
+        </div>
+
+        <div className="notice offerwall-notice">{notice}</div>
+
+        <SectionTitle title="Survey partners" copy="Open survey walls in a focused modal without leaving EarnWave." action={<span className="tag">Pending rewards verify first</span>} />
+        <div className="survey-provider-grid">
+          {loading
+            ? surveyProviders.map(provider => <SurveyProviderSkeleton key={provider.key} />)
+            : surveyProviders.map(provider => (
+              <SurveyProviderCard
+                key={provider.key}
+                provider={provider}
+                enabled={Boolean(providers[provider.key]?.enabled)}
+                onOpen={() => openSurveyProvider(provider.key)}
+              />
+            ))}
+        </div>
+
+        <section className="survey-trust-section">
+          <SectionTitle title="How survey rewards work" copy="Survey partners qualify responses before rewards become available." />
+          <div className="process-grid">
+            {[
+              ["Choose a survey provider", "Pick CPX Research or TheoremReach based on the surveys you want to try."],
+              ["Complete a survey", "Answer carefully and finish the partner flow with EarnWave tracking active."],
+              ["Rewards may appear as pending", "Some survey credits wait for provider verification before payout."],
+              ["Approved rewards become available", "Verified rewards move into your available WaveCoins balance."]
+            ].map(([title, copy], index) => <Feature key={title} icon={<span>{index + 1}</span>} title={title} copy={copy} />)}
+          </div>
+        </section>
+      </div>
+
+      {modal && <SurveyModal modal={modal} onClose={closeModal} />}
+    </main>
+  );
+}
+
+function SurveyProviderCard({ provider, enabled, onOpen }) {
+  return (
+    <article className="card survey-provider-card" style={{ "--provider-gradient": provider.gradient }}>
+      <div className="survey-provider-logo" aria-hidden="true">
+        <ClipboardSurveyIcon name={provider.name} />
+      </div>
+      <div className="survey-provider-copy">
+        <div className="offer-head">
+          <div>
+            <h3>{provider.name}</h3>
+            <p>{provider.description}</p>
+          </div>
+          <span className={enabled ? "pill" : "pill blue"}>{enabled ? "Live" : "Preview"}</span>
+        </div>
+        <div className="survey-provider-stats">
+          <span><Gift size={15} /> {provider.rewardRange}</span>
+          <span><DollarSign size={15} /> {provider.usdRange}</span>
+          <span><Clock size={15} /> Avg. {provider.averageTime}</span>
+          <span><ShieldCheck size={15} /> Trusted provider</span>
+        </div>
+        <button className="btn" type="button" onClick={onOpen}>Open Surveys <ArrowRight size={17} /></button>
+      </div>
+    </article>
+  );
+}
+
+function ClipboardSurveyIcon({ name }) {
+  return (
+    <div className="survey-logo-mark">
+      <PackageCheck size={30} />
+      <strong>{name.split(" ").map(part => part[0]).join("").slice(0, 3)}</strong>
+    </div>
+  );
+}
+
+function SurveyProviderSkeleton() {
+  return (
+    <div className="card survey-provider-card skeleton-card" aria-label="Loading survey provider">
+      <div className="survey-provider-logo skeleton-line" />
+      <div className="survey-provider-copy">
+        <div className="skeleton-line wide" />
+        <div className="skeleton-line" />
+        <div className="skeleton-line short" />
+        <div className="skeleton-line button" />
+      </div>
+    </div>
+  );
+}
+
+function SurveyModal({ modal, onClose }) {
+  return (
+    <div className="survey-modal-backdrop" role="presentation" onMouseDown={event => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <div className="survey-modal" role="dialog" aria-modal="true" aria-label={`${modal.name} survey wall`}>
+        <div className="survey-modal-head">
+          <div>
+            <span>Survey wall</span>
+            <strong>{modal.name}</strong>
+          </div>
+          <button className="icon-link" type="button" onClick={onClose}>Close</button>
+        </div>
+        <iframe title={`${modal.name} surveys`} src={modal.url} loading="lazy" />
+      </div>
+    </div>
   );
 }
 
@@ -1758,6 +1949,7 @@ function DashboardLayout({ active, navigate, api, children }) {
   const items = [
     ["Dashboard", "/dashboard", <LayoutDashboard size={17} />],
     ["Offers", "/offers", <Gift size={17} />],
+    ["Surveys", "/surveys", <ClipboardList size={17} />],
     ["Wallet", "/wallet", <Wallet size={17} />],
     ["Referrals", "/referrals", <Users size={17} />],
     ["Leaderboard", "/leaderboard", <Trophy size={17} />],
@@ -2025,12 +2217,13 @@ function RiskCard({ title, items }) {
   return <div className="card"><h3>{title}</h3>{items.map(item => <div className="row" key={item}><span>{item}</span><CheckCircle size={17} /></div>)}</div>;
 }
 
-function App() {
+export function App() {
   const [route, navigate] = useRoute();
   const api = useApi();
   const page = useMemo(() => {
     const routePath = route.split("?")[0];
     if (routePath === "/offers" || routePath === "/offers.html") return <OffersPage api={api} />;
+    if (routePath === "/surveys") return <SurveysPage api={api} />;
     if (routePath === "/how-it-works") return <HowItWorksPage navigate={navigate} />;
     if (routePath === "/trust") return <TrustPage api={api} navigate={navigate} />;
     if (routePath === "/dashboard" || routePath === "/dashboard.html") return <AuthRequired api={api} navigate={navigate}><Dashboard api={api} navigate={navigate} /></AuthRequired>;
@@ -2054,4 +2247,7 @@ function App() {
   return <Shell route={route} navigate={navigate} api={api}>{page}</Shell>;
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+const rootElement = document.getElementById("root");
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}

@@ -13,7 +13,7 @@ describe("EarnDashboardCards", () => {
     expect(screen.getByRole("heading", { name: "Surveys" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Play Games" })).toBeInTheDocument();
     expect(screen.getByText("Provider: Multi-provider")).toBeInTheDocument();
-    expect(screen.getByText("Provider: CPX + BitLabs")).toBeInTheDocument();
+    expect(screen.getByText("Provider: CPX + TheoremReach")).toBeInTheDocument();
     expect(screen.getByText("Provider: AdGate + Lootably")).toBeInTheDocument();
     expect(screen.getByText("Est. payout $3-$45")).toBeInTheDocument();
     expect(screen.getByText("Est. payout $0.40-$6")).toBeInTheDocument();
@@ -39,10 +39,10 @@ describe("EarnDashboardCards", () => {
 
     await user.click(screen.getByRole("button", { name: /start surveys/i }));
 
-    expect(navigate).toHaveBeenCalledWith("/offers?category=Surveys");
+    expect(navigate).toHaveBeenCalledWith("/surveys");
     expect(analytics).toHaveBeenCalledWith("card_click", expect.objectContaining({
       cardId: "surveys",
-      route: "/offers?category=Surveys"
+      route: "/surveys"
     }));
   });
 });

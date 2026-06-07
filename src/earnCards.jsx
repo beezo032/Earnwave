@@ -17,10 +17,10 @@ export const earnCards = [
     id: "surveys",
     title: "Surveys",
     copy: "Fast research surveys matched by profile, region, and completion quality.",
-    provider: "CPX + BitLabs",
+    provider: "CPX + TheoremReach",
     payout: "$0.40-$6",
     status: "available",
-    route: "/offers?category=Surveys",
+    route: "/surveys",
     cta: "Start Surveys",
     icon: ClipboardList
   },
