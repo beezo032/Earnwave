@@ -46,14 +46,6 @@ import {
   YAxis
 } from "recharts";
 import { EarnDashboardCards } from "./earnCards.jsx";
-import {
-  HowItWorksBlock,
-  LandingHero,
-  PayoutMethodsStrip,
-  PayoutProof,
-  PendingRewardsFaq,
-  RewardStatusExplainer
-} from "./landingSections.jsx";
 import "./styles.css";
 
 const demoOffers = [
@@ -250,18 +242,102 @@ function Footer({ navigate }) {
 function Landing({ navigate }) {
   return (
     <main>
-      <LandingHero navigate={navigate} money={money} analyticsSeries={analyticsSeries} earningsFeed={earningsFeed} Meter={Meter} />
-      <PayoutMethodsStrip />
-      <HowItWorksBlock SectionTitle={SectionTitle} />
-      <RewardStatusExplainer SectionTitle={SectionTitle} />
+      <section className="hero">
+        <div className="hero-orbit" aria-hidden="true" />
+        <div className="container hero-grid">
+          <div className="hero-copy-block">
+            <div className="eyebrow"><ShieldCheck size={16} /> Verified accounts - reviewed payouts - transparent rewards</div>
+            <h1>The smarter way to turn free time into real rewards.</h1>
+            <p className="hero-copy">EarnWave brings premium offer discovery, account protection, progress tracking, and payout confidence into one modern rewards experience.</p>
+            <div className="actions">
+              <button className="btn xl" onClick={() => navigate("/signup")}>Create Verified Account <ArrowRight size={18} /></button>
+              <button className="btn alt xl" onClick={() => navigate("/offers")}>Explore Reward Options</button>
+            </div>
+            <div className="trust-strip">
+              <Metric value="$0.50" label="Starter cashout path" />
+              <Metric value="Review" label="Every withdrawal checked" />
+              <Metric value="Verified" label="Account-first earning" />
+            </div>
+          </div>
+          <div className="hero-product" aria-label="Animated earnings dashboard preview">
+            <div className="dash-window">
+              <div className="window-top"><span /><span /><span /><strong>EarnWave Live</strong></div>
+              <div className="balance-panel hero-balance">
+                <div>
+                  <p>Ready to cash out</p>
+                  <div className="balance count-up">$48.75</div>
+                </div>
+                <span className="tag blue"><TrendingUp size={14} /> +18.4%</span>
+                <Meter value={76} />
+                <p>76% toward today&apos;s progress tier</p>
+              </div>
+              <div className="hero-chart">
+                {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%` }} />)}
+              </div>
+              <div className="feed-card">
+                <div className="feed-title"><Activity size={16} /> Real-time earnings</div>
+                {earningsFeed.map(item => (
+                  <div className="feed-row" key={`${item.user}-${item.time}`}>
+                    <span className="avatar">{item.user.slice(0, 1)}</span>
+                    <p><strong>{item.user}</strong> {item.action}</p>
+                    <strong>+{money(item.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="logo-band">
+        <div className="container trust-logos">
+          <span><Lock size={16} /> Manual payout review</span>
+          <span><ShieldCheck size={16} /> Fraud monitoring</span>
+          <span><CreditCard size={16} /> PayPal</span>
+          <span><Gift size={16} /> Gift cards</span>
+          <span><Bitcoin size={16} /> Crypto-ready</span>
+        </div>
+      </section>
 
       <section>
         <div className="container">
-          <SectionTitle title="Built for modern earners" copy="A focused rewards flow for survey users, gamers, side hustlers, remote workers, crypto users, and budget-conscious adults." />
+          <SectionTitle title="How EarnWave works" copy="A simple, transparent flow designed to keep members informed from signup to payout." />
+          <div className="process-grid">
+            <div className="card process-card"><span className="rank">1</span><h3>Verify your account</h3><p>Create your profile, confirm your email, and start with a trusted account foundation.</p></div>
+            <div className="card process-card"><span className="rank">2</span><h3>Choose reward paths</h3><p>Browse surveys, games, apps, and bonuses with clear reward values and provider labels.</p></div>
+            <div className="card process-card"><span className="rank">3</span><h3>Track progress</h3><p>Follow completions, streaks, referrals, and account activity from your member dashboard.</p></div>
+            <div className="card process-card"><span className="rank">4</span><h3>Cash out confidently</h3><p>Submit withdrawals into a review-first payout flow built for trust and accountability.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="container">
+          <SectionTitle title="Built for modern earners" copy="A focused rewards flow for students, gamers, side hustlers, remote workers, survey users, crypto users, and budget-conscious adults." />
           <div className="cards">
             <Feature icon={<Gamepad2 />} title="Clear reward discovery" copy="Reward value, provider, category, difficulty, and timing are shown up front so members can choose with confidence." />
             <Feature icon={<ShieldCheck />} title="Trust-first by design" copy="Verified accounts, ledger history, fraud review, and payout status make the platform feel accountable from day one." />
             <Feature icon={<Sparkles />} title="Momentum without noise" copy="Streaks, levels, referrals, leaderboards, and bonus codes encourage daily progress without clutter." />
+          </div>
+        </div>
+      </section>
+
+      <section className="split-section">
+        <div className="container split-grid">
+          <div>
+            <SectionTitle title="Safety users can see" copy="EarnWave makes trust visible with verified accounts, reviewed payouts, fraud signals, support access, and transparent account controls." />
+            <div className="security-list">
+              {["VPN/proxy detection", "Device fingerprinting", "Duplicate account checks", "Withdrawal review queue"].map(item => (
+                <div className="security-row" key={item}><CheckCircle size={18} /><span>{item}</span></div>
+              ))}
+            </div>
+          </div>
+          <div className="card security-panel">
+            <div className="risk-score"><span>Risk monitor</span><strong>Low</strong></div>
+            <Meter value={18} />
+            <div className="row"><span>Session integrity</span><span className="pill">Verified</span></div>
+            <div className="row"><span>Payout review</span><span className="pill blue">Queued</span></div>
+            <div className="row"><span>Ledger audit</span><span className="pill">Synced</span></div>
           </div>
         </div>
       </section>
@@ -277,7 +353,6 @@ function Landing({ navigate }) {
           </div>
         </div>
       </section>
-      <PayoutProof SectionTitle={SectionTitle} />
 
       <section className="stats-section">
         <div className="container stats-hero">
@@ -324,11 +399,14 @@ function Landing({ navigate }) {
         </div>
       </section>
 
-      <PendingRewardsFaq SectionTitle={SectionTitle} FaqItem={FaqItem} />
       <section>
-        <div className="container">
+        <div className="container faq-wrap">
+          <SectionTitle title="FAQ" copy="Straight answers help users trust the product before they create an account." />
+          <div className="faq-grid">
+            {faqs.map(([question, answer], index) => <FaqItem key={question} question={question} answer={answer} defaultOpen={index === 0} />)}
+          </div>
           <div className="final-cta">
-            <h2>Start verified. Track pending rewards. Cash out available balance confidently.</h2>
+            <h2>Start verified. Track progress. Cash out confidently.</h2>
             <button className="btn xl" onClick={() => navigate("/signup")}>Create Your Account <ArrowRight size={18} /></button>
           </div>
         </div>
