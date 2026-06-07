@@ -119,6 +119,12 @@ const testimonials = [
   { name: "Elena G.", role: "Budget-focused parent", quote: "Simple, clear, and not noisy. I can check offers, see risk-free payout choices, and move on with my day." }
 ];
 
+const payoutProofPreview = [
+  { name: "Ma*** R.", method: "PayPal", amountWaveCoins: 2500, completedAt: "Preview", status: "completed", preview: true },
+  { name: "Jo*** T.", method: "Gift card", amountWaveCoins: 1000, completedAt: "Preview", status: "completed", preview: true },
+  { name: "Pr*** S.", method: "PayPal", amountWaveCoins: 5000, completedAt: "Preview", status: "completed", preview: true }
+];
+
 const faqs = [
   ["How do rewards get tracked?", "EarnWave records offerwall callbacks, device signals, ledger entries, and provider transaction IDs so credits can be reviewed cleanly."],
   ["When can I cash out?", "The platform supports low minimum withdrawals, with manual review before PayPal, gift card, or crypto payout automation."],
@@ -457,6 +463,12 @@ function Landing({ navigate }) {
             <PaymentMethod icon={<Bitcoin />} title="Crypto withdrawals" copy="Stablecoin-ready workflow for crypto-native users." />
             <PaymentMethod icon={<Wallet />} title="Manual queue" copy="Every payout starts reviewed before automation dispatches." />
           </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="container">
+          <PayoutProofSection />
         </div>
       </section>
 
@@ -882,6 +894,7 @@ function Dashboard({ api, navigate }) {
         <div className="dashboard-notice"><ShieldCheck size={18} /><span>Rewards are verified before payout.</span></div>
         <div className="dashboard-notice blue"><Lock size={18} /><span>Withdrawals are reviewed for fraud protection.</span></div>
       </div>
+      <OnboardingChecklist user={user} navigate={navigate} />
       <EarnDashboardCards loading={earnLoading} navigate={navigate} />
       <div className="dashboard-hero-card">
         <div className="balance-card">
@@ -927,6 +940,7 @@ function Dashboard({ api, navigate }) {
         <Stat label="Daily Streak" value={`${growth.streak} days`} />
         <Stat label="Referrals" value={growth.referrals} />
       </div>
+      <PayoutProofSection compact />
       <div className="workspace-grid">
         <div className="card">
           <SectionTitle title="Recommended next steps" copy="Reward options organized around value, time, category, and confidence." action={<span className="tag">Tracking ready</span>} />
@@ -945,6 +959,128 @@ function Dashboard({ api, navigate }) {
         />
       </div>
     </DashboardLayout>
+  );
+}
+
+function OnboardingChecklist({ user, navigate }) {
+  const balanceWaveCoins = userAmountWaveCoins(user, user.balance);
+  const minimumCashout = 500;
+  const interestLabel = user.earning_interests || user.interests || "";
+  const hasInterests = Boolean(String(interestLabel).trim());
+  const hasProfile = Boolean(user.username && user.name && (user.country || user.bio || user.timezone));
+  const hasStarted = Number(user.total_earned_wavecoins || 0) > 0 || Number(user.total_earned || 0) > 0 || Number(user.completed_offers || 0) > 0;
+  const steps = [
+    {
+      title: "Verify email",
+      copy: "Confirm your email before reward and payout access.",
+      done: Boolean(user.email_verified),
+      action: "Verify",
+      route: `/verify-email?email=${encodeURIComponent(user.email || "")}`
+    },
+    {
+      title: "Complete profile",
+      copy: "Add username, country, timezone, and reward preferences.",
+      done: hasProfile,
+      action: "Edit profile",
+      route: "/profile"
+    },
+    {
+      title: "Choose earning interests",
+      copy: "Pick games, surveys, apps, or crypto to personalize offers.",
+      done: hasInterests,
+      action: "Set interests",
+      route: "/profile"
+    },
+    {
+      title: "Start first offer",
+      copy: "Launch a survey, game, or app offer to create your first ledger event.",
+      done: hasStarted,
+      action: "Browse offers",
+      route: "/offers"
+    },
+    {
+      title: "Reach first cashout",
+      copy: `${Math.max(0, minimumCashout - balanceWaveCoins).toLocaleString()} WaveCoins left until your first payout request.`,
+      done: balanceWaveCoins >= minimumCashout,
+      action: "Open wallet",
+      route: "/wallet"
+    }
+  ];
+  const completed = steps.filter(step => step.done).length;
+  const progress = Math.round((completed / steps.length) * 100);
+
+  return (
+    <section className="onboarding-panel" aria-label="New member onboarding">
+      <div className="onboarding-head">
+        <div>
+          <p>Start strong</p>
+          <h2>Finish your EarnWave setup</h2>
+          <span>{completed} of {steps.length} steps complete</span>
+        </div>
+        <div className="onboarding-progress">
+          <strong>{progress}%</strong>
+          <Meter value={progress} />
+        </div>
+      </div>
+      <div className="onboarding-steps">
+        {steps.map(step => (
+          <button className={step.done ? "onboarding-step done" : "onboarding-step"} key={step.title} onClick={() => navigate(step.route)} type="button">
+            <span>{step.done ? <CheckCircle size={18} /> : <Rocket size={18} />}</span>
+            <div>
+              <strong>{step.title}</strong>
+              <p>{step.copy}</p>
+            </div>
+            <em>{step.done ? "Done" : step.action}</em>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PayoutProofSection({ compact = false }) {
+  const [proofs, setProofs] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/public/payout-proofs")
+      .then(response => response.json())
+      .then(data => setProofs(data.proofs || []))
+      .catch(() => setProofs([]));
+  }, []);
+
+  const visibleProofs = proofs?.length ? proofs : payoutProofPreview;
+  const isPreview = !proofs?.length;
+
+  return (
+    <section className={compact ? "payout-proof-section compact" : "payout-proof-section"}>
+      <SectionTitle
+        title="Paid today"
+        copy={isPreview ? "Live completed payouts will appear here automatically after the first payout is dispatched." : "Recent completed payouts with private user details redacted."}
+        action={<span className={isPreview ? "tag amber" : "tag"}><ShieldCheck size={14} /> {isPreview ? "Preview" : "Verified proof"}</span>}
+      />
+      <div className="payout-proof-grid">
+        {visibleProofs.map(item => (
+          <div className="card payout-proof-card" key={`${item.name}-${item.completedAt}`}>
+            <div className="payout-proof-top">
+              <span className="avatar">{item.name.slice(0, 1)}</span>
+              <div>
+                <h3>{item.name}</h3>
+                <p>{item.preview ? "Preview until live payout" : item.completedAt}</p>
+              </div>
+              <span className={item.preview ? "pill blue" : "pill"}>{item.status}</span>
+            </div>
+            <div className="payout-proof-amount">
+              <strong>{formatBalance({ preferredBalanceDisplay: "coins" }, item.amountWaveCoins)}</strong>
+              <span>{money(waveCoinsToUsd(item.amountWaveCoins))}</span>
+            </div>
+            <div className="row">
+              <span>Method</span>
+              <strong>{item.method}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1317,9 +1453,19 @@ function ProfilePage({ navigate, api }) {
     username: user.username || "",
     bio: user.bio || "",
     country: user.country || "",
-    timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+    timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    earning_interests: user.earning_interests || ""
   });
   const [notice, setNotice] = useState("Update your username, display name, and public profile info.");
+  const interestOptions = ["games", "surveys", "apps", "crypto"];
+
+  function toggleInterest(interest) {
+    const current = profile.earning_interests.split(",").map(item => item.trim()).filter(Boolean);
+    const next = current.includes(interest)
+      ? current.filter(item => item !== interest)
+      : [...current, interest];
+    setProfile({ ...profile, earning_interests: next.join(",") });
+  }
 
   async function saveProfile(event) {
     event.preventDefault();
@@ -1345,6 +1491,15 @@ function ProfilePage({ navigate, api }) {
           <label>Email<input value={user.email || ""} disabled /></label>
           <label>Country<input value={profile.country} onChange={event => setProfile({ ...profile, country: event.target.value })} placeholder="United States" /></label>
           <label>Timezone<input value={profile.timezone} onChange={event => setProfile({ ...profile, timezone: event.target.value })} /></label>
+          <div className="interest-field">
+            <span>Choose earning interests</span>
+            <div className="interest-chips">
+              {interestOptions.map(interest => {
+                const active = profile.earning_interests.split(",").includes(interest);
+                return <button className={active ? "interest-chip active" : "interest-chip"} type="button" key={interest} onClick={() => toggleInterest(interest)}>{interest}</button>;
+              })}
+            </div>
+          </div>
           <label>Bio<textarea value={profile.bio} onChange={event => setProfile({ ...profile, bio: event.target.value })} maxLength="280" placeholder="Tell us what kind of rewards you like." /></label>
           <button className="btn" type="submit">Save Profile</button>
           <div className="notice">{notice}</div>
@@ -1353,6 +1508,7 @@ function ProfilePage({ navigate, api }) {
           <h3>Account status</h3>
           <div className="row"><span>Role</span><span className="pill">{user.role || "user"}</span></div>
           <div className="row"><span>Username</span><span className="pill">{user.username || "Needed"}</span></div>
+          <div className="row"><span>Interests</span><span className="pill blue">{user.earning_interests || "Needed"}</span></div>
           <div className="row"><span>Status</span><span className="pill">{user.status || "active"}</span></div>
           <div className="row"><span>Email</span><span className={user.email_verified ? "pill" : "pill amber"}>{user.email_verified ? "Verified" : "Unverified"}</span></div>
           <div className="row"><span>Referral code</span><span className="pill">{user.referral_code || "Generated after login"}</span></div>

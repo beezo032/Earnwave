@@ -3,7 +3,7 @@ const { env } = require("../config/env");
 const { users } = require("../db/demoStore");
 const { normalizeUsername, serializeUser } = require("./users");
 
-async function updateProfile({ userId, name, username, bio = "", country = "", timezone = "" }) {
+async function updateProfile({ userId, name, username, bio = "", country = "", timezone = "", earning_interests = "" }) {
   const normalizedUsername = normalizeUsername(username || name);
   if (normalizedUsername.length < 3) throw new Error("Username must be at least 3 characters");
 
@@ -15,12 +15,13 @@ async function updateProfile({ userId, name, username, bio = "", country = "", t
     user.bio = bio;
     user.country = country;
     user.timezone = timezone;
+    user.earning_interests = earning_interests;
     return serializeUser(user);
   }
 
   const result = await query(
-    "UPDATE users SET name = $1, username = $2, bio = $3, country = $4, timezone = $5 WHERE id = $6 RETURNING *",
-    [name, normalizedUsername, bio, country, timezone, userId]
+    "UPDATE users SET name = $1, username = $2, bio = $3, country = $4, timezone = $5, earning_interests = $6 WHERE id = $7 RETURNING *",
+    [name, normalizedUsername, bio, country, timezone, earning_interests, userId]
   );
   if (!result.rows[0]) throw new Error("User not found");
   return serializeUser(result.rows[0]);

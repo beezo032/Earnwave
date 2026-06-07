@@ -24,7 +24,8 @@ accountRouter.patch("/profile", requireAuth, requireVerifiedEmail, async (req, r
       username: z.string().min(3).max(24),
       bio: z.string().max(280).optional(),
       country: z.string().max(80).optional(),
-      timezone: z.string().max(80).optional()
+      timezone: z.string().max(80).optional(),
+      earning_interests: z.string().max(120).optional()
     }).parse(req.body);
     res.json({ user: await updateProfile({ userId: req.user.id, ...body }) });
   } catch (error) {

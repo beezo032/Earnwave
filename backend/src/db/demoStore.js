@@ -61,6 +61,7 @@ async function createDemoUser({ name, email, password, role = "admin" }) {
     bio: "",
     country: "",
     timezone: "",
+    earning_interests: "",
     fraud_score: 0,
     referral_code: `EW${String(users.size + 1).padStart(5, "0")}`,
     referred_by: null,

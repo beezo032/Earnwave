@@ -23,6 +23,7 @@ async function migrate({ closePool = true } = {}) {
       ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS earning_interests TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS balance_wavecoins INTEGER NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS total_earned_wavecoins INTEGER NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS preferred_balance_display TEXT NOT NULL DEFAULT 'coins';

@@ -30,6 +30,7 @@ function serializeUser(user) {
     bio: user.bio || "",
     country: user.country || "",
     timezone: user.timezone || "",
+    earning_interests: user.earning_interests || user.earningInterests || "",
     fraud_score: user.fraud_score || 0,
     referral_code: user.referral_code,
     referred_by: user.referred_by,
