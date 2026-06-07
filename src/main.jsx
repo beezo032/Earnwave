@@ -45,6 +45,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { EarnDashboardCards } from "./earnCards.jsx";
 import "./styles.css";
 
 const demoOffers = [
@@ -417,7 +418,7 @@ function Landing({ navigate }) {
 function OffersPage({ api }) {
   const [offers, setOffers] = useState(demoOffers);
   const [providers, setProviders] = useState(defaultOfferwallProviders);
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get("category") || "All");
   const [query, setQuery] = useState("");
   const [providerNotice, setProviderNotice] = useState("Connect provider credentials in .env to open live offerwalls.");
 
@@ -492,6 +493,7 @@ function Dashboard({ api, navigate }) {
   const [bonusCode, setBonusCode] = useState("");
   const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
   const [activityOpen, setActivityOpen] = useState(false);
+  const [earnLoading, setEarnLoading] = useState(true);
   const [activityMetrics, setActivityMetrics] = useState({
     clicks: 24,
     downloads: 6,
@@ -502,6 +504,8 @@ function Dashboard({ api, navigate }) {
     refreshUser();
     api.request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
     api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
+    const loadingTimer = window.setTimeout(() => setEarnLoading(false), 420);
+    return () => window.clearTimeout(loadingTimer);
   }, []);
 
   async function refreshUser() {
@@ -554,6 +558,7 @@ function Dashboard({ api, navigate }) {
         <div className="dashboard-notice"><ShieldCheck size={18} /><span>Rewards are verified before payout.</span></div>
         <div className="dashboard-notice blue"><Lock size={18} /><span>Withdrawals are reviewed for fraud protection.</span></div>
       </div>
+      <EarnDashboardCards loading={earnLoading} navigate={navigate} />
       <div className="dashboard-hero-card">
         <div className="balance-card">
           <p>Available Balance</p>
@@ -1704,24 +1709,25 @@ function App() {
   const [route, navigate] = useRoute();
   const api = useApi();
   const page = useMemo(() => {
-    if (route === "/offers" || route === "/offers.html") return <OffersPage api={api} />;
-    if (route === "/how-it-works") return <HowItWorksPage navigate={navigate} />;
-    if (route === "/trust") return <TrustPage api={api} navigate={navigate} />;
-    if (route === "/dashboard" || route === "/dashboard.html") return <AuthRequired api={api} navigate={navigate}><Dashboard api={api} navigate={navigate} /></AuthRequired>;
-    if (route === "/wallet" || route === "/wallet.html") return <AuthRequired api={api} navigate={navigate}><WalletPage api={api} navigate={navigate} /></AuthRequired>;
-    if (route === "/referrals") return <AuthRequired api={api} navigate={navigate}><ReferralPage api={api} navigate={navigate} /></AuthRequired>;
-    if (route === "/leaderboard") return <LeaderboardPage api={api} navigate={navigate} />;
-    if (route === "/profile") return <AuthRequired api={api} navigate={navigate}><ProfilePage api={api} navigate={navigate} /></AuthRequired>;
-    if (route === "/settings") return <AuthRequired api={api} navigate={navigate}><SettingsPage api={api} navigate={navigate} /></AuthRequired>;
-    if (route === "/support") return <AuthRequired api={api} navigate={navigate}><SupportPage api={api} navigate={navigate} /></AuthRequired>;
-    if (route === "/legal") return <LegalPage />;
-    if (route === "/admin" || route === "/admin.html") return <AdminGuard api={api} navigate={navigate}><AdminPage api={api} navigate={navigate} /></AdminGuard>;
-    if (route === "/analytics") return <AdminGuard api={api} navigate={navigate}><AnalyticsPage api={api} navigate={navigate} /></AdminGuard>;
-    if (route === "/login" || route === "/login.html") return <AuthPage mode="login" api={api} navigate={navigate} />;
-    if (route === "/signup" || route === "/signup.html") return <AuthPage mode="signup" api={api} navigate={navigate} />;
-    if (route === "/forgot-password") return <ForgotPasswordPage api={api} navigate={navigate} />;
-    if (route === "/reset-password") return <ResetPasswordPage api={api} navigate={navigate} />;
-    if (route === "/verify-email") return <VerifyEmailPage api={api} navigate={navigate} />;
+    const routePath = route.split("?")[0];
+    if (routePath === "/offers" || routePath === "/offers.html") return <OffersPage api={api} />;
+    if (routePath === "/how-it-works") return <HowItWorksPage navigate={navigate} />;
+    if (routePath === "/trust") return <TrustPage api={api} navigate={navigate} />;
+    if (routePath === "/dashboard" || routePath === "/dashboard.html") return <AuthRequired api={api} navigate={navigate}><Dashboard api={api} navigate={navigate} /></AuthRequired>;
+    if (routePath === "/wallet" || routePath === "/wallet.html") return <AuthRequired api={api} navigate={navigate}><WalletPage api={api} navigate={navigate} /></AuthRequired>;
+    if (routePath === "/referrals") return <AuthRequired api={api} navigate={navigate}><ReferralPage api={api} navigate={navigate} /></AuthRequired>;
+    if (routePath === "/leaderboard") return <LeaderboardPage api={api} navigate={navigate} />;
+    if (routePath === "/profile") return <AuthRequired api={api} navigate={navigate}><ProfilePage api={api} navigate={navigate} /></AuthRequired>;
+    if (routePath === "/settings") return <AuthRequired api={api} navigate={navigate}><SettingsPage api={api} navigate={navigate} /></AuthRequired>;
+    if (routePath === "/support") return <AuthRequired api={api} navigate={navigate}><SupportPage api={api} navigate={navigate} /></AuthRequired>;
+    if (routePath === "/legal") return <LegalPage />;
+    if (routePath === "/admin" || routePath === "/admin.html") return <AdminGuard api={api} navigate={navigate}><AdminPage api={api} navigate={navigate} /></AdminGuard>;
+    if (routePath === "/analytics") return <AdminGuard api={api} navigate={navigate}><AnalyticsPage api={api} navigate={navigate} /></AdminGuard>;
+    if (routePath === "/login" || routePath === "/login.html") return <AuthPage mode="login" api={api} navigate={navigate} />;
+    if (routePath === "/signup" || routePath === "/signup.html") return <AuthPage mode="signup" api={api} navigate={navigate} />;
+    if (routePath === "/forgot-password") return <ForgotPasswordPage api={api} navigate={navigate} />;
+    if (routePath === "/reset-password") return <ResetPasswordPage api={api} navigate={navigate} />;
+    if (routePath === "/verify-email") return <VerifyEmailPage api={api} navigate={navigate} />;
     return <Landing navigate={navigate} />;
   }, [route, api.session]);
 
