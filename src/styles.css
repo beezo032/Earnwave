@@ -133,6 +133,26 @@ h3 { font-size: 1.06rem; line-height: 1.3; }
 }
 .hero-copy { max-width: 690px; margin: 22px 0 26px; color: #c5d2e2; font-size: 1.12rem; }
 .actions, .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hero-methods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 22px;
+}
+.hero-method {
+  min-height: 92px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.045);
+  color: var(--soft);
+  font-weight: 850;
+}
+.hero-method svg { color: var(--mint); }
+.hero-method span { color: var(--mint-2); font-weight: 950; }
 .trust-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 30px; }
 .trust-item, .card, .panel, .dash-window {
   border: 1px solid var(--line);
@@ -233,10 +253,14 @@ section { padding: 58px 0; }
 .split-grid { display: grid; grid-template-columns: 1fr minmax(320px, .7fr); gap: 22px; align-items: center; }
 .page-band { margin-top: 18px; align-items: stretch; }
 .process-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.process-grid.three-step-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .process-card { min-height: 220px; display: grid; align-content: start; gap: 12px; }
 .security-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .security-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.045); color: var(--soft); font-weight: 850; }
 .security-row svg { color: var(--mint); }
+.status-explainer-row { align-items: flex-start; }
+.status-explainer-row span { display: grid; gap: 4px; line-height: 1.5; }
+.status-explainer-row strong { color: var(--text); }
 .security-panel { display: grid; gap: 12px; }
 .risk-score { display: flex; align-items: end; justify-content: space-between; gap: 14px; }
 .risk-score strong { font-size: 2rem; color: var(--mint); }
@@ -261,6 +285,8 @@ section { padding: 58px 0; }
 .earner-row:hover { transform: translateY(-2px); border-color: rgba(69,200,255,.38); }
 .rank { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--radius); background: linear-gradient(135deg, rgba(50,230,161,.18), rgba(69,200,255,.16)); color: var(--mint-2); font-weight: 950; }
 .social-proof-card { display: grid; align-content: center; gap: 12px; }
+.payout-proof-card h3 { color: var(--mint-2); }
+.payout-proof-card .row { margin-top: auto; }
 
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .filter { border: 1px solid var(--line); border-radius: 999px; padding: 10px 13px; background: rgba(255, 255, 255, .05); color: var(--muted); cursor: pointer; font-weight: 850; }
@@ -588,7 +614,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   .notification-card { grid-column: 1 / -1; }
   .sidebar { position: static; display: flex; flex-wrap: wrap; gap: 6px; }
   .sidebar button { width: auto; margin: 0; }
-  .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .process-grid, .readiness-grid, .earn-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .process-grid, .process-grid.three-step-grid, .readiness-grid, .earn-dashboard-grid, .hero-methods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
@@ -608,7 +634,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
     background: rgba(6, 9, 15, .84);
     backdrop-filter: blur(16px);
   }
-  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .wallet-summary-grid, .support-help-grid, .method-grid, .dashboard-notices, .dashboard-hero-card, .earn-dashboard-grid, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
+  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .wallet-summary-grid, .support-help-grid, .method-grid, .dashboard-notices, .dashboard-hero-card, .earn-dashboard-grid, .hero-methods, .security-list, .faq-grid, .process-grid, .process-grid.three-step-grid, .readiness-grid { grid-template-columns: 1fr; }
   .leaderboard-stage { grid-template-columns: 1fr; }
   .earner-row { grid-template-columns: 42px 1fr; }
   .earner-row .reward { grid-column: 2; }
