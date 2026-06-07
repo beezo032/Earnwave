@@ -1446,10 +1446,11 @@ function LegalPage() {
   }, []);
 
   const fallback = {
-    terms: { title: "Terms of Service", body: ["Rewards require valid tracking, fraud review, and provider confirmation."] },
-    privacy: { title: "Privacy Policy", body: ["EarnWave collects account, device, offer, and payout data to operate the platform."] },
-    rewards: { title: "Rewards Policy", body: ["Balances are tracked through ledger entries and payouts require manual approval."] },
-    fraud: { title: "Fraud Policy", body: ["VPN/proxy abuse, duplicate accounts, and automated activity are prohibited."] }
+    terms: { title: "Terms of Service", body: ["Use EarnWave lawfully, keep one accurate account, and understand that WaveCoins are promotional reward credits redeemable only through approved EarnWave payout methods.", "Rewards require valid tracking, provider confirmation, fraud review, and any required compliance checks before payout."] },
+    privacy: { title: "Privacy Policy", body: ["EarnWave collects account, device, offer, payout, support, tax/KYC, consent, and fraud-prevention data to operate and secure the platform.", "Data may be processed by offerwall providers, payment processors, email providers, hosting providers, analytics tools, fraud-prevention vendors, and compliance providers."] },
+    rewards: { title: "Rewards Policy", body: ["Balances are tracked in integer WaveCoins. 100 WaveCoins equals $1.00 when redeemed through an approved payout method.", "Rewards may be pending, reversed, or denied when tracking fails, provider rules are not followed, advertiser credit is reversed, or fraud review finds risk."] },
+    fraud: { title: "Fraud and Account Policy", body: ["Fake identities, duplicate accounts, VPN/proxy abuse, emulators, bots, scripts, location spoofing, and misleading survey behavior are prohibited.", "EarnWave may hold rewards, deny withdrawals, close accounts, ban related accounts, and retain records needed to protect the platform."] },
+    tax: { title: "Tax and KYC Policy", body: ["Users are responsible for taxes on rewards and payouts. EarnWave may require W-9, W-8, identity, country, and payout information before withdrawals.", "Payouts may be locked until required information is complete, verified, and compliant with processor and legal requirements."] }
   };
 
   const visibleDocs = docs || fallback;
@@ -1457,7 +1458,7 @@ function LegalPage() {
   return (
     <main className="page">
       <div className="container">
-        <SectionTitle title="Legal center" copy="Core policies for account use, rewards, privacy, and fraud." />
+        <SectionTitle title="Legal center" copy="Core policies for account use, privacy, rewards, fraud prevention, taxes, and payout compliance." />
         <div className="cards">
           {Object.entries(visibleDocs).map(([slug, doc]) => (
             <div className="card legal-card" key={slug}>
