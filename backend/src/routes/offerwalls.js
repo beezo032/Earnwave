@@ -8,6 +8,7 @@ const {
   verifyCallbackSignature
 } = require("../services/offerwalls");
 const { getClientIp } = require("../services/fraud");
+const { findUserById } = require("../services/users");
 
 const offerwallRouter = express.Router();
 
@@ -15,11 +16,14 @@ offerwallRouter.get("/providers", (req, res) => {
   res.json({ providers: publicProviders() });
 });
 
-offerwallRouter.get("/:provider/launch", requireAuth, requireVerifiedEmail, (req, res, next) => {
+offerwallRouter.get("/:provider/launch", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const provider = req.params.provider.toLowerCase();
+    const user = await findUserById(req.user.id);
     const launch = buildLaunchUrl(provider, {
       userId: req.user.id,
+      username: user?.username,
+      email: user?.email,
       ip: getClientIp(req),
       userAgent: req.headers["user-agent"] || ""
     });

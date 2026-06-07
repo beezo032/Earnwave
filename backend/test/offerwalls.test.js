@@ -1,0 +1,52 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const crypto = require("crypto");
+const { createApp } = require("../src/app");
+const { createToken } = require("../src/middleware/auth");
+const { env } = require("../src/config/env");
+const store = require("../src/db/demoStore");
+
+function resetDemoStore() {
+  store.users.clear();
+}
+
+test("CPX launch URL includes required user parameters and md5 secure hash", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_APP_ID = "33553";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Tester", email: "cpx@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  user.username = "cpxtester";
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/offerwalls/cpx/launch`, {
+      headers: {
+        Authorization: `Bearer ${createToken(user)}`,
+        "x-device-hash": "cpx-device"
+      }
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const url = new URL(payload.url);
+
+    assert.equal(payload.configured, true);
+    assert.equal(url.searchParams.get("app_id"), "33553");
+    assert.equal(url.searchParams.get("ext_user_id"), user.id);
+    assert.equal(url.searchParams.get("username"), "cpxtester");
+    assert.equal(url.searchParams.get("email"), "cpx@example.com");
+    assert.equal(url.searchParams.get("subid_1"), "earnwave");
+    assert.equal(url.searchParams.get("subid_2"), user.id);
+    assert.equal(
+      url.searchParams.get("secure_hash"),
+      crypto.createHash("md5").update(`${user.id}-test-cpx-secret`).digest("hex")
+    );
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});

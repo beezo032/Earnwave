@@ -8,6 +8,10 @@ function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
 }
 
+function md5(value) {
+  return crypto.createHash("md5").update(String(value)).digest("hex");
+}
+
 function hmac(value, secret, algorithm = "sha256") {
   return crypto.createHmac(algorithm, secret).update(String(value)).digest("hex");
 }
@@ -33,18 +37,16 @@ const providerAdapters = {
     name: "CPX Research",
     docs: "https://cpx-research.com/main/en/doc.php",
     enabled: () => Boolean(env.CPX_APP_ID && env.CPX_SECURE_HASH_SECRET),
-    launch({ userId, ip, userAgent }) {
+    launch({ userId, username, email }) {
       const params = new URLSearchParams({
         app_id: env.CPX_APP_ID,
         ext_user_id: userId,
+        username: username || userId,
+        email: email || "",
         subid_1: "earnwave",
-        subid_2: userId,
-        output_method: "api",
-        ip_user: ip || "",
-        user_agent: userAgent || "",
-        limit: "12"
+        subid_2: userId
       });
-      params.set("secure_hash", sha256(params.toString() + env.CPX_SECURE_HASH_SECRET));
+      params.set("secure_hash", md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`));
       return `https://live-api.cpx-research.com/api/get-surveys.php?${params.toString()}`;
     },
     verify(req) {
