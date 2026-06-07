@@ -134,6 +134,24 @@ function rewardLabel(valueDollars) {
   return formatBalance({ preferredBalanceDisplay: "coins" }, dollarsToWaveCoins(valueDollars));
 }
 
+const defaultActivityMetrics = { clicks: 24, downloads: 6, completedOffers: 3 };
+
+function readActivityMetrics() {
+  try {
+    return { ...defaultActivityMetrics, ...JSON.parse(localStorage.getItem("earnwave_activity_metrics") || "{}") };
+  } catch {
+    return defaultActivityMetrics;
+  }
+}
+
+function recordActivityMetric(type) {
+  const current = readActivityMetrics();
+  const next = { ...current, [type]: Number(current[type] || 0) + 1 };
+  localStorage.setItem("earnwave_activity_metrics", JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent("earnwave:activity", { detail: next }));
+  return next;
+}
+
 async function getDeviceFingerprint() {
   const cached = localStorage.getItem("earnwave_device_hash");
   if (cached) return cached;
@@ -519,13 +537,7 @@ function Dashboard({ api, navigate }) {
   const [dailyQuest, setDailyQuest] = useState(null);
   const [bonusCode, setBonusCode] = useState("");
   const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
-  const [activityOpen, setActivityOpen] = useState(false);
   const [earnLoading, setEarnLoading] = useState(true);
-  const [activityMetrics, setActivityMetrics] = useState({
-    clicks: 24,
-    downloads: 6,
-    completedOffers: 3
-  });
 
   useEffect(() => {
     refreshUser();
@@ -591,7 +603,7 @@ function Dashboard({ api, navigate }) {
   }
 
   function trackActivity(type) {
-    setActivityMetrics(previous => ({ ...previous, [type]: previous[type] + 1 }));
+    recordActivityMetric(type);
   }
 
   return (
@@ -634,33 +646,10 @@ function Dashboard({ api, navigate }) {
           </ResponsiveContainer>
         </div>
         <div className="notification-card">
-          <div className="feed-title notification-title">
-            <button
-              className="notification-bell"
-              type="button"
-              onClick={() => setActivityOpen(!activityOpen)}
-              aria-expanded={activityOpen}
-              aria-label="Toggle activity tracker"
-            >
-              <Bell size={16} />
-              <span className="notification-dot">{activityMetrics.completedOffers}</span>
-            </button>
-            <span>Notifications</span>
-          </div>
+          <div className="feed-title"><Bell size={16} /><span>Reward reminders</span></div>
           <div className="mini-alert"><Clock size={16} /> Payout reviews usually complete within 24h.</div>
           <div className="mini-alert"><Flame size={16} /> Your streak bonus is ready today.</div>
           <div className="mini-alert"><Star size={16} /> Bonus code WELCOME adds XP.</div>
-          {activityOpen && (
-            <div className="activity-popout">
-              <div className="activity-popout-head">
-                <strong>Activity tracker</strong>
-                <span className="tag blue">Live session</span>
-              </div>
-              <div className="activity-row"><Activity size={16} /><span>Offer clicks</span><strong>{activityMetrics.clicks}</strong></div>
-              <div className="activity-row"><Smartphone size={16} /><span>App downloads</span><strong>{activityMetrics.downloads}</strong></div>
-              <div className="activity-row"><PackageCheck size={16} /><span>Completed offers</span><strong>{activityMetrics.completedOffers}</strong></div>
-            </div>
-          )}
         </div>
       </div>
       <div className="stats">
@@ -1582,6 +1571,110 @@ function AuthPage({ mode, api, navigate }) {
   );
 }
 
+function TopNotifications({ api, navigate }) {
+  const [open, setOpen] = useState(false);
+  const [read, setRead] = useState(false);
+  const [metrics, setMetrics] = useState(readActivityMetrics);
+  const user = api.session?.user || {};
+  const notifications = [
+    {
+      id: "payout-review",
+      icon: <ShieldCheck size={22} />,
+      title: "Payout review enabled",
+      date: "Today",
+      body: "Withdrawals are checked for fraud protection before PayPal, gift card, or crypto payout.",
+      action: "Open wallet",
+      to: "/wallet",
+      tone: "green"
+    },
+    {
+      id: "wavecoins",
+      icon: <Wallet size={22} />,
+      title: "WaveCoins minimum cashout",
+      date: "Today",
+      body: "500 WaveCoins minimum cashout. 100 WaveCoins equals $1.00 when redeemed.",
+      action: "View balance",
+      to: "/wallet",
+      tone: "blue"
+    },
+    {
+      id: "pending",
+      icon: <Clock size={22} />,
+      title: "Rewards may pend",
+      date: "Live tracking",
+      body: "Offerwall rewards can stay pending until the provider verifies completion.",
+      action: "See offers",
+      to: "/offers",
+      tone: "amber"
+    },
+    {
+      id: "streak",
+      icon: <Flame size={22} />,
+      title: "Daily streak ready",
+      date: "Today",
+      body: "Claim your streak and keep your bonus progress moving.",
+      action: "Open dashboard",
+      to: "/dashboard",
+      tone: "orange"
+    }
+  ];
+  const unreadCount = read ? 0 : notifications.length;
+
+  useEffect(() => {
+    function handleActivity(event) {
+      setMetrics(event.detail || readActivityMetrics());
+    }
+    window.addEventListener("earnwave:activity", handleActivity);
+    window.addEventListener("storage", handleActivity);
+    return () => {
+      window.removeEventListener("earnwave:activity", handleActivity);
+      window.removeEventListener("storage", handleActivity);
+    };
+  }, []);
+
+  function go(path) {
+    setOpen(false);
+    navigate(path);
+  }
+
+  return (
+    <div className="top-notifications">
+      <button className="top-bell" type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Open notifications">
+        <Bell size={18} />
+        {unreadCount > 0 && <span className="notification-dot">{unreadCount}</span>}
+      </button>
+      {open && (
+        <div className="notification-dropdown" role="dialog" aria-label="Notifications">
+          <div className="notification-dropdown-head">
+            <div>
+              <strong>Notifications</strong>
+              <span>{user.name ? `${user.name}'s updates` : "Your EarnWave updates"}</span>
+            </div>
+            <button type="button" onClick={() => setRead(true)}>Mark all as read</button>
+          </div>
+          <div className="activity-strip">
+            <div><Activity size={15} /><span>Clicks</span><strong>{metrics.clicks}</strong></div>
+            <div><Smartphone size={15} /><span>Downloads</span><strong>{metrics.downloads}</strong></div>
+            <div><PackageCheck size={15} /><span>Completed</span><strong>{metrics.completedOffers}</strong></div>
+          </div>
+          <div className="notification-list">
+            {notifications.map(item => (
+              <div className={`notification-item ${item.tone}`} key={item.id}>
+                <div className="notification-icon">{item.icon}</div>
+                <div>
+                  <div className="notification-item-title"><strong>{item.title}</strong><span>{item.date}</span></div>
+                  <p>{item.body}</p>
+                  <button type="button" onClick={() => go(item.to)}>{item.action}<ArrowRight size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DashboardLayout({ active, navigate, api, children }) {
   const isAdmin = api.session?.user?.role === "admin";
   const items = [
@@ -1606,7 +1699,19 @@ function DashboardLayout({ active, navigate, api, children }) {
           {items.map(([label, path, icon]) => <button key={label} className={active === label ? "active" : ""} onClick={() => navigate(path)}>{icon}{label}</button>)}
           <button onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} />Logout</button>
         </aside>
-        <div>{children}</div>
+        <div className="dashboard-main">
+          <div className="dashboard-topbar">
+            <div>
+              <span>{active}</span>
+              <strong>{api.session?.user?.username ? `@${api.session.user.username}` : api.session?.user?.email || "EarnWave"}</strong>
+            </div>
+            <div className="topbar-actions">
+              <span className="topbar-balance">{formatBalance(api.session?.user || {}, api.session?.user?.balance_wavecoins ?? dollarsToWaveCoins(api.session?.user?.balance || 0))}</span>
+              <TopNotifications api={api} navigate={navigate} />
+            </div>
+          </div>
+          {children}
+        </div>
       </div>
     </main>
   );
