@@ -62,7 +62,7 @@ function createApp() {
   app.use("/api/compliance", complianceRouter);
 
   app.use(express.static(env.STATIC_DIR));
-  app.get(["/", "/offers", "/how-it-works", "/trust", "/dashboard", "/wallet", "/referrals", "/leaderboard", "/settings", "/admin", "/analytics", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email", "/profile", "/support", "/legal"], (req, res) => {
+  app.get(["/", "/offers", "/surveys", "/how-it-works", "/trust", "/dashboard", "/wallet", "/referrals", "/leaderboard", "/settings", "/admin", "/analytics", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email", "/profile", "/support", "/legal"], (req, res) => {
     res.sendFile(path.join(env.STATIC_DIR, "index.html"));
   });
   app.get(["/offers.html", "/dashboard.html", "/wallet.html", "/admin.html", "/login.html", "/signup.html"], (req, res) => {
