@@ -28,6 +28,53 @@ async function migrate({ closePool = true } = {}) {
   await pool.query("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS daily_quests (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      user_id UUID REFERENCES users(id),
+      quest_key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      reward_cents INTEGER NOT NULL DEFAULT 0,
+      xp_reward INTEGER NOT NULL DEFAULT 0,
+      assigned_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      status TEXT NOT NULL DEFAULT 'assigned',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(user_id, quest_key, assigned_date)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS quest_completions (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      quest_id UUID REFERENCES daily_quests(id),
+      user_id UUID REFERENCES users(id),
+      quest_key TEXT NOT NULL,
+      completed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      reward_cents INTEGER NOT NULL DEFAULT 0,
+      xp_reward INTEGER NOT NULL DEFAULT 0,
+      ip_address TEXT,
+      device_hash TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(user_id, quest_key, completed_date)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS weekly_leaderboard_snapshots (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      week_start DATE NOT NULL,
+      week_end DATE NOT NULL,
+      rankings JSONB NOT NULL DEFAULT '[]',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(week_start)
+    );
+  `);
+
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_daily_quests_user_date ON daily_quests(user_id, assigned_date)");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_quest_completions_user_date ON quest_completions(user_id, completed_date)");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_weekly_leaderboard_week ON weekly_leaderboard_snapshots(week_start)");
+
+  await pool.query(`
     INSERT INTO bonus_codes (code, reward_cents, xp_reward, max_redemptions)
     VALUES
       ('WELCOME', 100, 50, 5000),

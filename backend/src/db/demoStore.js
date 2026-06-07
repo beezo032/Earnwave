@@ -9,6 +9,9 @@ const suspiciousActivity = [];
 const referrals = [];
 const streakClaims = [];
 const bonusCodeRedemptions = [];
+const dailyQuests = [];
+const questCompletions = [];
+const weeklyLeaderboardSnapshots = [];
 const ledgerEntries = [];
 const supportTickets = [];
 const supportMessages = [];
@@ -74,6 +77,9 @@ module.exports = {
   streakClaims,
   bonusCodes,
   bonusCodeRedemptions,
+  dailyQuests,
+  questCompletions,
+  weeklyLeaderboardSnapshots,
   ledgerEntries,
   supportTickets,
   supportMessages,

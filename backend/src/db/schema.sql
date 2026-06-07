@@ -215,6 +215,43 @@ CREATE TABLE IF NOT EXISTS streak_claims (
   UNIQUE(user_id, claim_date)
 );
 
+CREATE TABLE IF NOT EXISTS daily_quests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id),
+  quest_key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  reward_cents INTEGER NOT NULL DEFAULT 0,
+  xp_reward INTEGER NOT NULL DEFAULT 0,
+  assigned_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  status TEXT NOT NULL DEFAULT 'assigned',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, quest_key, assigned_date)
+);
+
+CREATE TABLE IF NOT EXISTS quest_completions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  quest_id UUID REFERENCES daily_quests(id),
+  user_id UUID REFERENCES users(id),
+  quest_key TEXT NOT NULL,
+  completed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  reward_cents INTEGER NOT NULL DEFAULT 0,
+  xp_reward INTEGER NOT NULL DEFAULT 0,
+  ip_address TEXT,
+  device_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, quest_key, completed_date)
+);
+
+CREATE TABLE IF NOT EXISTS weekly_leaderboard_snapshots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  week_start DATE NOT NULL,
+  week_end DATE NOT NULL,
+  rankings JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(week_start)
+);
+
 CREATE INDEX IF NOT EXISTS idx_offers_active ON offers(active);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
 CREATE INDEX IF NOT EXISTS idx_offer_completions_user ON offer_completions(user_id);
@@ -227,3 +264,6 @@ CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_email_outbox_user ON email_outbox(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_quests_user_date ON daily_quests(user_id, assigned_date);
+CREATE INDEX IF NOT EXISTS idx_quest_completions_user_date ON quest_completions(user_id, completed_date);
+CREATE INDEX IF NOT EXISTS idx_weekly_leaderboard_week ON weekly_leaderboard_snapshots(week_start);
