@@ -83,7 +83,7 @@ test("TheoremReach launch URL includes required IDs and url-safe hmac hash", asy
     assert.equal(url.searchParams.get("user_id"), user.id);
     assert.equal(url.searchParams.get("external_id"), user.id);
     assert.equal(url.searchParams.get("exchange_rate"), "100");
-    assert.equal(url.searchParams.get("currency_name_plural"), "Points");
+    assert.equal(url.searchParams.get("currency_name_plural"), "WaveCoins");
     assert.ok(url.searchParams.get("transaction_id"));
     assert.match(hash, /^[A-Za-z0-9_-]+$/);
   } finally {

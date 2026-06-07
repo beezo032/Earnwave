@@ -153,6 +153,8 @@ async function listPayoutQueue() {
     user_email: row.user_email,
     method: row.method,
     amount: Number(row.amount_cents || 0) / 100,
+    amount_wavecoins: row.amount_wavecoins ?? row.amount_cents ?? 0,
+    usd_value_cents: row.usd_value_cents ?? row.amount_cents ?? 0,
     status: row.status,
     risk_score: row.risk_score,
     fraud_action: row.fraud_action,
@@ -244,16 +246,21 @@ async function rejectPayout({ id, moderatorId, note }) {
   if (queued) {
     if (!env.DATABASE_URL) {
       const user = users.get(String(queued.user_id));
-      if (user) user.balance = Number(user.balance || 0) + Number(queued.amount || 0);
+      if (user) {
+        const returnedWaveCoins = queued.amount_wavecoins ?? Math.round(Number(queued.amount || 0) * 100);
+        user.balance_wavecoins = Number(user.balance_wavecoins || Math.round(Number(user.balance || 0) * 100)) + returnedWaveCoins;
+        user.balance = user.balance_wavecoins / 100;
+      }
     } else {
-      await query("UPDATE users SET balance_cents = balance_cents + $1 WHERE id = $2", [Math.round(Number(queued.amount || 0) * 100), queued.user_id]);
+      const returnedWaveCoins = queued.amount_wavecoins ?? Math.round(Number(queued.amount || 0) * 100);
+      await query("UPDATE users SET balance_wavecoins = balance_wavecoins + $1, balance_cents = balance_cents + $1 WHERE id = $2", [returnedWaveCoins, queued.user_id]);
     }
 
     await recordLedgerEntry({
       userId: queued.user_id,
       type: "withdrawal_reversal",
       direction: "credit",
-      amount: Number(queued.amount || 0),
+      amountWaveCoins: queued.amount_wavecoins ?? Math.round(Number(queued.amount || 0) * 100),
       referenceType: "withdrawal",
       referenceId: queued.id,
       description: "Withdrawal rejected and funds returned",

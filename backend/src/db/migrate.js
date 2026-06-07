@@ -22,7 +22,36 @@ async function migrate({ closePool = true } = {}) {
       ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
       ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '';
+      ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS balance_wavecoins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS total_earned_wavecoins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS preferred_balance_display TEXT NOT NULL DEFAULT 'coins';
+  `);
+
+  await pool.query(`
+    UPDATE users
+    SET balance_wavecoins = balance_cents,
+        total_earned_wavecoins = total_earned_cents
+    WHERE balance_wavecoins = 0
+      AND total_earned_wavecoins = 0
+      AND (balance_cents > 0 OR total_earned_cents > 0);
+  `);
+
+  await pool.query(`
+    ALTER TABLE ledger_entries
+      ADD COLUMN IF NOT EXISTS amount_wavecoins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS usd_value_cents INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS provider TEXT,
+      ADD COLUMN IF NOT EXISTS provider_transaction_id TEXT,
+      ADD COLUMN IF NOT EXISTS payout_status TEXT NOT NULL DEFAULT 'pending';
+  `);
+
+  await pool.query(`
+    UPDATE ledger_entries
+    SET amount_wavecoins = amount_cents,
+        usd_value_cents = amount_cents
+    WHERE amount_wavecoins = 0
+      AND amount_cents > 0;
   `);
 
   await pool.query("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");

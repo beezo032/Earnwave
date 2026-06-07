@@ -109,6 +109,31 @@ function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
 
+function dollarsToWaveCoins(value) {
+  return Math.round(Number(value || 0) * 100);
+}
+
+function waveCoinsToUsd(waveCoins) {
+  return Number(waveCoins || 0) / 100;
+}
+
+function userAmountWaveCoins(user, fallbackDollars = 0, key = "balance_wavecoins") {
+  return user?.[key] ?? dollarsToWaveCoins(fallbackDollars);
+}
+
+function formatBalance(user = {}, amountWaveCoins = 0) {
+  const preference = user.preferredBalanceDisplay || "coins";
+  const coins = `${Math.round(Number(amountWaveCoins || 0)).toLocaleString()} WaveCoins`;
+  const usd = money(waveCoinsToUsd(amountWaveCoins));
+  if (preference === "usd") return usd;
+  if (preference === "both") return `${coins} (${usd})`;
+  return coins;
+}
+
+function rewardLabel(valueDollars) {
+  return formatBalance({ preferredBalanceDisplay: "coins" }, dollarsToWaveCoins(valueDollars));
+}
+
 async function getDeviceFingerprint() {
   const cached = localStorage.getItem("earnwave_device_hash");
   if (cached) return cached;
@@ -281,7 +306,7 @@ function Landing({ navigate }) {
                   <div className="feed-row" key={`${item.user}-${item.time}`}>
                     <span className="avatar">{item.user.slice(0, 1)}</span>
                     <p><strong>{item.user}</strong> {item.action}</p>
-                    <strong>+{money(item.amount)}</strong>
+                    <strong>+{rewardLabel(item.amount)}</strong>
                   </div>
                 ))}
               </div>
@@ -386,7 +411,7 @@ function Landing({ navigate }) {
                 <div className="earner-row" key={row.name}>
                   <span className="rank">{index + 1}</span>
                   <div><strong>{row.name}</strong><p>{row.badge} streak active</p></div>
-                  <span className="reward">{money(row.amount)}</span>
+                  <span className="reward">{rewardLabel(row.amount)}</span>
                 </div>
               ))}
             </div>
@@ -530,7 +555,7 @@ function Dashboard({ api, navigate }) {
       const result = await api.request("/growth/streak/claim", { method: "POST", body: "{}" });
       if (result.growth) setGrowth(result.growth);
       if (result.claimed) await refreshUser();
-      setGrowthNotice(result.claimed ? `Streak claimed: +${money(result.reward)} and +${result.xp} XP.` : result.message);
+      setGrowthNotice(result.claimed ? `Streak claimed: +${rewardLabel(result.reward)} and +${result.xp} XP.` : result.message);
     } catch (error) {
       setGrowthNotice(error.message);
     }
@@ -546,7 +571,7 @@ function Dashboard({ api, navigate }) {
       if (result.growth) setGrowth(result.growth);
       await refreshUser();
       setBonusCode("");
-      setGrowthNotice(`Code ${result.code} redeemed: +${money(result.reward)} and +${result.xp} XP.`);
+      setGrowthNotice(`Code ${result.code} redeemed: +${rewardLabel(result.reward)} and +${result.xp} XP.`);
     } catch (error) {
       setGrowthNotice(error.message);
     }
@@ -559,7 +584,7 @@ function Dashboard({ api, navigate }) {
       if (result.quest) setDailyQuest(result.quest);
       if (result.growth) setGrowth(result.growth);
       await refreshUser();
-      setGrowthNotice(`Daily quest complete: +${money(result.quest.reward)} and +${result.quest.xp} XP.`);
+      setGrowthNotice(`Daily quest complete: +${rewardLabel(result.quest.reward)} and +${result.quest.xp} XP.`);
     } catch (error) {
       setGrowthNotice(error.message);
     }
@@ -580,7 +605,7 @@ function Dashboard({ api, navigate }) {
       <div className="dashboard-hero-card">
         <div className="balance-card">
           <p>Available Balance</p>
-          <strong>{money(user.balance)}</strong>
+          <strong>{formatBalance(user, userAmountWaveCoins(user, user.balance))}</strong>
           <span>Every withdrawal is reviewed before payout automation runs.</span>
           <div className="actions">
             <button className="btn" onClick={() => { trackActivity("clicks"); navigate("/offers"); }}>Find Offers</button>
@@ -589,7 +614,7 @@ function Dashboard({ api, navigate }) {
         </div>
         <div className="analytics-card">
           <div className="mini-chart-head">
-            <div><p>7-day earning trend</p><strong>{money(user.total_earned)}</strong></div>
+            <div><p>7-day earning trend</p><strong>{formatBalance(user, userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins"))}</strong></div>
             <span className="tag"><TrendingUp size={14} /> Healthy</span>
           </div>
           <ResponsiveContainer width="100%" height={180}>
@@ -639,7 +664,7 @@ function Dashboard({ api, navigate }) {
         </div>
       </div>
       <div className="stats">
-        <Stat label="Total Earned" value={money(user.total_earned)} />
+        <Stat label="Total Earned" value={formatBalance(user, userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins"))} />
         <Stat label="Level" value={growth.level} />
         <Stat label="Daily Streak" value={`${growth.streak} days`} />
         <Stat label="Referrals" value={growth.referrals} />
@@ -647,7 +672,7 @@ function Dashboard({ api, navigate }) {
       <div className="workspace-grid">
         <div className="card">
           <SectionTitle title="Recommended next steps" copy="Reward options organized around value, time, category, and confidence." action={<span className="tag">Tracking ready</span>} />
-          <div className="offers-grid compact">{demoOffers.slice(0, 4).map(offer => <OfferCard key={offer.id} offer={offer} actionLabel={`Start +${money(offer.reward)}`} />)}</div>
+          <div className="offers-grid compact">{demoOffers.slice(0, 4).map(offer => <OfferCard key={offer.id} offer={offer} actionLabel={`Start +${rewardLabel(offer.reward)}`} />)}</div>
         </div>
         <SideRail
           growth={growth}
@@ -667,8 +692,8 @@ function Dashboard({ api, navigate }) {
 
 function WalletPage({ navigate, api }) {
   const [walletUser, setWalletUser] = useState(api.session?.user || { balance: 48.75 });
-  const minimumCashout = 0.5;
-  const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amount: "", destinationType: "EMAIL", destinationValue: "" });
+  const minimumCashoutWaveCoins = 500;
+  const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amountWaveCoins: "", destinationType: "EMAIL", destinationValue: "" });
   const [notice, setNotice] = useState("All cashouts enter review before approval.");
   const [withdrawals, setWithdrawals] = useState([]);
   const [transactions, setTransactions] = useState([
@@ -687,9 +712,11 @@ function WalletPage({ navigate, api }) {
     api.request("/wallet/withdrawals").then(data => setWithdrawals(data.withdrawals || [])).catch(() => {});
   }, []);
 
-  const pendingRewards = transactions
+  const availableWaveCoins = userAmountWaveCoins(walletUser, walletUser.balance);
+  const pendingWaveCoins = transactions
     .filter(item => ["pending", "held", "review"].includes(String(item.status || "").toLowerCase()))
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    .reduce((sum, item) => sum + Number(item.amount_wavecoins ?? dollarsToWaveCoins(item.amount || 0)), 0);
+  const cashoutProgress = Math.min(100, Math.round((availableWaveCoins / minimumCashoutWaveCoins) * 100));
   const latestWithdrawal = withdrawals[0];
   const payoutStatus = latestWithdrawal?.status || "No withdrawal yet";
 
@@ -698,7 +725,7 @@ function WalletPage({ navigate, api }) {
     try {
       const result = await api.request("/wallet/withdrawals", {
         method: "POST",
-        body: JSON.stringify({ ...withdrawal, balance: walletUser.balance })
+        body: JSON.stringify({ ...withdrawal, amountWaveCoins: Number(withdrawal.amountWaveCoins), balance: walletUser.balance })
       });
       setWithdrawals([result.withdrawal, ...withdrawals]);
       setNotice(`Withdrawal ${result.withdrawal.status}: risk score ${result.risk.score} (${result.risk.signals.join(", ")}).`);
@@ -709,23 +736,31 @@ function WalletPage({ navigate, api }) {
 
   return (
     <DashboardLayout active="Wallet" navigate={navigate} api={api}>
-      <DashboardTop kicker="Wallet" title="Payout center" copy="Review your balance, choose a redemption method, and follow every request from review to completion." action={<span className="tag">Minimum $0.50</span>} />
+      <DashboardTop kicker="Wallet" title="Payout center" copy="WaveCoins are EarnWave reward credits. 100 WaveCoins equals $1.00 when redeemed." action={<span className="tag">500 WaveCoins minimum cashout</span>} />
       <div className="wallet-summary-grid">
-        <MiniStat label="Available balance" value={money(walletUser.balance)} />
-        <MiniStat label="Pending rewards" value={money(pendingRewards)} />
-        <MiniStat label="Minimum cashout" value={money(minimumCashout)} />
+        <MiniStat label="Available balance" value={formatBalance(walletUser, availableWaveCoins)} />
+        <MiniStat label="Pending rewards" value={formatBalance(walletUser, pendingWaveCoins)} />
+        <MiniStat label="Minimum cashout" value={formatBalance(walletUser, minimumCashoutWaveCoins)} />
         <MiniStat label="Payout status" value={payoutStatus} />
       </div>
       <div className="wallet-grid">
         <div className="card">
           <p>Available Balance</p>
-          <div className="balance">{money(walletUser.balance)}</div>
-          <Meter value={84} />
+          <div className="balance">{formatBalance(walletUser, availableWaveCoins)}</div>
+          <Meter value={cashoutProgress} />
+          <div className="notice">500 WaveCoins minimum cashout. WaveCoins are EarnWave reward credits. 100 WaveCoins equals $1.00 when redeemed.</div>
           <div className="wallet-clarity-list">
-            <div className="row"><span>Ready to withdraw</span><span className="pill">{money(walletUser.balance)}</span></div>
-            <div className="row"><span>Pending rewards</span><span className="pill blue">{money(pendingRewards)}</span></div>
-            <div className="row"><span>Minimum cashout</span><span className="pill amber">{money(minimumCashout)}</span></div>
+            <div className="row"><span>Ready to withdraw</span><span className="pill">{formatBalance(walletUser, availableWaveCoins)}</span></div>
+            <div className="row"><span>Pending rewards</span><span className="pill blue">{formatBalance(walletUser, pendingWaveCoins)}</span></div>
+            <div className="row"><span>Minimum cashout</span><span className="pill amber">{formatBalance(walletUser, minimumCashoutWaveCoins)}</span></div>
           </div>
+          <label>Balance display<select value={walletUser.preferredBalanceDisplay || "coins"} onChange={async event => {
+            const preferredBalanceDisplay = event.target.value;
+            const nextUser = { ...walletUser, preferredBalanceDisplay };
+            setWalletUser(nextUser);
+            if (api.session) api.save({ ...api.session, user: nextUser });
+            await api.request("/account/preferences", { method: "PATCH", body: JSON.stringify({ preferredBalanceDisplay }) }).catch(() => {});
+          }}><option value="coins">WaveCoins</option><option value="usd">USD</option><option value="both">WaveCoins + USD</option></select></label>
           <div className="method-grid">
             <Method title="PayPal" copy="Payouts after approval" />
             <Method title="Tremendous" copy="Gift cards after approval" />
@@ -740,7 +775,7 @@ function WalletPage({ navigate, api }) {
                 destinationType: method === "Crypto" ? "ETH" : "EMAIL"
               });
             }}><option>PayPal</option><option>Gift Card</option><option>Crypto</option></select></label>
-            <label>Amount<input type="number" min="0.5" step="0.01" placeholder="25.00" value={withdrawal.amount} onChange={event => setWithdrawal({ ...withdrawal, amount: event.target.value })} /></label>
+            <label>Amount in WaveCoins<input type="number" min="500" step="1" placeholder="2500" value={withdrawal.amountWaveCoins} onChange={event => setWithdrawal({ ...withdrawal, amountWaveCoins: event.target.value })} /></label>
             {withdrawal.method === "Crypto" && (
               <label>Network<select value={withdrawal.destinationType} onChange={event => setWithdrawal({ ...withdrawal, destinationType: event.target.value })}><option>ETH</option><option>SOL</option><option>AVAX</option><option>MATIC</option></select></label>
             )}
@@ -756,7 +791,7 @@ function WalletPage({ navigate, api }) {
           ]).map(item => [
             String(item.created_at || "").slice(0, 10) || "New",
             item.method || "Method",
-            money(item.amount ?? item.amount_cents / 100),
+            formatBalance(walletUser, item.amount_wavecoins ?? dollarsToWaveCoins(item.amount ?? item.amount_cents / 100)),
             item.status || "Pending"
           ])} />
         </div>
@@ -765,7 +800,7 @@ function WalletPage({ navigate, api }) {
           <DataTable rows={transactions.map(item => [
             String(item.created_at || "").slice(0, 10),
             item.description,
-            `${item.direction === "debit" ? "-" : "+"}${money(item.amount)}`,
+            `${item.direction === "debit" ? "-" : "+"}${formatBalance(walletUser, item.amount_wavecoins ?? dollarsToWaveCoins(item.amount))}`,
             item.type
           ])} />
         </div>
@@ -860,6 +895,18 @@ function SettingsPage({ navigate, api }) {
     }
   }
 
+  async function saveBalanceDisplay(preferredBalanceDisplay) {
+    const next = { ...preferences, preferredBalanceDisplay };
+    setPreferences(next);
+    try {
+      await api.request("/account/preferences", { method: "PATCH", body: JSON.stringify({ preferredBalanceDisplay }) });
+      if (api.session?.user) api.save({ ...api.session, user: { ...api.session.user, preferredBalanceDisplay } });
+      setNotice("Balance display saved.");
+    } catch (error) {
+      setNotice(error.message);
+    }
+  }
+
   async function sendVerification() {
     try {
       const result = await api.request("/auth/verify-email/send", { method: "POST", body: "{}" });
@@ -894,6 +941,7 @@ function SettingsPage({ navigate, api }) {
         <div className="stack">
           <div className="card">
             <h3>Notification preferences</h3>
+            <label>Balance display<select value={preferences.preferredBalanceDisplay || "coins"} onChange={event => saveBalanceDisplay(event.target.value)}><option value="coins">WaveCoins</option><option value="usd">USD</option><option value="both">WaveCoins + USD</option></select></label>
             {[
               ["marketing_opt_in", "Growth tips and bonus drops"],
               ["payout_alerts", "Payout status alerts"],
@@ -985,7 +1033,7 @@ function LeaderboardPage({ navigate, api }) {
           <div className={`podium-card podium-${index + 1}`} key={row.name}>
             <span className="rank">{index + 1}</span>
             <h3>{row.name}</h3>
-            <strong>{money(row.total_earned)}</strong>
+            <strong>{formatBalance(api.session?.user || {}, dollarsToWaveCoins(row.total_earned))}</strong>
             <p>Level {row.level} - {row.streak} day streak</p>
           </div>
         ))}
@@ -995,7 +1043,7 @@ function LeaderboardPage({ navigate, api }) {
         <DataTable rows={leaderboard.map((row, index) => [
           `#${index + 1}`,
           row.name,
-          money(row.total_earned),
+          formatBalance(api.session?.user || {}, dollarsToWaveCoins(row.total_earned)),
           `Level ${row.level}`,
           `${row.streak} days`
         ])} />
@@ -1241,7 +1289,7 @@ function AdminPage({ navigate, api }) {
             { user: "WaveHunter", reason: "Payout velocity", amount: 84.2, status: "Hold" },
             { user: "SurveyAce", reason: "Duplicate IP", amount: 12.75, status: "Review" },
             { user: "NovaEarns", reason: "Provider reversal", amount: 43.9, status: "Reject" }
-          ]).map(item => [item.user, item.reason, money(item.amount), item.status])} />
+          ]).map(item => [item.user, item.reason, `${rewardLabel(item.amount)} (${money(item.amount)})`, item.status])} />
         </div>
         <div className="card payout-queue-card">
           <SectionTitle title="Manual payout approval" copy="PayPal Payouts, Tremendous gift cards, and crypto withdrawals only dispatch after approval." />
@@ -1251,7 +1299,7 @@ function AdminPage({ navigate, api }) {
               <div className="payout-row" key={item.id}>
                 <div>
                   <strong>{item.user_name || item.user_id || "Member"} - {item.method}</strong>
-                  <p>{money(item.amount)} to {item.destination_value || "destination pending"} | risk {item.risk_score || 0} | {item.status}</p>
+                  <p>{rewardLabel(item.amount)} ({money(item.amount)}) to {item.destination_value || "destination pending"} | risk {item.risk_score || 0} | {item.status}</p>
                   <div className="reason-list">
                     {reasonSummary(item.risk_reason_codes).map(reason => <span key={reason}>{reason}</span>)}
                   </div>
@@ -1683,7 +1731,7 @@ function OfferCard({ offer, actionLabel = "Start Offer" }) {
     <div className="card offer-card">
       <div className="offer-head">
         <div><h3>{offer.title}</h3><p>{offer.description}</p></div>
-        <span className="reward">{money(offer.reward)}</span>
+        <span className="reward">{rewardLabel(offer.reward)}</span>
       </div>
       <div className="offer-meta">
         <span className="tag">{offer.category}</span>
@@ -1722,7 +1770,7 @@ function SideRail({ growth, leaderboard, bonusCode, setBonusCode, claimStreak, r
       <div className="card">
         <h3>Daily quest</h3>
         <p>{dailyQuest ? dailyQuest.title : "Loading today's quest..."}</p>
-        {dailyQuest && <div className="row"><span>{dailyQuest.description}</span><span className="tag amber">+{money(dailyQuest.reward)}</span></div>}
+        {dailyQuest && <div className="row"><span>{dailyQuest.description}</span><span className="tag amber">+{rewardLabel(dailyQuest.reward)}</span></div>}
         <button className={dailyQuest?.status === "completed" ? "btn alt" : "btn"} disabled={!dailyQuest || dailyQuest.status === "completed"} onClick={completeQuest}>
           {dailyQuest?.status === "completed" ? "Quest Complete" : "Complete Quest"}
         </button>
@@ -1737,7 +1785,7 @@ function SideRail({ growth, leaderboard, bonusCode, setBonusCode, claimStreak, r
       </div>
       <div className="card">
         <h3>Weekly leaderboard</h3>
-        {leaderboard.map((row, index) => <div className="leader-row" key={`${row.name}-${index}`}><span className="avatar">{index + 1}</span><strong>{row.name}</strong><span className="pill">{money(row.total_earned)}</span></div>)}
+        {leaderboard.map((row, index) => <div className="leader-row" key={`${row.name}-${index}`}><span className="avatar">{index + 1}</span><strong>{row.name}</strong><span className="pill">{rewardLabel(row.total_earned)}</span></div>)}
       </div>
       <div className="card"><h3>Quick goals</h3><div className="row"><span>Complete one survey</span><span className="tag amber">+$2 bonus</span></div><div className="row"><span>Try one game quest</span><span className="tag blue">2x XP</span></div></div>
     </div>

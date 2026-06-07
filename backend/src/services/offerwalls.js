@@ -3,6 +3,7 @@ const { env } = require("../config/env");
 const { paymentEvents, users } = require("../db/demoStore");
 const { query } = require("../db/postgres");
 const { recordLedgerEntry } = require("./ledger");
+const { usdDollarsToWaveCoins, waveCoinsToUsdCents } = require("./currency");
 
 function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
@@ -87,8 +88,8 @@ const providerAdapters = {
         api_key: env.THEOREM_API_KEY,
         user_id: userId,
         transaction_id: crypto.randomUUID(),
-        currency_name_plural: "Points",
-        currency_name_singular: "Point",
+        currency_name_plural: "WaveCoins",
+        currency_name_singular: "WaveCoin",
         exchange_rate: "100",
         external_id: userId,
         partner_id: env.THEOREM_PARTNER_ID
@@ -298,26 +299,39 @@ function normalizeCallback(provider, payload) {
 async function applyOfferwallLedgerEvent(event, signature) {
   const isReversal = ["chargeback", "rejected", "reversal", "reconciled"].includes(String(event.status).toLowerCase());
   const isCredit = ["approved", "completed", "1"].includes(String(event.status).toLowerCase());
-  const amount = Number(event.amount || 0);
+  const amountWaveCoins = event.amount_wavecoins ?? usdDollarsToWaveCoins(event.amount);
+  const usdValueCents = waveCoinsToUsdCents(amountWaveCoins);
+  const amount = amountWaveCoins / 100;
 
-  if (!event.userId || !amount || (!isReversal && !isCredit)) return null;
+  if (!event.userId || !amountWaveCoins || (!isReversal && !isCredit)) return null;
 
   if (!env.DATABASE_URL) {
     const user = users.get(String(event.userId));
     if (!user) return null;
-    user.balance = Number(user.balance || 0) + (isReversal ? -amount : amount);
-    user.total_earned = Number(user.total_earned || 0) + (isReversal ? 0 : amount);
+    user.balance_wavecoins = Math.max(0, Number(user.balance_wavecoins || Math.round(Number(user.balance || 0) * 100)) + (isReversal ? -amountWaveCoins : amountWaveCoins));
+    user.total_earned_wavecoins = Number(user.total_earned_wavecoins || Math.round(Number(user.total_earned || 0) * 100)) + (isReversal ? 0 : amountWaveCoins);
+    user.balance = user.balance_wavecoins / 100;
+    user.total_earned = user.total_earned_wavecoins / 100;
   } else if (isReversal) {
-    await query("UPDATE users SET balance_cents = GREATEST(balance_cents - $1, 0) WHERE id = $2", [Math.round(amount * 100), event.userId]);
+    await query(
+      "UPDATE users SET balance_wavecoins = GREATEST(balance_wavecoins - $1, 0), balance_cents = GREATEST(balance_cents - $2, 0) WHERE id = $3",
+      [amountWaveCoins, usdValueCents, event.userId]
+    );
   } else {
-    await query("UPDATE users SET balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1 WHERE id = $2", [Math.round(amount * 100), event.userId]);
+    await query(
+      "UPDATE users SET balance_wavecoins = balance_wavecoins + $1, total_earned_wavecoins = total_earned_wavecoins + $1, balance_cents = balance_cents + $2, total_earned_cents = total_earned_cents + $2 WHERE id = $3",
+      [amountWaveCoins, usdValueCents, event.userId]
+    );
   }
 
   return recordLedgerEntry({
     userId: event.userId,
     type: isReversal ? "offerwall_reversal" : "offerwall_credit",
     direction: isReversal ? "debit" : "credit",
-    amount,
+    amountWaveCoins,
+    provider: event.provider,
+    providerTransactionId: event.transactionId,
+    status: isReversal ? "reversed" : "available",
     referenceType: "offerwall",
     referenceId: event.transactionId,
     description: `${event.provider} ${isReversal ? "reversal" : "credit"}`,
@@ -335,9 +349,25 @@ async function recordOfferwallEvent(event, signature) {
     verified: signature.verified,
     created_at: new Date().toISOString()
   };
-  paymentEvents.unshift(row);
+  if (!env.DATABASE_URL) {
+    if (paymentEvents.some(item => item.provider === row.provider && item.provider_event_id === row.provider_event_id)) {
+      return { ...row, duplicate: true };
+    }
+    paymentEvents.unshift(row);
+    await applyOfferwallLedgerEvent(event, signature);
+    return row;
+  }
+
+  const result = await query(
+    `INSERT INTO payment_events (provider, provider_event_id, event_type, payload)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (provider_event_id) DO NOTHING
+     RETURNING *`,
+    [row.provider, row.provider_event_id, row.event_type, JSON.stringify(row.payload)]
+  );
+  if (!result.rows[0]) return { ...row, duplicate: true };
   await applyOfferwallLedgerEvent(event, signature);
-  return row;
+  return result.rows[0];
 }
 
 module.exports = {

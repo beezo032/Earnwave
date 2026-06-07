@@ -205,7 +205,7 @@ async function completeDailyQuest({ userId, questId, req, now = new Date() }) {
 
   await query("UPDATE daily_quests SET status = 'completed' WHERE id = $1", [quest.id]);
   await query(
-    "UPDATE users SET balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1, xp = xp + $2, level = GREATEST(level, FLOOR((xp + $2) / 250) + 1) WHERE id = $3",
+    "UPDATE users SET balance_wavecoins = balance_wavecoins + $1, total_earned_wavecoins = total_earned_wavecoins + $1, balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1, xp = xp + $2, level = GREATEST(level, FLOOR((xp + $2) / 250) + 1) WHERE id = $3",
     [quest.reward_cents, quest.xp_reward, userId]
   );
   await recordLedgerEntry({
@@ -267,7 +267,7 @@ async function claimDailyStreak(userId, now = new Date()) {
 
   await query("INSERT INTO streak_claims (user_id, reward_cents, xp_reward) VALUES ($1, $2, $3)", [userId, rewardCents, xpReward]);
   await query(
-    "UPDATE users SET streak_count = $1, last_streak_at = CURRENT_DATE, balance_cents = balance_cents + $2, total_earned_cents = total_earned_cents + $2, xp = xp + $3, level = GREATEST(level, FLOOR((xp + $3) / 250) + 1) WHERE id = $4",
+    "UPDATE users SET streak_count = $1, last_streak_at = CURRENT_DATE, balance_wavecoins = balance_wavecoins + $2, total_earned_wavecoins = total_earned_wavecoins + $2, balance_cents = balance_cents + $2, total_earned_cents = total_earned_cents + $2, xp = xp + $3, level = GREATEST(level, FLOOR((xp + $3) / 250) + 1) WHERE id = $4",
     [streak, rewardCents, xpReward, userId]
   );
   await recordLedgerEntry({
@@ -318,7 +318,7 @@ async function redeemBonusCode(userId, code) {
 
   await query("INSERT INTO bonus_code_redemptions (user_id, code, reward_cents, xp_reward) VALUES ($1, $2, $3, $4)", [userId, normalized, bonus.reward_cents, bonus.xp_reward]);
   await query(
-    "UPDATE users SET balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1, xp = xp + $2, level = GREATEST(level, FLOOR((xp + $2) / 250) + 1) WHERE id = $3",
+    "UPDATE users SET balance_wavecoins = balance_wavecoins + $1, total_earned_wavecoins = total_earned_wavecoins + $1, balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1, xp = xp + $2, level = GREATEST(level, FLOOR((xp + $2) / 250) + 1) WHERE id = $3",
     [bonus.reward_cents, bonus.xp_reward, userId]
   );
   await recordLedgerEntry({

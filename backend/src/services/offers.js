@@ -32,8 +32,11 @@ async function completeOffer({ userId, offerId, risk }) {
     if (status === "approved") {
       const user = users.get(String(userId));
       if (user) {
-        user.balance = Number(user.balance || 0) + Number(offer.reward || 0);
-        user.total_earned = Number(user.total_earned || 0) + Number(offer.reward || 0);
+        const rewardWaveCoins = Math.round(Number(offer.reward || 0) * 100);
+        user.balance_wavecoins = Number(user.balance_wavecoins || Math.round(Number(user.balance || 0) * 100)) + rewardWaveCoins;
+        user.total_earned_wavecoins = Number(user.total_earned_wavecoins || Math.round(Number(user.total_earned || 0) * 100)) + rewardWaveCoins;
+        user.balance = user.balance_wavecoins / 100;
+        user.total_earned = user.total_earned_wavecoins / 100;
       }
       await recordLedgerEntry({
         userId,
@@ -60,7 +63,7 @@ async function completeOffer({ userId, offerId, risk }) {
   );
 
   if (status === "approved") {
-    await query("UPDATE users SET balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1 WHERE id = $2", [offer.reward_cents, userId]);
+    await query("UPDATE users SET balance_wavecoins = balance_wavecoins + $1, total_earned_wavecoins = total_earned_wavecoins + $1, balance_cents = balance_cents + $1, total_earned_cents = total_earned_cents + $1 WHERE id = $2", [offer.reward_cents, userId]);
     await recordLedgerEntry({
       userId,
       type: "offer_completion",

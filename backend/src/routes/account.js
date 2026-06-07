@@ -53,7 +53,8 @@ accountRouter.patch("/preferences", requireAuth, requireVerifiedEmail, async (re
     const body = z.object({
       marketing_opt_in: z.boolean().optional(),
       payout_alerts: z.boolean().optional(),
-      security_alerts: z.boolean().optional()
+      security_alerts: z.boolean().optional(),
+      preferredBalanceDisplay: z.enum(["coins", "usd", "both"]).optional()
     }).parse(req.body);
     res.json({ preferences: await updatePreferences({ userId: req.user.id, ...body }) });
   } catch (error) {

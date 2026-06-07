@@ -13,6 +13,8 @@ function normalizeUsername(value = "") {
 }
 
 function serializeUser(user) {
+  const balanceWaveCoins = user.balance_wavecoins ?? user.balanceWaveCoins ?? (user.balance_cents !== undefined ? Number(user.balance_cents || 0) : Math.round(Number(user.balance || 0) * 100));
+  const totalEarnedWaveCoins = user.total_earned_wavecoins ?? user.totalEarnedWaveCoins ?? (user.total_earned_cents !== undefined ? Number(user.total_earned_cents || 0) : Math.round(Number(user.total_earned || 0) * 100));
   return {
     id: user.id,
     name: user.name,
@@ -24,18 +26,21 @@ function serializeUser(user) {
     marketing_opt_in: user.marketing_opt_in !== false,
     payout_alerts: user.payout_alerts !== false,
     security_alerts: user.security_alerts !== false,
+    preferredBalanceDisplay: user.preferredBalanceDisplay || user.preferred_balance_display || "coins",
     bio: user.bio || "",
     country: user.country || "",
     timezone: user.timezone || "",
     fraud_score: user.fraud_score || 0,
     referral_code: user.referral_code,
     referred_by: user.referred_by,
-    level: user.level || Math.max(1, Math.floor(Number(user.total_earned ?? Number(user.total_earned_cents || 0) / 100) / 50) + 1),
+    level: user.level || Math.max(1, Math.floor((totalEarnedWaveCoins / 100) / 50) + 1),
     xp: user.xp || 0,
     streak_count: user.streak_count || 0,
     last_streak_at: user.last_streak_at,
-    balance: user.balance ?? Number(user.balance_cents || 0) / 100,
-    total_earned: user.total_earned ?? Number(user.total_earned_cents || 0) / 100
+    balance: balanceWaveCoins / 100,
+    total_earned: totalEarnedWaveCoins / 100,
+    balance_wavecoins: balanceWaveCoins,
+    total_earned_wavecoins: totalEarnedWaveCoins
   };
 }
 

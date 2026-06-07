@@ -207,12 +207,13 @@ async function listPayoutReadiness({ payoutAmountCents = 0 } = {}) {
     return rows;
   }
 
-  const result = await query("SELECT id, name, email, balance_cents FROM users ORDER BY created_at DESC LIMIT 200");
+  const result = await query("SELECT id, name, email, balance_wavecoins, balance_cents FROM users ORDER BY created_at DESC LIMIT 200");
   return Promise.all(result.rows.map(async user => ({
     user_id: user.id,
     user_name: user.name,
     email: user.email,
-    balance: Number(user.balance_cents || 0) / 100,
+    balance: Number((user.balance_wavecoins ?? user.balance_cents) || 0) / 100,
+    balance_wavecoins: user.balance_wavecoins ?? user.balance_cents ?? 0,
     ...(await evaluatePayoutEligibility({ userId: user.id, payoutAmountCents }))
   })));
 }

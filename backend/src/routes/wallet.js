@@ -8,10 +8,11 @@ const { buildRisk, flagSuspiciousActivity, persistRiskReview } = require("../ser
 const walletRouter = express.Router();
 const withdrawalSchema = z.object({
   method: z.enum(["PayPal", "Gift Card", "Crypto"]),
-  amount: z.coerce.number().positive(),
+  amount: z.coerce.number().positive().optional(),
+  amountWaveCoins: z.coerce.number().int().positive().optional(),
   destinationType: z.string().max(32).optional(),
   destinationValue: z.string().min(3).max(255)
-});
+}).refine(body => body.amount || body.amountWaveCoins, { message: "Amount is required" });
 
 walletRouter.get("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
@@ -59,6 +60,7 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
       userId: req.user.id,
       method: input.method,
       amount: input.amount,
+      amountWaveCoins: input.amountWaveCoins,
       destinationType: input.destinationType || (input.method === "Crypto" ? "ETH" : "EMAIL"),
       destinationValue: input.destinationValue,
       risk

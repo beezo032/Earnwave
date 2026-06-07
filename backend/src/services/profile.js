@@ -33,22 +33,24 @@ async function getPreferences(userId) {
     return {
       marketing_opt_in: user.marketing_opt_in !== false,
       payout_alerts: user.payout_alerts !== false,
-      security_alerts: user.security_alerts !== false
+      security_alerts: user.security_alerts !== false,
+      preferredBalanceDisplay: user.preferredBalanceDisplay || user.preferred_balance_display || "coins"
     };
   }
 
-  const result = await query("SELECT marketing_opt_in, payout_alerts, security_alerts FROM users WHERE id = $1", [userId]);
+  const result = await query("SELECT marketing_opt_in, payout_alerts, security_alerts, preferred_balance_display FROM users WHERE id = $1", [userId]);
   if (!result.rows[0]) throw new Error("User not found");
-  return result.rows[0];
+  return { ...result.rows[0], preferredBalanceDisplay: result.rows[0].preferred_balance_display || "coins" };
 }
 
-async function updatePreferences({ userId, marketing_opt_in, payout_alerts, security_alerts }) {
+async function updatePreferences({ userId, marketing_opt_in, payout_alerts, security_alerts, preferredBalanceDisplay }) {
   if (!env.DATABASE_URL) {
     const user = users.get(String(userId));
     if (!user) throw new Error("User not found");
     if (marketing_opt_in !== undefined) user.marketing_opt_in = marketing_opt_in;
     if (payout_alerts !== undefined) user.payout_alerts = payout_alerts;
     if (security_alerts !== undefined) user.security_alerts = security_alerts;
+    if (preferredBalanceDisplay !== undefined) user.preferredBalanceDisplay = preferredBalanceDisplay;
     return getPreferences(userId);
   }
 
@@ -56,13 +58,14 @@ async function updatePreferences({ userId, marketing_opt_in, payout_alerts, secu
   const next = {
     marketing_opt_in: marketing_opt_in ?? current.marketing_opt_in,
     payout_alerts: payout_alerts ?? current.payout_alerts,
-    security_alerts: security_alerts ?? current.security_alerts
+    security_alerts: security_alerts ?? current.security_alerts,
+    preferredBalanceDisplay: preferredBalanceDisplay ?? current.preferredBalanceDisplay
   };
   const result = await query(
-    "UPDATE users SET marketing_opt_in = $1, payout_alerts = $2, security_alerts = $3 WHERE id = $4 RETURNING marketing_opt_in, payout_alerts, security_alerts",
-    [next.marketing_opt_in, next.payout_alerts, next.security_alerts, userId]
+    "UPDATE users SET marketing_opt_in = $1, payout_alerts = $2, security_alerts = $3, preferred_balance_display = $4 WHERE id = $5 RETURNING marketing_opt_in, payout_alerts, security_alerts, preferred_balance_display",
+    [next.marketing_opt_in, next.payout_alerts, next.security_alerts, next.preferredBalanceDisplay, userId]
   );
-  return result.rows[0];
+  return { ...result.rows[0], preferredBalanceDisplay: result.rows[0].preferred_balance_display || "coins" };
 }
 
 module.exports = { getPreferences, updatePreferences, updateProfile };
