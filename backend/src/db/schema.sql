@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   amount_cents INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   risk_score INTEGER NOT NULL DEFAULT 0,
+  fraud_action TEXT NOT NULL DEFAULT 'hold',
+  risk_reason_codes TEXT[] NOT NULL DEFAULT '{}',
   destination_type TEXT,
   destination_value TEXT,
   payout_provider TEXT,
@@ -72,6 +74,60 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   approved_at TIMESTAMPTZ,
   processed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS risk_reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id),
+  event_type TEXT NOT NULL,
+  risk_score INTEGER NOT NULL DEFAULT 0,
+  action TEXT NOT NULL CHECK (action IN ('allow', 'hold', 'manual_review', 'deny')),
+  reason_codes TEXT[] NOT NULL DEFAULT '{}',
+  input JSONB NOT NULL DEFAULT '{}',
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS compliance_thresholds (
+  country TEXT PRIMARY KEY,
+  kyc_threshold_cents INTEGER NOT NULL DEFAULT 5000,
+  tax_threshold_cents INTEGER NOT NULL DEFAULT 60000,
+  required_tax_form TEXT NOT NULL DEFAULT 'W-9',
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS compliance_profiles (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  country TEXT NOT NULL DEFAULT '',
+  kyc_status TEXT NOT NULL DEFAULT 'not_started',
+  w9_status TEXT NOT NULL DEFAULT 'not_started',
+  w8_status TEXT NOT NULL DEFAULT 'not_started',
+  payout_locked BOOLEAN NOT NULL DEFAULT false,
+  lock_reason TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS privacy_consent_audit (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id),
+  consent_type TEXT NOT NULL DEFAULT 'privacy',
+  category TEXT NOT NULL,
+  granted BOOLEAN NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS data_subject_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id),
+  email TEXT NOT NULL,
+  request_type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  message TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS moderation_events (
@@ -254,6 +310,10 @@ CREATE TABLE IF NOT EXISTS weekly_leaderboard_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_offers_active ON offers(active);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+CREATE INDEX IF NOT EXISTS idx_risk_reviews_user ON risk_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_profiles_country ON compliance_profiles(country);
+CREATE INDEX IF NOT EXISTS idx_privacy_consent_user ON privacy_consent_audit(user_id);
+CREATE INDEX IF NOT EXISTS idx_data_subject_requests_status ON data_subject_requests(status);
 CREATE INDEX IF NOT EXISTS idx_offer_completions_user ON offer_completions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_devices_device_hash ON user_devices(device_hash);
 CREATE INDEX IF NOT EXISTS idx_suspicious_activity_status ON suspicious_activity(status);

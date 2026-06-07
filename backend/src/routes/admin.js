@@ -4,6 +4,13 @@ const { requireAuth, adminOnly } = require("../middleware/auth");
 const { listModerationQueue, recordModerationAction, listOffers } = require("../services/offers");
 const { closeSuspiciousActivity, listSuspiciousActivity } = require("../services/fraud");
 const { approveAndDispatch, listPayoutQueue, rejectPayout } = require("../services/payouts");
+const { REASON_CODE_CATALOG } = require("../services/fraud");
+const {
+  getComplianceThreshold,
+  listPayoutReadiness,
+  updateComplianceProfile,
+  upsertComplianceThreshold
+} = require("../services/compliance");
 
 const adminRouter = express.Router();
 
@@ -24,6 +31,75 @@ adminRouter.get("/moderation", async (req, res, next) => {
 adminRouter.get("/fraud/flags", async (req, res, next) => {
   try {
     res.json({ flags: await listSuspiciousActivity() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/fraud/reason-codes", (req, res) => {
+  res.json({ reasonCodes: REASON_CODE_CATALOG });
+});
+
+adminRouter.get("/compliance/thresholds/:country", async (req, res, next) => {
+  try {
+    res.json({ threshold: await getComplianceThreshold(req.params.country) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put("/compliance/thresholds/:country", async (req, res, next) => {
+  try {
+    const body = z.object({
+      kycThresholdCents: z.coerce.number().int().min(0),
+      taxThresholdCents: z.coerce.number().int().min(0),
+      requiredTaxForm: z.enum(["W-9", "W-8"]).optional()
+    }).parse(req.body);
+    res.json({
+      threshold: await upsertComplianceThreshold({
+        country: req.params.country,
+        kycThresholdCents: body.kycThresholdCents,
+        taxThresholdCents: body.taxThresholdCents,
+        requiredTaxForm: body.requiredTaxForm,
+        adminId: req.user.id
+      })
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put("/compliance/users/:userId", async (req, res, next) => {
+  try {
+    const body = z.object({
+      country: z.string().min(2).max(2).optional(),
+      kycStatus: z.enum(["not_started", "pending", "verified", "rejected"]).optional(),
+      w9Status: z.enum(["not_started", "requested", "collected", "rejected"]).optional(),
+      w8Status: z.enum(["not_started", "requested", "collected", "rejected"]).optional(),
+      payoutLocked: z.boolean().optional(),
+      lockReason: z.string().max(500).optional()
+    }).parse(req.body);
+    res.json({
+      profile: await updateComplianceProfile({
+        userId: req.params.userId,
+        country: body.country,
+        kycStatus: body.kycStatus,
+        w9Status: body.w9Status,
+        w8Status: body.w8Status,
+        payoutLocked: body.payoutLocked,
+        lockReason: body.lockReason
+      })
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/compliance/payout-readiness", async (req, res, next) => {
+  try {
+    res.json({
+      users: await listPayoutReadiness({ payoutAmountCents: Number(req.query.amountCents || 0) })
+    });
   } catch (error) {
     next(error);
   }

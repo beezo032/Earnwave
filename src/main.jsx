@@ -1179,11 +1179,15 @@ function AdminPage({ navigate, api }) {
   ]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [emails, setEmails] = useState([]);
+  const [complianceUsers, setComplianceUsers] = useState([]);
+  const [reasonCodes, setReasonCodes] = useState({});
   const [payoutNotice, setPayoutNotice] = useState("Manual approval is required before any automated payout is sent.");
 
   useEffect(() => {
     api.request("/admin/moderation").then(setModeration).catch(() => {});
     api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+    api.request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
+    api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     api.request("/account/admin/support/tickets").then(data => setSupportTickets(data.tickets || [])).catch(() => {});
     api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
   }, []);
@@ -1196,6 +1200,7 @@ function AdminPage({ navigate, api }) {
       });
       setPayoutNotice(result.message);
       api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+      api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     } catch (error) {
       setPayoutNotice(error.message);
     }
@@ -1209,9 +1214,14 @@ function AdminPage({ navigate, api }) {
       });
       setPayoutNotice(result.message);
       api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+      api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     } catch (error) {
       setPayoutNotice(error.message);
     }
+  }
+
+  function reasonSummary(codes = []) {
+    return (codes.length ? codes : ["BASELINE_LOW_RISK"]).map(code => `${code}: ${reasonCodes[code] || "Review this risk signal."}`);
   }
 
   return (
@@ -1241,6 +1251,9 @@ function AdminPage({ navigate, api }) {
                 <div>
                   <strong>{item.user_name || item.user_id || "Member"} - {item.method}</strong>
                   <p>{money(item.amount)} to {item.destination_value || "destination pending"} | risk {item.risk_score || 0} | {item.status}</p>
+                  <div className="reason-list">
+                    {reasonSummary(item.risk_reason_codes).map(reason => <span key={reason}>{reason}</span>)}
+                  </div>
                 </div>
                 <div className="payout-actions">
                   <button className="btn" onClick={() => approvePayout(item.id)}>Approve</button>
@@ -1249,6 +1262,17 @@ function AdminPage({ navigate, api }) {
               </div>
             ))}
           </div>
+        </div>
+        <div className="card payout-queue-card">
+          <SectionTitle title="Compliance payout readiness" copy="Shows which users can be paid now and exactly why blocked accounts need more data." />
+          <DataTable rows={(complianceUsers.length ? complianceUsers : [
+            { user_name: "Example Member", email: "member@example.com", can_pay: false, blocked_reasons: ["COUNTRY_REQUIRED", "KYC_REQUIRED"] }
+          ]).map(item => [
+            item.user_name || item.email,
+            item.can_pay ? "Can pay" : "Blocked",
+            item.can_pay ? "Ready" : (item.blocked_reasons || []).join(", "),
+            item.profile?.country || "Missing"
+          ])} />
         </div>
         <div className="card">
           <SectionTitle title="Suspicious activity flags" copy="Open flags from VPN/proxy checks, device fingerprint reuse, duplicate account signals, and withdrawal reviews." />

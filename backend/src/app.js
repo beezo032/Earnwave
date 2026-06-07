@@ -17,6 +17,7 @@ const { analyticsRouter } = require("./routes/analytics");
 const { growthRouter } = require("./routes/growth");
 const { accountRouter } = require("./routes/account");
 const { legalRouter } = require("./routes/legal");
+const { complianceRouter } = require("./routes/compliance");
 const { readiness } = require("./services/readiness");
 const { notFound, errorHandler } = require("./middleware/errors");
 
@@ -58,6 +59,7 @@ function createApp() {
   app.use("/api/growth", growthRouter);
   app.use("/api/account", accountRouter);
   app.use("/api/legal", legalRouter);
+  app.use("/api/compliance", complianceRouter);
 
   app.use(express.static(env.STATIC_DIR));
   app.get(["/", "/offers", "/how-it-works", "/trust", "/dashboard", "/wallet", "/referrals", "/leaderboard", "/settings", "/admin", "/analytics", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email", "/profile", "/support", "/legal"], (req, res) => {

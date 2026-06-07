@@ -6,6 +6,11 @@ const moderationEvents = [];
 const paymentEvents = [];
 const devices = [];
 const suspiciousActivity = [];
+const riskReviews = [];
+const complianceProfiles = [];
+const complianceThresholds = [];
+const privacyConsentAudit = [];
+const dataSubjectRequests = [];
 const referrals = [];
 const streakClaims = [];
 const bonusCodeRedemptions = [];
@@ -73,6 +78,11 @@ module.exports = {
   paymentEvents,
   devices,
   suspiciousActivity,
+  riskReviews,
+  complianceProfiles,
+  complianceThresholds,
+  privacyConsentAudit,
+  dataSubjectRequests,
   referrals,
   streakClaims,
   bonusCodes,

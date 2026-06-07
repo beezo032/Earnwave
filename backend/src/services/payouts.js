@@ -3,6 +3,7 @@ const { env } = require("../config/env");
 const { query } = require("../db/postgres");
 const { withdrawals, users } = require("../db/demoStore");
 const { recordLedgerEntry } = require("./ledger");
+const { evaluatePayoutEligibility } = require("./compliance");
 
 function amountValue(amount) {
   return Number(amount).toFixed(2);
@@ -154,6 +155,8 @@ async function listPayoutQueue() {
     amount: Number(row.amount_cents || 0) / 100,
     status: row.status,
     risk_score: row.risk_score,
+    fraud_action: row.fraud_action,
+    risk_reason_codes: row.risk_reason_codes || [],
     destination_type: row.destination_type,
     destination_value: row.destination_value,
     payout_provider: row.payout_provider,
@@ -197,6 +200,16 @@ async function approveAndDispatch({ id, moderatorId, note }) {
   const queue = await listPayoutQueue();
   const withdrawal = queue.find(item => String(item.id) === String(id));
   if (!withdrawal) throw new Error("Withdrawal not found in manual review queue");
+  const compliance = await evaluatePayoutEligibility({
+    userId: withdrawal.user_id,
+    payoutAmountCents: Math.round(Number(withdrawal.amount || 0) * 100)
+  });
+  if (!compliance.can_pay) {
+    const error = new Error(`Payout blocked: ${compliance.blocked_reasons.join(", ")}`);
+    error.status = 423;
+    error.compliance = compliance;
+    throw error;
+  }
 
   await updateWithdrawalStatus({ id, status: "processing", moderatorId, note });
   const payout = await dispatchPayout(withdrawal);
