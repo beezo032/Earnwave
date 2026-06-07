@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+    "test": "node --test \"test/**/*.test.js\"",
     "db:check": "node src/db/check.js",
     "migrate": "node src/db/migrate.js",
-    "bootstrap:admin": "node src/scripts/bootstrapAdmin.js"
+    "bootstrap:admin": "node src/scripts/bootstrapAdmin.js",
+    "worker:weekly-leaderboard": "node src/workers/weeklyLeaderboardRollover.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -25,5 +27,8 @@
     "redis": "^4.7.0",
     "stripe": "^17.5.0",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2"
   }
 }

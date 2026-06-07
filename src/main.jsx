@@ -490,6 +490,7 @@ function Dashboard({ api, navigate }) {
     { name: "NovaEarns", total_earned: 143, level: 10, streak: 9 },
     { name: "SurveyAce", total_earned: 98, level: 8, streak: 6 }
   ]);
+  const [dailyQuest, setDailyQuest] = useState(null);
   const [bonusCode, setBonusCode] = useState("");
   const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
   const [activityOpen, setActivityOpen] = useState(false);
@@ -503,7 +504,10 @@ function Dashboard({ api, navigate }) {
   useEffect(() => {
     refreshUser();
     api.request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
-    api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
+    api.request("/growth/leaderboard/weekly").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {
+      api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
+    });
+    api.request("/growth/quests/daily").then(data => setDailyQuest(data.quest)).catch(() => {});
     const loadingTimer = window.setTimeout(() => setEarnLoading(false), 420);
     return () => window.clearTimeout(loadingTimer);
   }, []);
@@ -542,6 +546,19 @@ function Dashboard({ api, navigate }) {
       await refreshUser();
       setBonusCode("");
       setGrowthNotice(`Code ${result.code} redeemed: +${money(result.reward)} and +${result.xp} XP.`);
+    } catch (error) {
+      setGrowthNotice(error.message);
+    }
+  }
+
+  async function completeQuest() {
+    if (!dailyQuest?.id) return;
+    try {
+      const result = await api.request(`/growth/quests/${dailyQuest.id}/complete`, { method: "POST", body: "{}" });
+      if (result.quest) setDailyQuest(result.quest);
+      if (result.growth) setGrowth(result.growth);
+      await refreshUser();
+      setGrowthNotice(`Daily quest complete: +${money(result.quest.reward)} and +${result.quest.xp} XP.`);
     } catch (error) {
       setGrowthNotice(error.message);
     }
@@ -638,6 +655,8 @@ function Dashboard({ api, navigate }) {
           setBonusCode={setBonusCode}
           claimStreak={claimStreak}
           redeemCode={redeemCode}
+          dailyQuest={dailyQuest}
+          completeQuest={completeQuest}
           growthNotice={growthNotice}
         />
       </div>
@@ -1652,8 +1671,9 @@ function OfferCard({ offer, actionLabel = "Start Offer" }) {
   );
 }
 
-function SideRail({ growth, leaderboard, bonusCode, setBonusCode, claimStreak, redeemCode, growthNotice }) {
+function SideRail({ growth, leaderboard, bonusCode, setBonusCode, claimStreak, redeemCode, dailyQuest, completeQuest, growthNotice }) {
   const xpProgress = Math.min(100, Math.round((growth.xp / Math.max(growth.nextLevelXp, 1)) * 100));
+  const referralProgress = growth.referralProgress || { referrals: growth.referrals || 0, target: 5, progress: 0, rewardUnlocked: false };
   return (
     <div className="stack">
       <div className="card">
@@ -1665,12 +1685,22 @@ function SideRail({ growth, leaderboard, bonusCode, setBonusCode, claimStreak, r
         <h3>Referral system</h3>
         <p>Code: <strong>{growth.referralCode}</strong></p>
         <div className="copy-box">{growth.referralUrl}</div>
-        <div className="row"><span>Referrals</span><span className="pill">{growth.referrals}</span></div>
+        <div className="row"><span>Referrals</span><span className="pill">{referralProgress.referrals}/{referralProgress.target}</span></div>
+        <Meter value={referralProgress.progress || 0} />
+        <p>{referralProgress.rewardUnlocked ? "Referral reward tier unlocked." : "Invite verified users to fill the progress card."}</p>
       </div>
       <div className="card">
         <h3>Daily streak</h3>
         <p>{growth.streak} day streak. Claim once per day.</p>
         <button className="btn" onClick={claimStreak}>Claim Daily Bonus</button>
+      </div>
+      <div className="card">
+        <h3>Daily quest</h3>
+        <p>{dailyQuest ? dailyQuest.title : "Loading today's quest..."}</p>
+        {dailyQuest && <div className="row"><span>{dailyQuest.description}</span><span className="tag amber">+{money(dailyQuest.reward)}</span></div>}
+        <button className={dailyQuest?.status === "completed" ? "btn alt" : "btn"} disabled={!dailyQuest || dailyQuest.status === "completed"} onClick={completeQuest}>
+          {dailyQuest?.status === "completed" ? "Quest Complete" : "Complete Quest"}
+        </button>
       </div>
       <div className="card">
         <h3>Bonus codes</h3>
@@ -1681,7 +1711,7 @@ function SideRail({ growth, leaderboard, bonusCode, setBonusCode, claimStreak, r
         <div className="notice">{growthNotice}</div>
       </div>
       <div className="card">
-        <h3>Leaderboard</h3>
+        <h3>Weekly leaderboard</h3>
         {leaderboard.map((row, index) => <div className="leader-row" key={`${row.name}-${index}`}><span className="avatar">{index + 1}</span><strong>{row.name}</strong><span className="pill">{money(row.total_earned)}</span></div>)}
       </div>
       <div className="card"><h3>Quick goals</h3><div className="row"><span>Complete one survey</span><span className="tag amber">+$2 bonus</span></div><div className="row"><span>Try one game quest</span><span className="tag blue">2x XP</span></div></div>
