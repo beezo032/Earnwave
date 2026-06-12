@@ -622,7 +622,7 @@ function OffersPage({ api }) {
           </div>
         </div>
 
-        <SectionTitle title="Featured Games" copy="Curated CPX and TheoremReach game cards open the live provider wall when exact offer feeds are not exposed." action={<span className="tag rose">Featured</span>} />
+        <SectionTitle title="Featured Games" copy="Game and app entry cards open CPX or TheoremReach. Exact titles and payouts depend on each provider's live inventory for that user." action={<span className="tag rose">Games visible</span>} />
         <div className="featured-carousel" aria-label="Featured offers carousel">
           {(loading ? Array.from({ length: 4 }) : (gameOffers.length ? gameOffers : featured)).map((offer, index) => loading ? <OfferSkeleton key={index} featured /> : <OfferCard key={offer.id} offer={offer} featured actionLabel="Start Offer" onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>

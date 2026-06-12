@@ -72,7 +72,7 @@ describe("offerwall page", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await waitFor(() => expect(screen.getAllByText("CPX Featured Game Offers").length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText("CPX Mobile Game Missions").length).toBeGreaterThan(0));
     expect(screen.queryByText("AdGate")).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: /start offer/i })[0]);

@@ -91,7 +91,7 @@ export const developmentMockOffers = [
 const curatedProviderOffers = [
   {
     id: "curated-cpx-games",
-    title: "CPX Featured Game Offers",
+    title: "CPX Mobile Game Missions",
     imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=900&q=80",
     provider: "CPX Research",
     providerKey: "cpx",
@@ -103,7 +103,7 @@ const curatedProviderOffers = [
   },
   {
     id: "curated-theorem-games",
-    title: "TheoremReach Featured Game Offers",
+    title: "TheoremReach Game Rewards",
     imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80",
     provider: "TheoremReach",
     providerKey: "theorem",
@@ -112,6 +112,54 @@ const curatedProviderOffers = [
     estimatedMinutes: 20,
     isFeatured: true,
     label: "Featured Game Offer"
+  },
+  {
+    id: "curated-cpx-puzzle-games",
+    title: "CPX Puzzle & Casual Games",
+    imageUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80",
+    provider: "CPX Research",
+    providerKey: "cpx",
+    category: "Games",
+    rewardWaveCoins: null,
+    estimatedMinutes: 18,
+    isFeatured: true,
+    label: "Featured Game Offer"
+  },
+  {
+    id: "curated-theorem-strategy-games",
+    title: "TheoremReach Strategy Games",
+    imageUrl: "https://images.unsplash.com/photo-1611996575749-79a3a250f948?auto=format&fit=crop&w=900&q=80",
+    provider: "TheoremReach",
+    providerKey: "theorem",
+    category: "Games",
+    rewardWaveCoins: null,
+    estimatedMinutes: 25,
+    isFeatured: true,
+    label: "Featured Game Offer"
+  },
+  {
+    id: "curated-cpx-apps",
+    title: "CPX App Install Rewards",
+    imageUrl: "https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=900&q=80",
+    provider: "CPX Research",
+    providerKey: "cpx",
+    category: "Apps",
+    rewardWaveCoins: null,
+    estimatedMinutes: 10,
+    isFeatured: true,
+    label: "Featured App Offer"
+  },
+  {
+    id: "curated-theorem-apps",
+    title: "TheoremReach App Tasks",
+    imageUrl: "https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=900&q=80",
+    provider: "TheoremReach",
+    providerKey: "theorem",
+    category: "Apps",
+    rewardWaveCoins: null,
+    estimatedMinutes: 12,
+    isFeatured: true,
+    label: "Featured App Offer"
   },
   {
     id: "curated-cpx-surveys",
