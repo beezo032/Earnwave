@@ -59,12 +59,10 @@ import {
 import "./styles.css";
 
 const demoOffers = [
-  { id: 1, title: "Kingdom Builder", category: "Games", reward: 28.4, description: "Reach castle level 10 and keep the app installed for tracking.", difficulty: "Medium", time: "2-4 days", provider: "AdGem" },
-  { id: 2, title: "Consumer Pulse Survey", category: "Surveys", reward: 4.25, description: "Answer a short brand research survey with instant credit.", difficulty: "Easy", time: "8 min", provider: "BitLabs" },
-  { id: 3, title: "Streaming App Trial", category: "Apps", reward: 11, description: "Start a partner trial and confirm your first app session.", difficulty: "Easy", time: "15 min", provider: "Lootably" },
-  { id: 4, title: "Budget Card Signup", category: "Finance", reward: 36, description: "Open a free finance account and complete identity verification.", difficulty: "Advanced", time: "1 day", provider: "RevU" },
+  { id: 1, title: "CPX Research Survey Wall", category: "Surveys", reward: 4.25, description: "Answer matching CPX surveys and earn when your responses qualify.", difficulty: "Easy", time: "5-18 min", provider: "CPX Research" },
+  { id: 2, title: "TheoremReach Survey Wall", category: "Surveys", reward: 5.5, description: "Open TheoremReach surveys with verified callback tracking.", difficulty: "Easy", time: "6-20 min", provider: "TheoremReach" },
   { id: 5, title: "Daily Check-in", category: "Bonus", reward: .75, description: "Claim today's streak reward and keep your bonus multiplier alive.", difficulty: "Easy", time: "1 min", provider: "EarnWave" },
-  { id: 6, title: "Puzzle Sprint", category: "Games", reward: 17.8, description: "Complete 20 puzzle rounds in a new mobile game.", difficulty: "Medium", time: "1-2 days", provider: "Torox" }
+  { id: 6, title: "Survey Streak Bonus", category: "Bonus", reward: 1.25, description: "Keep your survey streak active for better daily momentum.", difficulty: "Easy", time: "1 min", provider: "EarnWave" }
 ];
 
 const analyticsSeries = [
@@ -78,11 +76,9 @@ const analyticsSeries = [
 ];
 
 const categoryRows = [
-  { name: "Games", value: 42 },
-  { name: "Surveys", value: 28 },
-  { name: "Apps", value: 19 },
-  { name: "Finance", value: 7 },
-  { name: "Bonus", value: 4 }
+  { name: "CPX Research", value: 52 },
+  { name: "TheoremReach", value: 38 },
+  { name: "Daily Bonuses", value: 10 }
 ];
 
 const earningsFeed = [
@@ -107,18 +103,13 @@ const payoutProofPreview = [
 const faqs = [
   ["How do rewards get tracked?", "EarnWave records offerwall callbacks, device signals, ledger entries, and provider transaction IDs so credits can be reviewed cleanly."],
   ["When can I cash out?", "The platform supports low minimum withdrawals, with manual review before PayPal, gift card, or crypto payout automation."],
-  ["Is this only for gamers?", "No. The experience is built for surveys, apps, games, finance offers, referrals, daily streaks, and side-income workflows."],
+  ["Is this only for survey users?", "EarnWave currently focuses on surveys through CPX Research and TheoremReach, with referrals, streaks, and payout tracking around that core flow."],
   ["How is fraud handled?", "VPN/proxy checks, device fingerprinting, duplicate-account signals, suspicious activity flags, and withdrawal review queues protect users and the business."]
 ];
 
 const defaultOfferwallProviders = {
   cpx: { key: "cpx", name: "CPX Research", enabled: false },
-  theorem: { key: "theorem", name: "TheoremReach", enabled: false },
-  adgate: { key: "adgate", name: "AdGate", enabled: false },
-  bitlabs: { key: "bitlabs", name: "BitLabs", enabled: false },
-  lootably: { key: "lootably", name: "Lootably", enabled: false },
-  timewall: { key: "timewall", name: "TimeWall", enabled: false },
-  ayet: { key: "ayet", name: "Ayet Studios", enabled: false }
+  theorem: { key: "theorem", name: "TheoremReach", enabled: false }
 };
 
 const surveyProviders = [
@@ -299,7 +290,6 @@ function Shell({ route, navigate, api, children }) {
   const isAuthed = Boolean(api.session?.user);
   const isAdmin = api.session?.user?.role === "admin";
   const navItems = [
-    ["/offers", "Offers"],
     ["/surveys", "Surveys"],
     ["/dashboard", "Dashboard"],
     ["/wallet", "Wallet"],
@@ -322,7 +312,11 @@ function Shell({ route, navigate, api, children }) {
               }}>{label}</button>
             ))}
             {isAuthed ? (
-              <button className="icon-link" onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
+              <>
+                <span className="topbar-balance nav-balance">{formatBalance(api.session?.user || {}, api.session?.user?.balance_wavecoins ?? dollarsToWaveCoins(api.session?.user?.balance || 0))}</span>
+                <TopNotifications api={api} navigate={navigate} />
+                <button className="icon-link" onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
+              </>
             ) : (
               <>
                 <button onClick={() => navigate("/login")}>Log in</button>
@@ -369,7 +363,7 @@ function Landing({ navigate }) {
             <p className="hero-copy">EarnWave brings premium offer discovery, account protection, progress tracking, and payout confidence into one modern rewards experience.</p>
             <div className="actions">
               <button className="btn xl" onClick={() => navigate("/signup")}>Create Verified Account <ArrowRight size={18} /></button>
-              <button className="btn alt xl" onClick={() => navigate("/offers")}>Explore Reward Options</button>
+              <button className="btn alt xl" onClick={() => navigate("/surveys")}>Explore Surveys</button>
             </div>
             <div className="trust-strip">
               <Metric value="$0.50" label="Starter cashout path" />
@@ -502,9 +496,9 @@ function Landing({ navigate }) {
             <SectionTitle title="Momentum you can feel" copy="Social proof stays clean: visible activity, clear rewards, and a simple path for new members to start building progress." />
             <div className="top-earners">
               {[
-                { name: "WaveHunter", amount: 184.2, badge: "Games" },
+                { name: "WaveHunter", amount: 184.2, badge: "Surveys" },
                 { name: "NovaEarns", amount: 143.75, badge: "Surveys" },
-                { name: "CryptoMia", amount: 121.4, badge: "Crypto" }
+                { name: "CPXPro", amount: 121.4, badge: "Surveys" }
               ].map((row, index) => (
                 <div className="earner-row" key={row.name}>
                   <span className="rank">{index + 1}</span>
@@ -545,7 +539,7 @@ function OffersPage({ api }) {
   const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get("category") || "All");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [providerNotice, setProviderNotice] = useState("Choose an offer card to open the matching provider wall.");
+  const [providerNotice, setProviderNotice] = useState("Choose CPX Research or TheoremReach to open a secure survey wall.");
   const [modal, setModal] = useState(null);
 
   useEffect(() => {
@@ -569,9 +563,9 @@ function OffersPage({ api }) {
         setProviderNotice(launch.message);
         return;
       }
-      setModal({ provider, name: providers[provider]?.name || offer?.provider || "Offer provider", url: launch.url });
+      setModal({ provider, name: providers[provider]?.name || offer?.provider || "Survey provider", url: launch.url });
     } catch (error) {
-      setProviderNotice("Log in with a verified email before starting offers.");
+      setProviderNotice("Log in with a verified email before starting surveys.");
     }
   }
 
@@ -583,13 +577,11 @@ function OffersPage({ api }) {
   const enabledProviders = Object.values(providers).filter(provider => ["cpx", "theorem"].includes(provider.key) && provider.enabled);
   const categoryFiltered = filterOffersByCategory(offers, filter);
   const visible = categoryFiltered.filter(offer => `${offer.title} ${offer.provider} ${offer.category}`.toLowerCase().includes(query.toLowerCase()));
-  const featured = offers.filter(offer => offer.isFeatured).slice(0, 5);
-  const gameOffers = offers.filter(offer => offer.category === "Games").slice(0, 4);
   const surveyOffers = offers.filter(offer => offer.category === "Surveys").slice(0, 4);
   const topEarners = [
-    { name: "WaveHunter", earned: 18450 },
+    { name: "SurveyAce", earned: 18450 },
     { name: "NovaEarns", earned: 14320 },
-    { name: "GameAce", earned: 9850 }
+    { name: "WaveHunter", earned: 9850 }
   ];
 
   return (
@@ -597,9 +589,9 @@ function OffersPage({ api }) {
       <div className="container">
         <div className="offerwall-hero">
           <div>
-            <div className="eyebrow"><Gamepad2 size={16} /> Game-first offerwall</div>
-            <h1>Earn WaveCoins from games, apps, surveys, and AI tasks.</h1>
-            <p className="hero-copy">Browse CPX and TheoremReach earning cards with game-style visuals, clear reward labels, and secure provider launch modals.</p>
+            <div className="eyebrow"><ClipboardList size={16} /> Survey offerwalls</div>
+            <h1>Earn WaveCoins with CPX and TheoremReach surveys.</h1>
+            <p className="hero-copy">EarnWave currently supports two trusted survey offerwalls. Complete qualifying surveys, then rewards are verified server-side before payout.</p>
             <div className="actions">
               <span className="tag">100 WaveCoins = $1.00</span>
               <span className="tag blue">{enabledProviders.length ? `${enabledProviders.length} provider${enabledProviders.length === 1 ? "" : "s"} ready` : "Providers hidden until ready"}</span>
@@ -622,30 +614,25 @@ function OffersPage({ api }) {
           </div>
         </div>
 
-        <SectionTitle title="Featured Games" copy="Game and app entry cards open CPX or TheoremReach. Exact titles and payouts depend on each provider's live inventory for that user." action={<span className="tag rose">Games visible</span>} />
-        <div className="featured-carousel" aria-label="Featured offers carousel">
-          {(loading ? Array.from({ length: 4 }) : (gameOffers.length ? gameOffers : featured)).map((offer, index) => loading ? <OfferSkeleton key={index} featured /> : <OfferCard key={offer.id} offer={offer} featured actionLabel="Start Offer" onStart={() => openProvider(offer.providerKey, offer)} />)}
-        </div>
-
-        <SectionTitle title="Surveys" copy="Survey cards route into CPX or TheoremReach while keeping crediting and rewards server-side." action={<span className="tag blue">Verified walls</span>} />
+        <SectionTitle title="Survey offerwalls" copy="Only CPX Research and TheoremReach are shown until more providers are approved and configured." action={<span className="tag blue">Verified walls</span>} />
         <div className="featured-carousel" aria-label="Survey offers row">
           {(loading ? Array.from({ length: 3 }) : surveyOffers).map((offer, index) => loading ? <OfferSkeleton key={index} /> : <OfferCard key={offer.id} offer={offer} actionLabel="Start Offer" onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>
         <div className="notice offerwall-notice">{providerNotice}</div>
         <div className="toolbar">
-          <div className="search-box"><Search size={18} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search offers or providers" /></div>
+          <div className="search-box"><Search size={18} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search survey providers" /></div>
           <div className="filters"><Filter size={18} />{offerCategoryTabs.map(item => <button key={item} className={filter === item ? "filter active" : "filter"} onClick={() => setFilter(item)}>{item}</button>)}</div>
         </div>
-        {offers.some(offer => offer.isDevelopmentOnly) && <div className="notice offerwall-notice">Development-only preview data. Production only shows configured CPX and TheoremReach cards.</div>}
-        <div className="offers-grid game-offers-grid">
+        {offers.some(offer => offer.isDevelopmentOnly) && <div className="notice offerwall-notice">Development-only survey preview data. Production only shows configured CPX and TheoremReach cards.</div>}
+        <div className="offers-grid">
           {loading
             ? Array.from({ length: 6 }).map((_, index) => <OfferSkeleton key={index} />)
             : visible.map(offer => <OfferCard key={offer.id} offer={offer} onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>
         {!loading && visible.length === 0 && (
           <div className="card empty-offers-card">
-            <h3>No available cards yet</h3>
-            <p>Configured CPX and TheoremReach cards will appear here automatically. Unavailable offerwalls stay hidden from users.</p>
+            <h3>No configured survey cards yet</h3>
+            <p>CPX Research and TheoremReach cards will appear here when their credentials are configured. Other offerwalls stay hidden from users.</p>
           </div>
         )}
       </div>
@@ -656,7 +643,7 @@ function OffersPage({ api }) {
               <div><span>Offer wall</span><strong>{modal.name}</strong></div>
               <button className="btn alt" onClick={closeModal}>Close</button>
             </div>
-            <iframe title={`${modal.name} offers`} src={modal.url} loading="lazy" />
+            <iframe title={`${modal.name} surveys`} src={modal.url} loading="lazy" />
           </div>
         </div>
       )}
@@ -926,7 +913,7 @@ function Dashboard({ api, navigate }) {
           <strong>{formatBalance(user, userAmountWaveCoins(user, user.balance))}</strong>
           <span>Every withdrawal is reviewed before payout automation runs.</span>
           <div className="actions">
-            <button className="btn" onClick={() => { trackActivity("clicks"); navigate("/offers"); }}>Find Offers</button>
+            <button className="btn" onClick={() => { trackActivity("clicks"); navigate("/surveys"); }}>Find Surveys</button>
             <button className="btn alt" onClick={() => { trackActivity("clicks"); navigate("/wallet"); }}>Withdraw</button>
           </div>
         </div>
@@ -967,7 +954,7 @@ function Dashboard({ api, navigate }) {
       <PayoutProofSection compact />
       <div className="workspace-grid">
         <div className="card">
-          <SectionTitle title="Recommended next steps" copy="Reward options organized around value, time, category, and confidence." action={<span className="tag">Tracking ready</span>} />
+          <SectionTitle title="Recommended next steps" copy="Survey options organized around value, time, provider, and confidence." action={<span className="tag">Tracking ready</span>} />
           <div className="offers-grid compact">{demoOffers.slice(0, 4).map(offer => <OfferCard key={offer.id} offer={offer} actionLabel={`Start +${rewardLabel(offer.reward)}`} />)}</div>
         </div>
         <SideRail
@@ -1010,17 +997,17 @@ function OnboardingChecklist({ user, navigate }) {
     },
     {
       title: "Choose earning interests",
-      copy: "Pick games, surveys, apps, or crypto to personalize offers.",
+      copy: "Choose your survey interests to personalize EarnWave.",
       done: hasInterests,
       action: "Set interests",
       route: "/profile"
     },
     {
       title: "Start first offer",
-      copy: "Launch a survey, game, or app offer to create your first ledger event.",
+      copy: "Launch a CPX or TheoremReach survey to create your first ledger event.",
       done: hasStarted,
-      action: "Browse offers",
-      route: "/offers"
+      action: "Browse surveys",
+      route: "/surveys"
     },
     {
       title: "Reach first cashout",
@@ -1419,7 +1406,7 @@ function ReferralPage({ navigate, api }) {
         <div className="notification-card">
           <div className="feed-title"><Sparkles size={16} /> Share prompts</div>
           <div className="mini-alert">Invite classmates for survey streaks.</div>
-          <div className="mini-alert">Share game offers with squad chats.</div>
+          <div className="mini-alert">Share survey rewards with friends who like quick research tasks.</div>
           <div className="mini-alert">Promote PayPal cashout trust.</div>
         </div>
       </div>
@@ -1481,7 +1468,7 @@ function ProfilePage({ navigate, api }) {
     earning_interests: user.earning_interests || ""
   });
   const [notice, setNotice] = useState("Update your username, display name, and public profile info.");
-  const interestOptions = ["games", "surveys", "apps", "crypto"];
+  const interestOptions = ["surveys", "consumer research", "daily streaks", "referrals"];
 
   function toggleInterest(interest) {
     const current = profile.earning_interests.split(",").map(item => item.trim()).filter(Boolean);
@@ -2067,9 +2054,9 @@ function TopNotifications({ api, navigate }) {
       icon: <Clock size={22} />,
       title: "Rewards may pend",
       date: "Live tracking",
-      body: "Offerwall rewards can stay pending until the provider verifies completion.",
-      action: "See offers",
-      to: "/offers",
+      body: "Survey rewards can stay pending until the provider verifies completion.",
+      action: "See surveys",
+      to: "/surveys",
       tone: "amber"
     },
     {
@@ -2144,7 +2131,6 @@ function DashboardLayout({ active, navigate, api, children }) {
   const isAdmin = api.session?.user?.role === "admin";
   const items = [
     ["Dashboard", "/dashboard", <LayoutDashboard size={17} />],
-    ["Offers", "/offers", <Gift size={17} />],
     ["Surveys", "/surveys", <ClipboardList size={17} />],
     ["Wallet", "/wallet", <Wallet size={17} />],
     ["Referrals", "/referrals", <Users size={17} />],

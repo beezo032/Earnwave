@@ -20,8 +20,7 @@ function mockFetch() {
         json: async () => ({
           providers: {
             cpx: { key: "cpx", name: "CPX Research", enabled: true },
-            theorem: { key: "theorem", name: "TheoremReach", enabled: true },
-            adgate: { key: "adgate", name: "AdGate", enabled: false }
+            theorem: { key: "theorem", name: "TheoremReach", enabled: true }
           }
         })
       };
@@ -59,11 +58,11 @@ describe("offerwall offer normalization", () => {
 
   it("filters offers by category tabs", () => {
     const offers = [
-      normalizeOffer({ id: "game", title: "Game", provider: "CPX Research", category: "Games" }),
-      normalizeOffer({ id: "survey", title: "Survey", provider: "TheoremReach", category: "Surveys" })
+      normalizeOffer({ id: "cpx-survey", title: "CPX Survey", provider: "CPX Research", category: "Surveys" }),
+      normalizeOffer({ id: "theorem-survey", title: "Theorem Survey", provider: "TheoremReach", category: "Surveys" })
     ];
-    expect(filterOffersByCategory(offers, "Games")).toHaveLength(1);
-    expect(filterOffersByCategory(offers, "Games")[0].title).toBe("Game");
+    expect(filterOffersByCategory(offers, "Surveys")).toHaveLength(2);
+    expect(filterOffersByCategory(offers, "All")).toHaveLength(2);
   });
 });
 
@@ -72,13 +71,13 @@ describe("offerwall page", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await waitFor(() => expect(screen.getAllByText("CPX Mobile Game Missions").length).toBeGreaterThan(0));
-    expect(screen.queryByText("AdGate")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("CPX Survey Matches").length).toBeGreaterThan(0));
+    expect(screen.queryByText("Unavailable provider")).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: /start offer/i })[0]);
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/offerwalls/cpx/launch"), expect.any(Object)));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByTitle("CPX Research offers")).toHaveAttribute("src", "https://offers.cpx-research.com/test");
+    expect(screen.getByTitle("CPX Research surveys")).toHaveAttribute("src", "https://offers.cpx-research.com/test");
   });
 });

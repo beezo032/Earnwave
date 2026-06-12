@@ -1,39 +1,28 @@
 import React, { useEffect } from "react";
-import { ArrowRight, ClipboardList, Gamepad2, Gift, PackageCheck, Timer } from "lucide-react";
+import { ArrowRight, ClipboardList, PackageCheck, SearchCheck, Timer } from "lucide-react";
 
 export const earnCards = [
   {
-    id: "offers",
-    title: "Offers",
-    copy: "High-value app, finance, and trial offers with clear tracking windows.",
-    provider: "Multi-provider",
-    payout: "$3-$45",
-    status: "available",
-    route: "/offers",
-    cta: "Browse Offers",
-    icon: Gift
-  },
-  {
-    id: "surveys",
-    title: "Surveys",
-    copy: "Fast research surveys matched by profile, region, and completion quality.",
-    provider: "CPX + TheoremReach",
+    id: "cpx-surveys",
+    title: "CPX Research",
+    copy: "Open CPX Research surveys matched by profile, region, and response quality.",
+    provider: "CPX Research",
     payout: "$0.40-$6",
     status: "available",
     route: "/surveys",
-    cta: "Start Surveys",
-    icon: ClipboardList
+    cta: "Open CPX",
+    icon: SearchCheck
   },
   {
-    id: "play-games",
-    title: "Play Games",
-    copy: "Install games, reach milestones, and follow progress until rewards verify.",
-    provider: "AdGate + Lootably",
-    payout: "$2-$35",
-    status: "pending",
-    route: "/offers?category=Games",
-    cta: "Play Games",
-    icon: Gamepad2
+    id: "theorem-surveys",
+    title: "TheoremReach",
+    copy: "Launch TheoremReach surveys with secure tracking and server-side rewards.",
+    provider: "TheoremReach",
+    payout: "$0.40-$6",
+    status: "available",
+    route: "/surveys",
+    cta: "Open Theorem",
+    icon: ClipboardList
   }
 ];
 

@@ -260,7 +260,7 @@ const providerAdapters = {
 };
 
 function publicProviders() {
-  return Object.fromEntries(Object.entries(providerAdapters).map(([key, adapter]) => [
+  return Object.fromEntries(Object.entries(providerAdapters).filter(([key]) => ["cpx", "theorem"].includes(key)).map(([key, adapter]) => [
     key,
     {
       key,
