@@ -67,6 +67,7 @@ function theoremExpectedHash(urlBeforeHash, secret) {
 test("CPX callback route verifies and records callback events", async () => {
   env.DATABASE_URL = "";
   env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.CPX_USER_REWARD_PERCENT = 70;
   resetDemoStore();
 
   const user = await store.createDemoUser({ name: "CPX Callback", email: "cpx-callback@example.com", password: "password123", role: "user" });
@@ -129,7 +130,10 @@ test("CPX callback normalizes amount_local, amount_usd, and status reversal", as
 
     assert.equal(creditResponse.status, 200);
     assert.equal(creditPayload.event.amount, 5);
-    assert.equal(user.balance_wavecoins, 1500);
+    assert.equal(user.balance_wavecoins, 1350);
+    assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 500);
+    assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 350);
+    assert.equal(store.ledgerEntries[0].platform_margin_usd_cents, 150);
 
     const reversalParams = {
       ext_user_id: user.id,

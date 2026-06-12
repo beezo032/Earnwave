@@ -1668,6 +1668,7 @@ function AdminPage({ navigate, api }) {
   const [supportTickets, setSupportTickets] = useState([]);
   const [emails, setEmails] = useState([]);
   const [complianceUsers, setComplianceUsers] = useState([]);
+  const [offerwallEconomics, setOfferwallEconomics] = useState([]);
   const [reasonCodes, setReasonCodes] = useState({});
   const [payoutNotice, setPayoutNotice] = useState("Manual approval is required before any automated payout is sent.");
 
@@ -1676,6 +1677,7 @@ function AdminPage({ navigate, api }) {
     api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
     api.request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
     api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
+    api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
     api.request("/account/admin/support/tickets").then(data => setSupportTickets(data.tickets || [])).catch(() => {});
     api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
   }, []);
@@ -1760,6 +1762,19 @@ function AdminPage({ navigate, api }) {
             item.can_pay ? "Can pay" : "Blocked",
             item.can_pay ? "Ready" : (item.blocked_reasons || []).join(", "),
             item.profile?.country || "Missing"
+          ])} />
+        </div>
+        <div className="card payout-queue-card">
+          <SectionTitle title="Offerwall reward economics" copy="Admin-only split view for provider gross payout, user WaveCoins, and EarnWave margin." />
+          <DataTable rows={(offerwallEconomics.length ? offerwallEconomics : [
+            { provider: "cpx", provider_transaction_id: "example", provider_gross_usd_cents: 100, user_reward_wavecoins: 70, platform_margin_usd_cents: 30, status: "available" }
+          ]).map(item => [
+            item.provider,
+            item.provider_transaction_id,
+            money((item.provider_gross_usd_cents || 0) / 100),
+            `${Number(item.user_reward_wavecoins || item.amount_wavecoins || 0).toLocaleString()} WaveCoins`,
+            money((item.platform_margin_usd_cents || 0) / 100),
+            item.status
           ])} />
         </div>
         <div className="card">

@@ -45,8 +45,8 @@ test("duplicate provider transactions cannot credit twice", async () => {
   await recordOfferwallEvent(event, signature);
   await recordOfferwallEvent(event, signature);
 
-  assert.equal(user.balance_wavecoins, 500);
-  assert.equal(user.total_earned_wavecoins, 500);
+  assert.equal(user.balance_wavecoins, 350);
+  assert.equal(user.total_earned_wavecoins, 350);
   assert.equal(store.ledgerEntries.length, 1);
   assert.equal(store.paymentEvents.length, 1);
 });

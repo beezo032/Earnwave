@@ -5,6 +5,7 @@ const { listModerationQueue, recordModerationAction, listOffers } = require("../
 const { closeSuspiciousActivity, listSuspiciousActivity } = require("../services/fraud");
 const { approveAndDispatch, listPayoutQueue, rejectPayout } = require("../services/payouts");
 const { REASON_CODE_CATALOG } = require("../services/fraud");
+const { listProviderRewardEconomics } = require("../services/ledger");
 const {
   getComplianceThreshold,
   listPayoutReadiness,
@@ -108,6 +109,14 @@ adminRouter.get("/compliance/payout-readiness", async (req, res, next) => {
 adminRouter.get("/payouts", async (req, res, next) => {
   try {
     res.json({ payouts: await listPayoutQueue() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/offerwall-economics", async (req, res, next) => {
+  try {
+    res.json({ entries: await listProviderRewardEconomics({ limit: Number(req.query.limit || 50) }) });
   } catch (error) {
     next(error);
   }

@@ -3,7 +3,8 @@ const { env } = require("../config/env");
 const { paymentEvents, users } = require("../db/demoStore");
 const { query } = require("../db/postgres");
 const { recordLedgerEntry } = require("./ledger");
-const { usdDollarsToWaveCoins, waveCoinsToUsdCents } = require("./currency");
+const { waveCoinsToUsdCents } = require("./currency");
+const { calculateRewardSplit } = require("./rewardSplit");
 
 function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
@@ -300,9 +301,11 @@ function normalizeCallback(provider, payload) {
 async function applyOfferwallLedgerEvent(event, signature) {
   const isReversal = ["2", "chargeback", "rejected", "reversal", "reversed", "reconciled"].includes(String(event.status).toLowerCase());
   const isCredit = ["approved", "completed", "1"].includes(String(event.status).toLowerCase());
-  const amountWaveCoins = event.amount_wavecoins ?? usdDollarsToWaveCoins(event.amount);
+  const providerGrossUsdCents = event.provider_gross_usd_cents
+    ?? (event.amount_wavecoins !== undefined ? waveCoinsToUsdCents(event.amount_wavecoins) : Math.round(Number(event.amount || 0) * 100));
+  const split = calculateRewardSplit({ provider: event.provider, grossUsdCents: providerGrossUsdCents });
+  const amountWaveCoins = split.userRewardWaveCoins;
   const usdValueCents = waveCoinsToUsdCents(amountWaveCoins);
-  const amount = amountWaveCoins / 100;
 
   if (!event.userId || !amountWaveCoins || (!isReversal && !isCredit)) return null;
   if (!signature?.verified && !env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS) return null;
@@ -331,21 +334,33 @@ async function applyOfferwallLedgerEvent(event, signature) {
     type: isReversal ? "offerwall_reversal" : "offerwall_credit",
     direction: isReversal ? "debit" : "credit",
     amountWaveCoins,
+    providerGrossUsdCents: split.providerGrossUsdCents,
+    userRewardWaveCoins: split.userRewardWaveCoins,
+    platformMarginUsdCents: split.platformMarginUsdCents,
     provider: event.provider,
     providerTransactionId: event.transactionId,
     status: isReversal ? "reversed" : "available",
     referenceType: "offerwall",
     referenceId: event.transactionId,
     description: `${event.provider} ${isReversal ? "reversal" : "credit"}`,
-    metadata: { offerId: event.offerId, status: event.status, verified: Boolean(signature?.verified) }
+    metadata: {
+      offerId: event.offerId,
+      status: event.status,
+      verified: Boolean(signature?.verified),
+      provider_gross_usd_cents: split.providerGrossUsdCents,
+      user_reward_percent: split.userRewardPercent,
+      user_reward_wavecoins: split.userRewardWaveCoins,
+      platform_margin_usd_cents: split.platformMarginUsdCents
+    }
   });
 }
 
 async function recordOfferwallEvent(event, signature) {
+  const eventKey = `${event.provider}:${event.transactionId || crypto.randomUUID()}:${String(event.status || "unknown").toLowerCase()}`;
   const row = {
     id: crypto.randomUUID(),
     provider: event.provider,
-    provider_event_id: event.transactionId,
+    provider_event_id: eventKey,
     event_type: event.status,
     payload: event.raw,
     verified: signature.verified,

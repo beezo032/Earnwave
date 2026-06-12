@@ -42,6 +42,9 @@ async function migrate({ closePool = true } = {}) {
     ALTER TABLE ledger_entries
       ADD COLUMN IF NOT EXISTS amount_wavecoins INTEGER NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS usd_value_cents INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS provider_gross_usd_cents INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS user_reward_wavecoins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS platform_margin_usd_cents INTEGER NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS provider TEXT,
       ADD COLUMN IF NOT EXISTS provider_transaction_id TEXT,
       ADD COLUMN IF NOT EXISTS payout_status TEXT NOT NULL DEFAULT 'pending';
@@ -53,6 +56,13 @@ async function migrate({ closePool = true } = {}) {
         usd_value_cents = amount_cents
     WHERE amount_wavecoins = 0
       AND amount_cents > 0;
+  `);
+
+  await pool.query(`
+    UPDATE ledger_entries
+    SET provider_gross_usd_cents = CASE WHEN provider_gross_usd_cents = 0 THEN usd_value_cents ELSE provider_gross_usd_cents END,
+        user_reward_wavecoins = CASE WHEN user_reward_wavecoins = 0 THEN amount_wavecoins ELSE user_reward_wavecoins END
+    WHERE type LIKE 'offerwall_%';
   `);
 
   await pool.query("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");

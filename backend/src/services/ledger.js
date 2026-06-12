@@ -17,6 +17,9 @@ function serializeLedgerEntry(row) {
     amount: row.amount ?? amountWaveCoins / 100,
     amount_wavecoins: amountWaveCoins,
     usd_value_cents: row.usd_value_cents ?? waveCoinsToUsdCents(amountWaveCoins),
+    provider_gross_usd_cents: row.provider_gross_usd_cents ?? row.providerGrossUsdCents ?? 0,
+    user_reward_wavecoins: row.user_reward_wavecoins ?? row.userRewardWaveCoins ?? amountWaveCoins,
+    platform_margin_usd_cents: row.platform_margin_usd_cents ?? row.platformMarginUsdCents ?? 0,
     provider: row.provider,
     provider_transaction_id: row.provider_transaction_id,
     status: row.payout_status || row.status || (row.direction === "credit" ? "available" : "paid"),
@@ -29,11 +32,14 @@ function serializeLedgerEntry(row) {
   };
 }
 
-async function recordLedgerEntry({ userId, type, direction, amount, amountCents, amountWaveCoins, provider, providerTransactionId, status, referenceType, referenceId, description, metadata = {} }) {
+async function recordLedgerEntry({ userId, type, direction, amount, amountCents, amountWaveCoins, providerGrossUsdCents = 0, userRewardWaveCoins, platformMarginUsdCents = 0, provider, providerTransactionId, status, referenceType, referenceId, description, metadata = {} }) {
   const normalizedWaveCoins = amountWaveCoins !== undefined
     ? Number(amountWaveCoins || 0)
     : amountCents !== undefined ? Number(amountCents || 0) : usdDollarsToWaveCoins(amount);
   const normalizedAmountCents = waveCoinsToUsdCents(normalizedWaveCoins);
+  const normalizedGrossUsdCents = Math.max(0, Math.round(Number(providerGrossUsdCents || 0)));
+  const normalizedUserRewardWaveCoins = Math.max(0, Math.round(Number(userRewardWaveCoins ?? normalizedWaveCoins)));
+  const normalizedPlatformMarginUsdCents = Math.max(0, Math.round(Number(platformMarginUsdCents || 0)));
 
   if (!env.DATABASE_URL) {
     const user = users.get(String(userId));
@@ -46,6 +52,9 @@ async function recordLedgerEntry({ userId, type, direction, amount, amountCents,
       amount: normalizedWaveCoins / 100,
       amount_wavecoins: normalizedWaveCoins,
       usd_value_cents: normalizedAmountCents,
+      provider_gross_usd_cents: normalizedGrossUsdCents,
+      user_reward_wavecoins: normalizedUserRewardWaveCoins,
+      platform_margin_usd_cents: normalizedPlatformMarginUsdCents,
       provider,
       provider_transaction_id: providerTransactionId,
       status: status || (direction === "credit" ? "available" : "paid"),
@@ -64,10 +73,10 @@ async function recordLedgerEntry({ userId, type, direction, amount, amountCents,
   const balanceAfter = balanceResult.rows[0]?.balance_wavecoins ?? balanceResult.rows[0]?.balance_cents ?? 0;
   const result = await query(
     `INSERT INTO ledger_entries
-      (user_id, type, direction, amount_cents, amount_wavecoins, usd_value_cents, provider, provider_transaction_id, payout_status, balance_after_cents, reference_type, reference_id, description, metadata)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      (user_id, type, direction, amount_cents, amount_wavecoins, usd_value_cents, provider_gross_usd_cents, user_reward_wavecoins, platform_margin_usd_cents, provider, provider_transaction_id, payout_status, balance_after_cents, reference_type, reference_id, description, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      RETURNING *`,
-    [userId, type, direction, normalizedAmountCents, normalizedWaveCoins, normalizedAmountCents, provider || null, providerTransactionId || null, status || (direction === "credit" ? "available" : "paid"), balanceAfter, referenceType || null, referenceId || null, description, JSON.stringify(metadata)]
+    [userId, type, direction, normalizedAmountCents, normalizedWaveCoins, normalizedAmountCents, normalizedGrossUsdCents, normalizedUserRewardWaveCoins, normalizedPlatformMarginUsdCents, provider || null, providerTransactionId || null, status || (direction === "credit" ? "available" : "paid"), balanceAfter, referenceType || null, referenceId || null, description, JSON.stringify(metadata)]
   );
   return serializeLedgerEntry(result.rows[0]);
 }
@@ -81,4 +90,23 @@ async function listLedgerEntries(userId) {
   return result.rows.map(serializeLedgerEntry);
 }
 
-module.exports = { cents, listLedgerEntries, recordLedgerEntry, serializeLedgerEntry };
+async function listProviderRewardEconomics({ limit = 50 } = {}) {
+  if (!env.DATABASE_URL) {
+    return ledgerEntries
+      .filter(item => item.provider && item.provider_transaction_id)
+      .slice(0, limit)
+      .map(serializeLedgerEntry);
+  }
+
+  const result = await query(
+    `SELECT * FROM ledger_entries
+     WHERE provider IS NOT NULL
+       AND provider_transaction_id IS NOT NULL
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return result.rows.map(serializeLedgerEntry);
+}
+
+module.exports = { cents, listLedgerEntries, listProviderRewardEconomics, recordLedgerEntry, serializeLedgerEntry };
