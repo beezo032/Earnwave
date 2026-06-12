@@ -100,6 +100,55 @@ test("CPX callback route verifies and records callback events", async () => {
   }
 });
 
+test("CPX callback normalizes amount_local, amount_usd, and status reversal", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Amounts", email: "cpx-amounts@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  user.balance_wavecoins = 1000;
+  user.balance = 10;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const creditParams = {
+      ext_user_id: user.id,
+      trans_id: "txn-cpx-amounts",
+      amount_local: "500",
+      amount_usd: "5.00",
+      status: "1"
+    };
+    const creditHash = cpxExpectedHash(creditParams, env.CPX_SECURE_HASH_SECRET);
+    const creditQuery = new URLSearchParams({ ...creditParams, secure_hash: creditHash }).toString();
+    const creditResponse = await fetch(`${baseUrl}/api/offerwalls/cpx/callback?${creditQuery}`);
+    const creditPayload = await creditResponse.json();
+
+    assert.equal(creditResponse.status, 200);
+    assert.equal(creditPayload.event.amount, 5);
+    assert.equal(user.balance_wavecoins, 1500);
+
+    const reversalParams = {
+      ext_user_id: user.id,
+      trans_id: "txn-cpx-amounts-reversal",
+      amount_local: "500",
+      amount_usd: "5.00",
+      status: "2"
+    };
+    const reversalHash = cpxExpectedHash(reversalParams, env.CPX_SECURE_HASH_SECRET);
+    const reversalQuery = new URLSearchParams({ ...reversalParams, secure_hash: reversalHash }).toString();
+    const reversalResponse = await fetch(`${baseUrl}/api/offerwalls/cpx/callback?${reversalQuery}`);
+
+    assert.equal(reversalResponse.status, 200);
+    assert.equal(user.balance_wavecoins, 1000);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
 test("unsigned CPX callback is rejected and does not credit balance", async () => {
   env.DATABASE_URL = "";
   env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";

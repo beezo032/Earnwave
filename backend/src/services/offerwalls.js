@@ -73,7 +73,8 @@ const providerAdapters = {
         userId: payload.ext_user_id || payload.user_id || payload.subid_2,
         transactionId: payload.trans_id || payload.transaction_id || payload.survey_id,
         offerId: payload.survey_id || payload.offer_id,
-        amount: Number(payload.amount || payload.reward || payload.payout || 0),
+        amount: Number(payload.amount_usd || payload.amount || payload.reward || payload.payout || 0),
+        amount_wavecoins: payload.amount_local !== undefined ? Math.round(Number(payload.amount_local || 0)) : undefined,
         status: payload.status || "approved",
         raw: payload
       };
@@ -297,7 +298,7 @@ function normalizeCallback(provider, payload) {
 }
 
 async function applyOfferwallLedgerEvent(event, signature) {
-  const isReversal = ["chargeback", "rejected", "reversal", "reconciled"].includes(String(event.status).toLowerCase());
+  const isReversal = ["2", "chargeback", "rejected", "reversal", "reversed", "reconciled"].includes(String(event.status).toLowerCase());
   const isCredit = ["approved", "completed", "1"].includes(String(event.status).toLowerCase());
   const amountWaveCoins = event.amount_wavecoins ?? usdDollarsToWaveCoins(event.amount);
   const usdValueCents = waveCoinsToUsdCents(amountWaveCoins);
