@@ -66,21 +66,27 @@ async function sendPayPalPayout(withdrawal) {
 }
 
 async function sendTremendousReward(withdrawal) {
-  if (!env.TREMENDOUS_API_KEY) {
-    return { configured: false, provider: "tremendous", message: "Set TREMENDOUS_API_KEY to enable gift card payouts." };
+  if (!env.TREMENDOUS_API_KEY || !env.TREMENDOUS_FUNDING_SOURCE_ID || !env.TREMENDOUS_PRODUCT_ID) {
+    return {
+      configured: false,
+      provider: "tremendous",
+      message: "Set TREMENDOUS_API_KEY, TREMENDOUS_FUNDING_SOURCE_ID, and TREMENDOUS_PRODUCT_ID to enable gift card payouts."
+    };
   }
 
   const base = env.TREMENDOUS_ENV === "production" ? "https://api.tremendous.com" : "https://testflight.tremendous.com";
+  const idempotencyKey = `withdrawal-${withdrawal.id}`;
   const response = await fetch(`${base}/api/v2/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.TREMENDOUS_API_KEY}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey
     },
     body: JSON.stringify({
-      external_id: `withdrawal-${withdrawal.id}`,
+      external_id: idempotencyKey,
       payment: { funding_source_id: env.TREMENDOUS_FUNDING_SOURCE_ID },
-      reward: {
+      rewards: [{
         value: { denomination: Number(withdrawal.amount), currency_code: "USD" },
         delivery: { method: "EMAIL" },
         recipient: {
@@ -88,12 +94,12 @@ async function sendTremendousReward(withdrawal) {
           email: withdrawal.destination_value
         },
         products: [env.TREMENDOUS_PRODUCT_ID]
-      }
+      }]
     })
   });
 
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.message || "Tremendous reward order failed");
+  if (!response.ok) throw new Error(payload.message || payload.errors?.[0]?.message || "Tremendous reward order failed");
   return { configured: true, provider: "tremendous", reference: payload.order?.id || payload.id, raw: payload };
 }
 
@@ -281,5 +287,6 @@ module.exports = {
   dispatchPayout,
   listPayoutQueue,
   providerForMethod,
-  rejectPayout
+  rejectPayout,
+  sendTremendousReward
 };

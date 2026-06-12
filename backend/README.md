@@ -43,6 +43,8 @@ Payouts are intentionally gated by manual approval:
    - Circle transfers for `Crypto`
 5. Missing provider credentials keep the withdrawal approved but unsent.
 
+Tremendous requires `TREMENDOUS_API_KEY`, `TREMENDOUS_FUNDING_SOURCE_ID`, and `TREMENDOUS_PRODUCT_ID`. Use `TREMENDOUS_ENV=testflight` for sandbox orders and `TREMENDOUS_ENV=production` for live gift cards.
+
 ## Offerwall Providers
 
 The current provider adapter list is:

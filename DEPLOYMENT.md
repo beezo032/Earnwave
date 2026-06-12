@@ -95,6 +95,21 @@ The payout queue is available at `/api/admin/payouts`. Admins approve with `/api
 
 If provider credentials are missing, approving a withdrawal marks it `approved` but does not send money. Once credentials are configured, approvals can dispatch automatically.
 
+### Tremendous Gift Cards
+
+To enable gift card payouts, add these Render environment variables from your Tremendous dashboard:
+
+```bash
+TREMENDOUS_API_KEY=your-tremendous-api-key
+TREMENDOUS_ENV=testflight
+TREMENDOUS_FUNDING_SOURCE_ID=your-funding-source-id
+TREMENDOUS_PRODUCT_ID=your-gift-card-product-id
+```
+
+Use `TREMENDOUS_ENV=testflight` while testing. Switch to `TREMENDOUS_ENV=production` only after your Tremendous funding source and product are approved for live orders.
+
+EarnWave sends Tremendous orders only after an admin manually approves a withdrawal. Gift card requests use the user's payout email as the Tremendous recipient email and the withdrawal ID as the idempotency key.
+
 ## Provider Notes
 
 Stripe uses Checkout Sessions because Stripe recommends Checkout Sessions for most built-in checkout integrations.
