@@ -4,6 +4,7 @@ const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const { createWithdrawal, listWithdrawals } = require("../services/wallet");
 const { evaluatePayoutEligibility } = require("../services/compliance");
 const { buildRisk, flagSuspiciousActivity, persistRiskReview } = require("../services/fraud");
+const { findUserById } = require("../services/users");
 
 const walletRouter = express.Router();
 const withdrawalSchema = z.object({
@@ -25,9 +26,14 @@ walletRouter.get("/withdrawals", requireAuth, requireVerifiedEmail, async (req, 
 walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
     const input = withdrawalSchema.parse(req.body);
+    const user = await findUserById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const payoutAmountCents = input.amountWaveCoins || Math.round(Number(input.amount || 0) * 100);
+    const payoutAmountUsd = payoutAmountCents / 100;
+    const serverBalanceUsd = Number(user.balance_wavecoins || 0) / 100;
     const compliance = await evaluatePayoutEligibility({
       userId: req.user.id,
-      payoutAmountCents: Math.round(Number(input.amount || 0) * 100)
+      payoutAmountCents
     });
     if (!compliance.can_pay) {
       return res.status(423).json({
@@ -35,13 +41,13 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
         compliance
       });
     }
-    const risk = await buildRisk(req, { highValue: input.amount >= 25, withdrawalAmount: input.amount, balance: Number(req.body.balance || 0) });
+    const risk = await buildRisk(req, { highValue: payoutAmountUsd >= 25, withdrawalAmount: payoutAmountUsd, balance: serverBalanceUsd });
     await persistRiskReview({
       userId: req.user.id,
       eventType: "withdrawal_review",
       risk,
       input: {
-        payoutAmount: input.amount,
+        payoutAmount: payoutAmountUsd,
         method: input.method,
         destinationType: input.destinationType || (input.method === "Crypto" ? "ETH" : "EMAIL")
       },
@@ -52,7 +58,7 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
         userId: req.user.id,
         eventType: "withdrawal_denied",
         risk,
-        metadata: { method: input.method, amount: input.amount }
+        metadata: { method: input.method, amount: payoutAmountUsd }
       });
       return res.status(403).json({ message: "Withdrawal denied by fraud controls.", risk });
     }
@@ -70,7 +76,7 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
         userId: req.user.id,
         eventType: "withdrawal_review",
         risk,
-        metadata: { withdrawalId: withdrawal.id, method: input.method, amount: input.amount, status: withdrawal.status }
+        metadata: { withdrawalId: withdrawal.id, method: input.method, amount: payoutAmountUsd, status: withdrawal.status }
       });
     }
     res.json({ withdrawal, risk, compliance });

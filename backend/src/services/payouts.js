@@ -110,7 +110,7 @@ async function sendCryptoPayout(withdrawal) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: `withdrawal-${withdrawal.id}`,
       source: { type: "wallet", id: env.CIRCLE_WALLET_ID },
       destination: {
         type: "blockchain",
@@ -202,6 +202,11 @@ async function approveAndDispatch({ id, moderatorId, note }) {
   const queue = await listPayoutQueue();
   const withdrawal = queue.find(item => String(item.id) === String(id));
   if (!withdrawal) throw new Error("Withdrawal not found in manual review queue");
+  if (!["review", "held"].includes(withdrawal.status)) {
+    const error = new Error(`Withdrawal is already ${withdrawal.status} and cannot be approved again.`);
+    error.status = 409;
+    throw error;
+  }
   const compliance = await evaluatePayoutEligibility({
     userId: withdrawal.user_id,
     payoutAmountCents: Math.round(Number(withdrawal.amount || 0) * 100)

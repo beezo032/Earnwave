@@ -35,27 +35,27 @@ offerwallRouter.get("/:provider/launch", requireAuth, requireVerifiedEmail, asyn
 
 async function handleCallback(req, res, next) {
   try {
-  const provider = req.params.provider.toLowerCase();
-  const signature = verifyCallbackSignature(provider, req);
+    const provider = req.params.provider.toLowerCase();
+    const signature = verifyCallbackSignature(provider, req);
 
-  if (signature.reason === "Unknown provider") {
-    return res.status(404).json({ message: "Unknown offerwall provider" });
-  }
+    if (signature.reason === "Unknown provider") {
+      return res.status(404).json({ message: "Unknown offerwall provider" });
+    }
 
-  const payload = req.method === "GET" ? req.query : req.body;
-  const event = normalizeCallback(provider, payload);
-  await recordOfferwallEvent(event, signature);
+    const payload = req.method === "GET" ? req.query : req.body;
+    const event = normalizeCallback(provider, payload);
+    const recorded = await recordOfferwallEvent(event, signature);
 
-  if (provider === "lootably") {
-    return res.type("text/plain").send("1");
-  }
+    if (provider === "lootably") {
+      return res.type("text/plain").status(recorded.rejected ? 403 : 200).send(recorded.rejected ? "0" : "1");
+    }
 
-  res.json({
-    received: true,
-    verified: signature.verified,
-    event,
-    message: signature.verified ? "Callback accepted." : "Callback received in unverified/dev mode."
-  });
+    res.status(recorded.rejected ? 403 : 200).json({
+      received: true,
+      verified: signature.verified,
+      event,
+      message: recorded.rejected ? "Callback rejected because signature verification failed." : "Callback accepted."
+    });
   } catch (error) {
     next(error);
   }

@@ -8,6 +8,8 @@ const store = require("../src/db/demoStore");
 
 function resetDemoStore() {
   store.users.clear();
+  store.paymentEvents.length = 0;
+  store.ledgerEntries.length = 0;
 }
 
 test("CPX launch URL includes required user parameters and md5 secure hash", async () => {
@@ -93,6 +95,40 @@ test("CPX callback route verifies and records callback events", async () => {
     assert.equal(payload.event.userId, user.id);
     assert.equal(payload.event.transactionId, "txn-123");
     assert.equal(payload.event.amount, 5.5);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("unsigned CPX callback is rejected and does not credit balance", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "Unsigned Callback", email: "unsigned-cpx@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  const startingBalance = user.balance_wavecoins;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const params = new URLSearchParams({
+      ext_user_id: user.id,
+      transaction_id: "txn-unsigned",
+      amount: "25",
+      status: "approved"
+    }).toString();
+    const response = await fetch(`${baseUrl}/api/offerwalls/cpx/callback?${params}`);
+    const payload = await response.json();
+
+    assert.equal(response.status, 403);
+    assert.equal(payload.verified, false);
+    assert.equal(user.balance_wavecoins, startingBalance);
+    assert.equal(store.paymentEvents.length, 0);
+    assert.equal(store.ledgerEntries.length, 0);
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

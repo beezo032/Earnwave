@@ -26,6 +26,7 @@ const env = {
   CIRCLE_ENV: process.env.CIRCLE_ENV || "sandbox",
   CIRCLE_WALLET_ID: process.env.CIRCLE_WALLET_ID || "",
   OFFERWALL_SHARED_SECRET: process.env.OFFERWALL_SHARED_SECRET || "",
+  ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS: process.env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS === "true",
   CPX_APP_ID: process.env.CPX_APP_ID || "",
   CPX_API_KEY: process.env.CPX_API_KEY || "",
   CPX_SECURE_HASH_SECRET: process.env.CPX_SECURE_HASH_SECRET || "",

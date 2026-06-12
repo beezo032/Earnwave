@@ -1,4 +1,4 @@
-const { query } = require("../db/postgres");
+const { query, transaction } = require("../db/postgres");
 const { env } = require("../config/env");
 const { withdrawals, users } = require("../db/demoStore");
 const { recordLedgerEntry } = require("./ledger");
@@ -48,27 +48,39 @@ async function createWithdrawal({ userId, method, amount, amountWaveCoins, desti
     return row;
   }
 
-  const userResult = await query("SELECT balance_wavecoins, balance_cents FROM users WHERE id = $1", [userId]);
-  if (!userResult.rows[0]) throw new Error("User not found");
-  const currentBalance = userResult.rows[0].balance_wavecoins ?? userResult.rows[0].balance_cents ?? 0;
-  if (Number(currentBalance || 0) < normalizedWaveCoins) throw new Error("Insufficient balance");
+  const row = await transaction(async client => {
+    const debit = await client.query(
+      `UPDATE users
+       SET balance_wavecoins = balance_wavecoins - $1,
+           balance_cents = balance_cents - $2
+       WHERE id = $3
+         AND balance_wavecoins >= $1
+       RETURNING id`,
+      [normalizedWaveCoins, amountCents, userId]
+    );
+    if (!debit.rows[0]) {
+      const exists = await client.query("SELECT id FROM users WHERE id = $1", [userId]);
+      throw new Error(exists.rows[0] ? "Insufficient balance" : "User not found");
+    }
 
-  await query("UPDATE users SET balance_wavecoins = balance_wavecoins - $1, balance_cents = balance_cents - $2 WHERE id = $3", [normalizedWaveCoins, amountCents, userId]);
-  const result = await query(
-    "INSERT INTO withdrawals (user_id, method, amount_cents, status, risk_score, fraud_action, risk_reason_codes, destination_type, destination_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
-    [userId, method, amountCents, status, score, risk.action || "hold", reasonCodes, destinationType, destinationValue]
-  );
+    const result = await client.query(
+      "INSERT INTO withdrawals (user_id, method, amount_cents, status, risk_score, fraud_action, risk_reason_codes, destination_type, destination_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+      [userId, method, amountCents, status, score, risk.action || "hold", reasonCodes, destinationType, destinationValue]
+    );
+    return result.rows[0];
+  });
+
   await recordLedgerEntry({
     userId,
     type: "withdrawal_request",
     direction: "debit",
     amountWaveCoins: normalizedWaveCoins,
     referenceType: "withdrawal",
-    referenceId: result.rows[0].id,
+    referenceId: row.id,
     description: `${method} withdrawal requested`,
     metadata: { status, destinationType }
   });
-  return serializeWithdrawal(result.rows[0]);
+  return serializeWithdrawal(row);
 }
 
 async function listWithdrawals(userId) {

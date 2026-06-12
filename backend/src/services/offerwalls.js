@@ -304,6 +304,7 @@ async function applyOfferwallLedgerEvent(event, signature) {
   const amount = amountWaveCoins / 100;
 
   if (!event.userId || !amountWaveCoins || (!isReversal && !isCredit)) return null;
+  if (!signature?.verified && !env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS) return null;
 
   if (!env.DATABASE_URL) {
     const user = users.get(String(event.userId));
@@ -349,6 +350,10 @@ async function recordOfferwallEvent(event, signature) {
     verified: signature.verified,
     created_at: new Date().toISOString()
   };
+  if (!signature.verified && !env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS) {
+    return { ...row, rejected: true, reason: signature.reason || "Callback signature verification failed" };
+  }
+
   if (!env.DATABASE_URL) {
     if (paymentEvents.some(item => item.provider === row.provider && item.provider_event_id === row.provider_event_id)) {
       return { ...row, duplicate: true };
