@@ -47,6 +47,15 @@ import {
   YAxis
 } from "recharts";
 import { EarnDashboardCards } from "./earnCards.jsx";
+import {
+  earnWaveFallbackImage,
+  filterOffersByCategory,
+  formatRewardUsd,
+  formatWaveCoinReward,
+  normalizeOffer,
+  offerCategoryTabs,
+  offersForEnabledProviders
+} from "./offerwallOffers.js";
 import "./styles.css";
 
 const demoOffers = [
@@ -57,36 +66,6 @@ const demoOffers = [
   { id: 5, title: "Daily Check-in", category: "Bonus", reward: .75, description: "Claim today's streak reward and keep your bonus multiplier alive.", difficulty: "Easy", time: "1 min", provider: "EarnWave" },
   { id: 6, title: "Puzzle Sprint", category: "Games", reward: 17.8, description: "Complete 20 puzzle rounds in a new mobile game.", difficulty: "Medium", time: "1-2 days", provider: "Torox" }
 ];
-
-const gameMockOffers = [
-  { id: "game-raid", title: "Raid Realm: Reach Level 12", category: "Games", reward_wavecoins: 2840, description: "Build your hero squad, clear campaign missions, and unlock ranked play.", difficulty: "Medium", estimated_minutes: 180, provider: "AdGem", thumbnail: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=900&q=80", is_trending: true, progress: 42 },
-  { id: "game-coin", title: "Coin Master Board Adventure", category: "Games", reward_wavecoins: 1750, description: "Complete your first island board and keep tracking active.", difficulty: "Easy", estimated_minutes: 90, provider: "TheoremReach", thumbnail: "https://images.unsplash.com/photo-1611996575749-79a3a250f948?auto=format&fit=crop&w=900&q=80", is_trending: true, hot: true, progress: 18 },
-  { id: "app-finance", title: "Budget App Trial", category: "Apps", reward_wavecoins: 3600, description: "Install, verify your profile, and complete the first setup checklist.", difficulty: "Hard", estimated_minutes: 45, provider: "Lootably", thumbnail: "https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=900&q=80", is_trending: false, hot: true, progress: 0 },
-  { id: "survey-pulse", title: "Consumer Pulse Survey", category: "Surveys", reward_wavecoins: 425, description: "Answer a short brand research survey with instant tracking.", difficulty: "Easy", estimated_minutes: 8, provider: "CPX", thumbnail: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80", is_trending: false, progress: 0 },
-  { id: "shopping-cash", title: "Shopping Receipt Boost", category: "Shopping", reward_wavecoins: 920, description: "Upload one eligible receipt from a partner store.", difficulty: "Easy", estimated_minutes: 12, provider: "TimeWall", thumbnail: "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&w=900&q=80", is_trending: true, progress: 0 },
-  { id: "ai-label", title: "AI Image Tagging Sprint", category: "AI Tasks", reward_wavecoins: 680, description: "Label a batch of images and pass quality review.", difficulty: "Medium", estimated_minutes: 20, provider: "EarnWave", thumbnail: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=900&q=80", is_trending: false, progress: 64 },
-  { id: "game-puzzle", title: "Puzzle Sprint Challenge", category: "Games", reward_wavecoins: 1780, description: "Complete 20 puzzle rounds in a new mobile game.", difficulty: "Medium", estimated_minutes: 120, provider: "Ayet", thumbnail: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?auto=format&fit=crop&w=900&q=80", is_trending: false, progress: 0 },
-  { id: "app-stream", title: "Streaming App Trial", category: "Apps", reward_wavecoins: 1100, description: "Start a partner trial and confirm your first app session.", difficulty: "Easy", estimated_minutes: 15, provider: "Lootably", thumbnail: "https://images.unsplash.com/photo-1601944177325-f8867652837f?auto=format&fit=crop&w=900&q=80", is_trending: true, progress: 0 }
-];
-
-function normalizeOffer(raw = {}, index = 0) {
-  const fallback = gameMockOffers[index % gameMockOffers.length];
-  const rewardWaveCoins = raw.reward_wavecoins ?? raw.reward_cents ?? dollarsToWaveCoins(raw.reward || fallback.reward_wavecoins / 100);
-  return {
-    id: raw.id || fallback.id,
-    title: raw.title || fallback.title,
-    description: raw.description || fallback.description,
-    thumbnail: raw.thumbnail || fallback.thumbnail,
-    reward_wavecoins: rewardWaveCoins,
-    estimated_minutes: (raw.estimated_minutes ?? Number.parseInt(raw.estimated_time || raw.time || fallback.estimated_minutes, 10)) || fallback.estimated_minutes,
-    provider: raw.provider || fallback.provider,
-    category: raw.category || fallback.category,
-    difficulty: raw.difficulty || fallback.difficulty,
-    is_trending: raw.is_trending ?? fallback.is_trending ?? index < 3,
-    hot: raw.hot ?? fallback.hot ?? false,
-    progress: raw.progress ?? fallback.progress ?? 0
-  };
-}
 
 const analyticsSeries = [
   { day: "Mon", revenue: 2400, payouts: 980, users: 320 },
@@ -561,42 +540,52 @@ function Landing({ navigate }) {
 }
 
 function OffersPage({ api }) {
-  const [offers, setOffers] = useState(gameMockOffers.map(normalizeOffer));
+  const [offers, setOffers] = useState([]);
   const [providers, setProviders] = useState(defaultOfferwallProviders);
   const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get("category") || "All");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [providerNotice, setProviderNotice] = useState("Connect provider credentials in .env to open live offerwalls.");
+  const [providerNotice, setProviderNotice] = useState("Choose an offer card to open the matching provider wall.");
+  const [modal, setModal] = useState(null);
 
   useEffect(() => {
-    api.request("/offers/public").then(data => {
-      const liveOffers = data.offers || data;
-      setOffers((liveOffers?.length ? liveOffers : gameMockOffers).map(normalizeOffer));
-    }).catch(() => setOffers(gameMockOffers.map(normalizeOffer))).finally(() => {
+    api.request("/offerwalls/providers").then(data => {
+      const nextProviders = data.providers || defaultOfferwallProviders;
+      setProviders(nextProviders);
+      const hasLiveProviders = Object.values(nextProviders).some(provider => ["cpx", "theorem"].includes(provider.key) && provider.enabled);
+      setOffers(offersForEnabledProviders(nextProviders, { includeDevelopmentMocks: import.meta.env.DEV && !hasLiveProviders }));
+    }).catch(() => {
+      setOffers(offersForEnabledProviders(defaultOfferwallProviders, { includeDevelopmentMocks: import.meta.env.DEV }));
+    }).finally(() => {
       window.setTimeout(() => setLoading(false), 360);
     });
-    api.request("/offerwalls/providers").then(data => setProviders(data.providers || defaultOfferwallProviders)).catch(() => {});
   }, []);
 
-  async function openProvider(provider) {
+  async function openProvider(provider, offer) {
+    trackEvent("offer_card_clicked", { provider, offerId: offer?.id, category: offer?.category });
     try {
       const launch = await api.request(`/offerwalls/${provider}/launch`);
       if (!launch.configured) {
         setProviderNotice(launch.message);
         return;
       }
-      window.open(launch.url, "_blank", "noopener,noreferrer");
+      setModal({ provider, name: providers[provider]?.name || offer?.provider || "Offer provider", url: launch.url });
     } catch (error) {
-      setProviderNotice("Log in before opening an offerwall.");
+      setProviderNotice("Log in with a verified email before starting offers.");
     }
   }
 
-  const visible = offers.filter(offer => {
-    const categoryMatch = filter === "All" || offer.category === filter;
-    const queryMatch = `${offer.title} ${offer.description} ${offer.provider}`.toLowerCase().includes(query.toLowerCase());
-    return categoryMatch && queryMatch;
-  });
-  const featured = offers.filter(offer => offer.is_trending || offer.hot).slice(0, 5);
+  function closeModal() {
+    if (modal?.provider) trackEvent("offer_modal_closed", { provider: modal.provider });
+    setModal(null);
+  }
+
+  const enabledProviders = Object.values(providers).filter(provider => ["cpx", "theorem"].includes(provider.key) && provider.enabled);
+  const categoryFiltered = filterOffersByCategory(offers, filter);
+  const visible = categoryFiltered.filter(offer => `${offer.title} ${offer.provider} ${offer.category}`.toLowerCase().includes(query.toLowerCase()));
+  const featured = offers.filter(offer => offer.isFeatured).slice(0, 5);
+  const gameOffers = offers.filter(offer => offer.category === "Games").slice(0, 4);
+  const surveyOffers = offers.filter(offer => offer.category === "Surveys").slice(0, 4);
   const topEarners = [
     { name: "WaveHunter", earned: 18450 },
     { name: "NovaEarns", earned: 14320 },
@@ -610,10 +599,10 @@ function OffersPage({ api }) {
           <div>
             <div className="eyebrow"><Gamepad2 size={16} /> Game-first offerwall</div>
             <h1>Earn WaveCoins from games, apps, surveys, and AI tasks.</h1>
-            <p className="hero-copy">A faster, livelier rewards hub with visual offer cards, featured boosts, progress tracking, and provider-ready offerwalls.</p>
+            <p className="hero-copy">Browse CPX and TheoremReach earning cards with game-style visuals, clear reward labels, and secure provider launch modals.</p>
             <div className="actions">
               <span className="tag">100 WaveCoins = $1.00</span>
-              <span className="tag blue">Live CPX ready</span>
+              <span className="tag blue">{enabledProviders.length ? `${enabledProviders.length} provider${enabledProviders.length === 1 ? "" : "s"} ready` : "Providers hidden until ready"}</span>
               <span className="tag amber">Daily streak active</span>
             </div>
           </div>
@@ -633,36 +622,44 @@ function OffersPage({ api }) {
           </div>
         </div>
 
-        <SectionTitle title="Featured offers" copy="High-value games and app missions with clear rewards and completion signals." action={<span className="tag rose">Hot today</span>} />
+        <SectionTitle title="Featured Games" copy="Curated CPX and TheoremReach game cards open the live provider wall when exact offer feeds are not exposed." action={<span className="tag rose">Featured</span>} />
         <div className="featured-carousel" aria-label="Featured offers carousel">
-          {(loading ? Array.from({ length: 4 }) : featured).map((offer, index) => loading ? <OfferSkeleton key={index} featured /> : <OfferCard key={offer.id} offer={offer} featured actionLabel="Start mission" />)}
+          {(loading ? Array.from({ length: 4 }) : (gameOffers.length ? gameOffers : featured)).map((offer, index) => loading ? <OfferSkeleton key={index} featured /> : <OfferCard key={offer.id} offer={offer} featured actionLabel="Start Offer" onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>
 
-        <SectionTitle title="Live offerwalls" copy="Launch provider walls or browse unified EarnWave previews while live inventory loads." action={<span className="tag blue">Provider-ready</span>} />
-        <div className="provider-grid lively">
-          {Object.values(providers).map(provider => (
-            <div className="card provider-card" key={provider.key}>
-              <div>
-                <h3>{provider.name}</h3>
-                <p>{provider.enabled ? "Credentials configured. Ready to launch." : "Waiting for publisher credentials."}</p>
-              </div>
-              <button className={provider.enabled ? "btn" : "btn alt"} onClick={() => openProvider(provider.key)}>
-                {provider.enabled ? "Open Wall" : "Configure"}
-              </button>
-            </div>
-          ))}
+        <SectionTitle title="Surveys" copy="Survey cards route into CPX or TheoremReach while keeping crediting and rewards server-side." action={<span className="tag blue">Verified walls</span>} />
+        <div className="featured-carousel" aria-label="Survey offers row">
+          {(loading ? Array.from({ length: 3 }) : surveyOffers).map((offer, index) => loading ? <OfferSkeleton key={index} /> : <OfferCard key={offer.id} offer={offer} actionLabel="Start Offer" onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>
         <div className="notice offerwall-notice">{providerNotice}</div>
         <div className="toolbar">
           <div className="search-box"><Search size={18} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search offers or providers" /></div>
-          <div className="filters"><Filter size={18} />{["All", "Games", "Surveys", "Apps", "Shopping", "AI Tasks"].map(item => <button key={item} className={filter === item ? "filter active" : "filter"} onClick={() => setFilter(item)}>{item}</button>)}</div>
+          <div className="filters"><Filter size={18} />{offerCategoryTabs.map(item => <button key={item} className={filter === item ? "filter active" : "filter"} onClick={() => setFilter(item)}>{item}</button>)}</div>
         </div>
+        {offers.some(offer => offer.isDevelopmentOnly) && <div className="notice offerwall-notice">Development-only preview data. Production only shows configured CPX and TheoremReach cards.</div>}
         <div className="offers-grid game-offers-grid">
           {loading
             ? Array.from({ length: 6 }).map((_, index) => <OfferSkeleton key={index} />)
-            : visible.map(offer => <OfferCard key={offer.id} offer={offer} />)}
+            : visible.map(offer => <OfferCard key={offer.id} offer={offer} onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>
+        {!loading && visible.length === 0 && (
+          <div className="card empty-offers-card">
+            <h3>No available cards yet</h3>
+            <p>Configured CPX and TheoremReach cards will appear here automatically. Unavailable offerwalls stay hidden from users.</p>
+          </div>
+        )}
       </div>
+      {modal && (
+        <div className="survey-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="survey-modal">
+            <div className="survey-modal-head">
+              <div><span>Offer wall</span><strong>{modal.name}</strong></div>
+              <button className="btn alt" onClick={closeModal}>Close</button>
+            </div>
+            <iframe title={`${modal.name} offers`} src={modal.url} loading="lazy" />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -2285,42 +2282,37 @@ function Meter({ value }) {
   return <div className="meter"><span style={{ width: `${value}%` }} /></div>;
 }
 
-function OfferCard({ offer, actionLabel = "Start Offer", featured = false }) {
+function OfferCard({ offer, actionLabel = "Start Offer", featured = false, onStart }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const rewardWaveCoins = offer.reward_wavecoins ?? dollarsToWaveCoins(offer.reward || 0);
-  const minutes = offer.estimated_minutes || Number.parseInt(offer.time || "15", 10) || 15;
+  const rewardText = formatWaveCoinReward(offer);
+  const usdText = formatRewardUsd(offer);
+  const minutes = offer.estimatedMinutes || offer.estimated_minutes || null;
   return (
     <div className={featured ? "card offer-card game-offer-card featured" : "card offer-card game-offer-card"}>
       <div className="offer-thumb">
         {!imageFailed ? (
-          <img src={offer.thumbnail} alt="" loading="lazy" onError={() => setImageFailed(true)} />
+          <img src={offer.imageUrl || offer.thumbnail || earnWaveFallbackImage} alt="" loading="lazy" onError={() => setImageFailed(true)} />
         ) : (
           <div className="offer-thumb-fallback"><Gamepad2 size={30} /><span>EarnWave</span></div>
         )}
         <div className="offer-labels">
-          {(offer.hot || offer.is_trending) && <span className={offer.hot ? "hot-label" : "hot-label trend"}>{offer.hot ? "Hot" : "Trending"}</span>}
+          <span className="hot-label trend">{offer.label || (offer.isFeatured ? "Featured" : offer.category)}</span>
         </div>
       </div>
       <div className="offer-head">
-        <div><h3>{offer.title}</h3><p>{offer.description}</p></div>
+        <div><h3>{offer.title}</h3><p>{offer.isDevelopmentOnly ? "Development-only mock card for local preview." : "Open the provider wall to see live eligibility, exact steps, and tracking rules."}</p></div>
         <div className="offer-reward-stack">
-          <span className="reward">{formatBalance({}, rewardWaveCoins)}</span>
-          <small>{money(waveCoinsToUsd(rewardWaveCoins))}</small>
+          <span className="reward">{rewardText}</span>
+          <small>{usdText || "Exact payout shown by provider"}</small>
         </div>
       </div>
       <div className="offer-meta">
         <span className="tag">{offer.category}</span>
         <span className="tag blue">{offer.provider || "Provider"}</span>
-        <span className="tag amber">{minutes} min</span>
-        <span className="tag rose">{offer.difficulty || "Standard"}</span>
+        {minutes && <span className="tag amber">{minutes} min</span>}
+        {offer.isDevelopmentOnly && <span className="tag rose">Dev only</span>}
       </div>
-      {offer.progress > 0 && (
-        <div className="offer-progress">
-          <div className="row"><span>Progress</span><strong>{offer.progress}%</strong></div>
-          <Meter value={offer.progress} />
-        </div>
-      )}
-      <button className="btn alt">{actionLabel}</button>
+      <button className="btn alt" onClick={onStart}>{actionLabel}</button>
     </div>
   );
 }
