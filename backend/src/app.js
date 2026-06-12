@@ -2,6 +2,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const csurf = require("csurf");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const session = require("express-session");
@@ -26,12 +27,30 @@ function createApp() {
   const app = express();
 
   app.set("trust proxy", 1);
-  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
+        connectSrc: ["'self'"],
+        frameSrc: ["'self'", "https://offers.cpx-research.com", "https://theoremreach.com"],
+        fontSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"]
+      }
+    },
+    crossOriginEmbedderPolicy: false
+  }));
   app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
   app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 600, standardHeaders: true, legacyHeaders: false }));
   app.use("/api/payments/stripe/webhook", express.raw({ type: "application/json" }));
   app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.use(session({
     store: redisStore(),
     secret: env.SESSION_SECRET,
@@ -45,6 +64,32 @@ function createApp() {
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
   }));
+  const csrfProtection = csurf({
+    cookie: false,
+    value: req => req.headers["x-csrf-token"] || req.headers["x-xsrf-token"]
+  });
+  app.get("/api/csrf-token", csrfProtection, (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
+  });
+  const csrfExemptPaths = [
+    "/api/auth/signup",
+    "/api/auth/login",
+    "/api/auth/password/forgot",
+    "/api/auth/password/reset",
+    "/api/auth/verify-email",
+    "/api/auth/verify-email/resend",
+    "/api/payments/stripe/webhook",
+    "/api/offerwalls/"
+  ];
+  app.use((req, res, next) => {
+    if (req.headers.authorization?.startsWith("Bearer ")) {
+      return next();
+    }
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS" || csrfExemptPaths.some(path => req.path.startsWith(path))) {
+      return next();
+    }
+    return csrfProtection(req, res, next);
+  });
 
   app.get("/api/health", (req, res) => {
     res.json({ ok: true, redis: Boolean(redisStore()), database: env.DATABASE_URL ? "postgres" : "demo", readiness: readiness() });

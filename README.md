@@ -9,10 +9,14 @@ earnwave/
   backend/              Express API, routes, services, database schema
   public/               Static public assets
   src/                  React application
+  docs/                 Architecture and project notes
+  .github/workflows/    CI checks for tests and builds
   index.html            Vite entry
   DEPLOYMENT.md         Deployment and domain setup notes
   docker-compose.yml    Optional local Postgres/Redis services
 ```
+
+For a deeper map of the app, see `docs/ARCHITECTURE.md`.
 
 ## Local Setup
 
@@ -22,6 +26,7 @@ npm --prefix backend install
 npm --prefix backend run db:check
 npm --prefix backend run migrate
 npm --prefix backend run bootstrap:admin
+npm run test:all
 npm run build
 npm start
 ```

@@ -3,10 +3,16 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "vite build",
     "test": "vitest run",
+    "test:frontend": "vitest run",
+    "test:backend": "npm --prefix backend test",
+    "test:all": "npm run test:frontend && npm run test:backend",
     "test:watch": "vitest",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "server": "npm --prefix backend run dev",

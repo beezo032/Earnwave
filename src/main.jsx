@@ -264,11 +264,38 @@ function useRoute() {
 
 function useApi() {
   const [session, setSession] = useState(() => JSON.parse(localStorage.getItem("earnwave_session") || "null"));
+  const [csrfToken, setCsrfToken] = useState(null);
+
+  async function refreshCsrfToken() {
+    try {
+      const response = await fetch("/api/csrf-token", { credentials: "include" });
+      const payload = await response.json();
+      if (response.ok && payload.csrfToken) {
+        setCsrfToken(payload.csrfToken);
+        return payload.csrfToken;
+      }
+    } catch (error) {
+      console.warn("Failed to refresh CSRF token", error);
+    }
+    return null;
+  }
+
+  useEffect(() => {
+    if (session?.token) {
+      refreshCsrfToken();
+    }
+  }, [session?.token]);
 
   async function request(path, options = {}) {
     const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
     if (session?.token) headers.Authorization = `Bearer ${session.token}`;
     headers["x-device-hash"] = await getDeviceFingerprint();
+
+    const method = (options.method || "GET").toUpperCase();
+    if (method !== "GET") {
+      const token = csrfToken || (session?.token ? await refreshCsrfToken() : null);
+      if (token) headers["x-csrf-token"] = token;
+    }
 
     const response = await fetch(`/api${path}`, { ...options, headers, credentials: "include" });
     const payload = await response.json().catch(() => ({}));

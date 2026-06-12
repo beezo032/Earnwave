@@ -4,6 +4,9 @@ function notFound(req, res) {
 
 function errorHandler(error, req, res, next) {
   console.error(error);
+  if (error.code === "EBADCSRFTOKEN") {
+    return res.status(403).json({ message: "Invalid CSRF token" });
+  }
   res.status(error.status || 500).json({
     message: error.message || "Internal server error",
     compliance: error.compliance
