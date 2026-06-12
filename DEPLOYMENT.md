@@ -71,6 +71,7 @@ In Render:
 CLIENT_URL=https://getearnwave.com
 PUBLIC_URL=https://getearnwave.com
 NODE_ENV=production
+MANUAL_PAYOUTS_ENABLED=true
 ```
 
 4. Run `npm --prefix backend run migrate` once against the production database.
@@ -85,7 +86,9 @@ Check `/api/health` after deployment. It includes a `readiness.remaining` array 
 
 ## Payout Automation
 
-All withdrawal requests enter manual review first. Admin approval triggers provider dispatch:
+All withdrawal requests enter manual review first. For launch, set `MANUAL_PAYOUTS_ENABLED=true` and send approved PayPal Business or Tremendous payouts manually. Admin approval records the reviewed payout so you can reconcile it.
+
+When automated provider credentials are added, admin approval can trigger provider dispatch:
 
 - PayPal withdrawals use PayPal Payouts.
 - Gift card withdrawals use Tremendous reward orders.
@@ -93,7 +96,7 @@ All withdrawal requests enter manual review first. Admin approval triggers provi
 
 The payout queue is available at `/api/admin/payouts`. Admins approve with `/api/admin/payouts/{id}/approve` or reject with `/api/admin/payouts/{id}/reject`.
 
-If provider credentials are missing, approving a withdrawal marks it `approved` but does not send money. Once credentials are configured, approvals can dispatch automatically.
+If provider credentials are missing and manual payout mode is enabled, approving a withdrawal marks it `approved` for manual payment. Send the PayPal or Tremendous payout outside EarnWave, then keep the admin record for reconciliation.
 
 ### Tremendous Gift Cards
 

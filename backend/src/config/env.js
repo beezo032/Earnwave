@@ -15,6 +15,7 @@ const env = {
   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
+  MANUAL_PAYOUTS_ENABLED: process.env.MANUAL_PAYOUTS_ENABLED === "true",
   PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID || "",
   PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET || "",
   PAYPAL_ENV: process.env.PAYPAL_ENV || "sandbox",

@@ -137,7 +137,7 @@ async function dispatchPayout(withdrawal) {
   if (provider === "paypal") return sendPayPalPayout(withdrawal);
   if (provider === "tremendous") return sendTremendousReward(withdrawal);
   if (provider === "circle") return sendCryptoPayout(withdrawal);
-  return { configured: false, provider: "manual", message: "No automated provider for this payout method." };
+  return { configured: Boolean(env.MANUAL_PAYOUTS_ENABLED), provider: "manual", message: env.MANUAL_PAYOUTS_ENABLED ? "Manual payout mode is enabled." : "No automated provider for this payout method." };
 }
 
 async function listPayoutQueue() {
@@ -226,6 +226,11 @@ async function approveAndDispatch({ id, moderatorId, note }) {
 
   await updateWithdrawalStatus({ id, status: "processing", moderatorId, note });
   const payout = await dispatchPayout(withdrawal);
+  if (!payout.configured && env.MANUAL_PAYOUTS_ENABLED) {
+    payout.configured = true;
+    payout.provider = "manual";
+    payout.message = "Manual payout mode is enabled.";
+  }
 
   if (!payout.configured) {
     const updated = await updateWithdrawalStatus({
@@ -240,13 +245,17 @@ async function approveAndDispatch({ id, moderatorId, note }) {
 
   const updated = await updateWithdrawalStatus({
     id,
-    status: "paid",
+    status: payout.provider === "manual" ? "approved" : "paid",
     moderatorId,
-    note,
+    note: payout.provider === "manual" ? "Approved for manual payout. Send funds in PayPal Business or Tremendous, then keep this record for reconciliation." : note,
     provider: payout.provider,
     reference: payout.reference
   });
-  return { withdrawal: updated, payout, message: "Payout dispatched." };
+  return {
+    withdrawal: updated,
+    payout,
+    message: payout.provider === "manual" ? "Approved for manual payout. Send funds outside EarnWave and reconcile this approval." : "Payout dispatched."
+  };
 }
 
 async function rejectPayout({ id, moderatorId, note }) {

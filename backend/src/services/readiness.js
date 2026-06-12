@@ -3,6 +3,7 @@ const { publicProviders } = require("./offerwalls");
 
 function payoutReadiness() {
   return {
+    manual: Boolean(env.MANUAL_PAYOUTS_ENABLED),
     paypal: Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET),
     tremendous: Boolean(env.TREMENDOUS_API_KEY && env.TREMENDOUS_FUNDING_SOURCE_ID && env.TREMENDOUS_PRODUCT_ID),
     crypto: Boolean(env.CIRCLE_API_KEY && env.CIRCLE_WALLET_ID)
