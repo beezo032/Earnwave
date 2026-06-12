@@ -14,7 +14,7 @@ EarnWave is now structured for a cloud deployment with:
 If PostgreSQL is already installed locally, create a database/user and set:
 
 ```bash
-DATABASE_URL=postgres://earnwave:earnwave_dev_password@localhost:5432/earnwave
+DATABASE_URL=postgres://user:password@localhost:5432/earnwave
 ```
 
 Then run:
@@ -33,8 +33,8 @@ npm start
 If PostgreSQL is not installed, install PostgreSQL 17, then create:
 
 - Database: `earnwave`
-- User: `earnwave`
-- Password: `earnwave_dev_password`
+- User: your local database user
+- Password: your local database password
 
 Hosted Postgres works too. Paste its connection string into `backend/.env` as `DATABASE_URL`, then run the same `db:check` and `migrate` commands.
 
