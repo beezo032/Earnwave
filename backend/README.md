@@ -47,15 +47,10 @@ Tremendous requires `TREMENDOUS_API_KEY`, `TREMENDOUS_FUNDING_SOURCE_ID`, and `T
 
 ## Offerwall Providers
 
-The current provider adapter list is:
+The active production-facing provider list is:
 
 - CPX Research
 - TheoremReach
-- AdGate
-- BitLabs
-- Lootably
-- TimeWall
-- Ayet Studios
 
 Each provider has:
 
@@ -64,4 +59,10 @@ Each provider has:
 - callback normalization into `{ userId, transactionId, offerId, amount, status }`
 - signature verification when the provider secret is configured
 
-Production crediting should only happen after the provider callback signature verifies and duplicate transaction checks are persisted in PostgreSQL.
+CPX Research postbacks should be configured with:
+
+```text
+https://getearnwave.com/api/offerwalls/cpx/callback?user_id={user_id}&trans_id={trans_id}&amount_local={amount_local}&amount_usd={amount_usd}&status={status}&postback_secret=YOUR_CPX_POSTBACK_SECRET
+```
+
+Set `CPX_POSTBACK_SECRET` in the runtime environment to the same value used in the URL. Production crediting should only happen after the provider callback verifies and duplicate transaction checks are persisted in PostgreSQL.

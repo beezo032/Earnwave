@@ -193,6 +193,48 @@ test("unsigned CPX callback is rejected and does not credit balance", async () =
   }
 });
 
+test("CPX callback accepts configured postback secret and credits user split", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.CPX_POSTBACK_SECRET = "test-postback-secret";
+  env.CPX_USER_REWARD_PERCENT = 70;
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Secret", email: "cpx-secret@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  const startingBalance = user.balance_wavecoins;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const params = new URLSearchParams({
+      user_id: user.id,
+      trans_id: "txn-cpx-secret",
+      amount_local: "100",
+      amount_usd: "1.00",
+      status: "1",
+      postback_secret: "test-postback-secret"
+    }).toString();
+    const response = await fetch(`${baseUrl}/api/offerwalls/cpx/callback?${params}`);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.verified, true);
+    assert.equal(payload.event.userId, user.id);
+    assert.equal(payload.event.transactionId, "txn-cpx-secret");
+    assert.equal(user.balance_wavecoins - startingBalance, 70);
+    assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 100);
+    assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 70);
+    assert.equal(store.ledgerEntries[0].platform_margin_usd_cents, 30);
+  } finally {
+    env.CPX_POSTBACK_SECRET = "";
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
 test("TheoremReach callback route verifies and records callback events", async () => {
   env.DATABASE_URL = "";
   env.THEOREM_SECRET_KEY = "theorem-secret";

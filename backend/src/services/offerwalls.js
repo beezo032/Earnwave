@@ -99,10 +99,16 @@ const providerAdapters = {
     },
     verify(req) {
       const payload = payloadFrom(req);
+      const postbackSecret = payload.postback_secret || payload.secret;
+      if (env.CPX_POSTBACK_SECRET && postbackSecret === env.CPX_POSTBACK_SECRET) {
+        return { verified: true, method: "postback_secret" };
+      }
       if (!env.CPX_SECURE_HASH_SECRET) return { verified: false, reason: "CPX_SECURE_HASH_SECRET not set" };
       const received = payload.secure_hash || payload.hash;
       const expected = sha256(sortedQuery(payload) + env.CPX_SECURE_HASH_SECRET);
-      return { verified: received === expected, expected };
+      const userId = payload.ext_user_id || payload.user_id || payload.subid_2;
+      const entryHash = userId ? md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`) : "";
+      return { verified: received === expected || received === entryHash, expected };
     },
     normalize(payload) {
       return {

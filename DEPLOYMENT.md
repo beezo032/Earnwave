@@ -117,20 +117,43 @@ EarnWave sends Tremendous orders only after an admin manually approves a withdra
 
 Stripe uses Checkout Sessions because Stripe recommends Checkout Sessions for most built-in checkout integrations.
 PayPal uses server-side Orders v2 calls so the browser never receives API credentials.
-Offerwalls require real partner accounts and callback signatures before production crediting should be enabled.
+Offerwalls require real partner accounts and verified callbacks before production crediting should be enabled. CPX and TheoremReach pay EarnWave as the publisher; EarnWave credits the user only after the provider calls the backend callback endpoint.
 
 ## Offerwall Callback URLs
 
-Configure these URLs in each publisher dashboard after deployment:
+### CPX Research
 
-- CPX Research: `https://getearnwave.com/api/offerwalls/cpx/callback`
-- AdGate: `https://getearnwave.com/api/offerwalls/adgate/callback`
-- BitLabs: `https://getearnwave.com/api/offerwalls/bitlabs/callback`
-- Lootably: `https://getearnwave.com/api/offerwalls/lootably/callback`
-- TimeWall: `https://getearnwave.com/api/offerwalls/timewall/callback`
-- Ayet Studios: `https://getearnwave.com/api/offerwalls/ayet/callback`
+In CPX Research, open **Postback Settings** and use this URL:
 
-Most providers send callbacks as GET requests with query parameters; the backend accepts both GET and POST. Lootably expects a plain `1` response body for successful postbacks, which this backend returns.
+```text
+https://getearnwave.com/api/offerwalls/cpx/callback?user_id={user_id}&trans_id={trans_id}&amount_local={amount_local}&amount_usd={amount_usd}&status={status}&postback_secret=YOUR_CPX_POSTBACK_SECRET
+```
+
+Set this Render environment variable to the same random value:
+
+```text
+CPX_POSTBACK_SECRET=YOUR_CPX_POSTBACK_SECRET
+```
+
+Required CPX fields:
+
+- `user_id={user_id}` identifies the EarnWave user.
+- `trans_id={trans_id}` prevents duplicate credits.
+- `amount_local={amount_local}` and `amount_usd={amount_usd}` tell EarnWave how many WaveCoins to calculate.
+- `status={status}` lets EarnWave credit completed transactions and reverse cancelled transactions.
+- `postback_secret=...` lets EarnWave verify the callback without disabling fraud protection.
+
+Do not set `ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS=true` in production.
+
+### TheoremReach
+
+Use the deployed callback endpoint:
+
+```text
+https://getearnwave.com/api/offerwalls/theorem/callback
+```
+
+TheoremReach callbacks are verified with `THEOREM_SECRET_KEY`.
 
 The frontend opens each provider through `/api/offerwalls/{provider}/launch`, which builds the provider URL with the logged-in EarnWave user ID.
 
