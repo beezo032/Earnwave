@@ -58,8 +58,44 @@ const providerAdapters = {
         subid_1: "earnwave",
         subid_2: userId
       });
-      params.set("secure_hash", md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`));
-      return `https://offers.cpx-research.com/index.php?${params.toString()}`;
+      const secureHash = md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`);
+      params.set("secure_hash", secureHash);
+      return {
+        url: `https://offers.cpx-research.com/index.php?${params.toString()}`,
+        integration: "cpx_script",
+        scriptSrc: "https://cdn.cpx-research.com/assets/js/script_tag_v2.0.js",
+        config: {
+          general_config: {
+            app_id: Number(env.CPX_APP_ID),
+            ext_user_id: String(userId),
+            email: email || "",
+            username: username || String(userId),
+            secure_hash: secureHash,
+            subid_1: "earnwave",
+            subid_2: String(userId)
+          },
+          style_config: {
+            text_color: "#f7fbff",
+            survey_box: {
+              topbar_background_color: "#32e6a1",
+              box_background_color: "#ffffff",
+              rounded_borders: true,
+              stars_filled: "#32e6a1"
+            }
+          },
+          script_config: [
+            {
+              div_id: "fullscreen",
+              theme_style: 1,
+              order_by: 2,
+              limit_surveys: 7
+            }
+          ],
+          debug: false,
+          useIFrame: true,
+          iFramePosition: 1
+        }
+      };
     },
     verify(req) {
       const payload = payloadFrom(req);
@@ -283,7 +319,9 @@ function buildLaunchUrl(provider, context) {
       message: `${adapter.name} is not configured. Add its env vars first.`
     };
   }
-  return { configured: true, provider, name: adapter.name, url: adapter.launch(context) };
+  const launch = adapter.launch(context);
+  if (typeof launch === "string") return { configured: true, provider, name: adapter.name, url: launch };
+  return { configured: true, provider, name: adapter.name, ...launch };
 }
 
 function verifyCallbackSignature(provider, req) {

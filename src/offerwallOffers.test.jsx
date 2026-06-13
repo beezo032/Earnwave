@@ -26,7 +26,20 @@ function mockFetch() {
       };
     }
     if (String(url).includes("/api/offerwalls/cpx/launch")) {
-      return { ok: true, json: async () => ({ configured: true, name: "CPX Research", url: "https://offers.cpx-research.com/test" }) };
+      return {
+        ok: true,
+        json: async () => ({
+          configured: true,
+          name: "CPX Research",
+          url: "https://offers.cpx-research.com/test",
+          integration: "cpx_script",
+          scriptSrc: "https://cdn.cpx-research.com/assets/js/script_tag_v2.0.js",
+          config: {
+            general_config: { app_id: 33553, ext_user_id: "user_123", secure_hash: "hash" },
+            script_config: [{ div_id: "fullscreen", theme_style: 1, order_by: 2, limit_surveys: 7 }]
+          }
+        })
+      };
     }
     if (String(url).includes("/api/offerwalls/theorem/launch")) {
       return { ok: true, json: async () => ({ configured: true, name: "TheoremReach", url: "https://theoremreach.com/test" }) };
@@ -78,6 +91,7 @@ describe("offerwall page", () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/offerwalls/cpx/launch"), expect.any(Object)));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByTitle("CPX Research surveys")).toHaveAttribute("src", "https://offers.cpx-research.com/test");
+    expect(screen.getByText("Loading CPX Research surveys")).toBeInTheDocument();
+    expect(document.getElementById("fullscreen")).toBeInTheDocument();
   });
 });

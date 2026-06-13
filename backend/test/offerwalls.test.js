@@ -12,7 +12,7 @@ function resetDemoStore() {
   store.ledgerEntries.length = 0;
 }
 
-test("CPX launch URL includes required user parameters and md5 secure hash", async () => {
+test("CPX launch returns script widget config with required user parameters and md5 secure hash", async () => {
   env.DATABASE_URL = "";
   env.CPX_APP_ID = "33553";
   env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
@@ -36,8 +36,11 @@ test("CPX launch URL includes required user parameters and md5 secure hash", asy
     assert.equal(response.status, 200);
     const payload = await response.json();
     const url = new URL(payload.url);
+    const expectedHash = crypto.createHash("md5").update(`${user.id}-test-cpx-secret`).digest("hex");
 
     assert.equal(payload.configured, true);
+    assert.equal(payload.integration, "cpx_script");
+    assert.equal(payload.scriptSrc, "https://cdn.cpx-research.com/assets/js/script_tag_v2.0.js");
     assert.equal(url.origin, "https://offers.cpx-research.com");
     assert.equal(url.pathname, "/index.php");
     assert.equal(url.searchParams.get("app_id"), "33553");
@@ -46,10 +49,13 @@ test("CPX launch URL includes required user parameters and md5 secure hash", asy
     assert.equal(url.searchParams.get("email"), "cpx@example.com");
     assert.equal(url.searchParams.get("subid_1"), "earnwave");
     assert.equal(url.searchParams.get("subid_2"), user.id);
-    assert.equal(
-      url.searchParams.get("secure_hash"),
-      crypto.createHash("md5").update(`${user.id}-test-cpx-secret`).digest("hex")
-    );
+    assert.equal(url.searchParams.get("secure_hash"), expectedHash);
+    assert.equal(payload.config.general_config.app_id, 33553);
+    assert.equal(payload.config.general_config.ext_user_id, user.id);
+    assert.equal(payload.config.general_config.username, "cpxtester");
+    assert.equal(payload.config.general_config.email, "cpx@example.com");
+    assert.equal(payload.config.general_config.secure_hash, expectedHash);
+    assert.deepEqual(payload.config.script_config, [{ div_id: "fullscreen", theme_style: 1, order_by: 2, limit_surveys: 7 }]);
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

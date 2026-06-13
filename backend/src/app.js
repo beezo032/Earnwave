@@ -31,11 +31,11 @@ function createApp() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://cdn.cpx-research.com"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
-        connectSrc: ["'self'"],
-        frameSrc: ["'self'", "https://offers.cpx-research.com", "https://theoremreach.com"],
+        imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://cdn.cpx-research.com", "https://offers.cpx-research.com"],
+        connectSrc: ["'self'", "https://live-api.cpx-research.com", "https://offers.cpx-research.com", "https://wall.cpx-research.com"],
+        frameSrc: ["'self'", "https://offers.cpx-research.com", "https://wall.cpx-research.com", "https://click.cpx-research.com", "https://theoremreach.com"],
         fontSrc: ["'self'", "data:"],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],

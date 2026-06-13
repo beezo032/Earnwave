@@ -563,7 +563,7 @@ function OffersPage({ api }) {
         setProviderNotice(launch.message);
         return;
       }
-      setModal({ provider, name: providers[provider]?.name || offer?.provider || "Survey provider", url: launch.url });
+      setModal({ provider, name: providers[provider]?.name || offer?.provider || "Survey provider", url: launch.url, integration: launch.integration, scriptSrc: launch.scriptSrc, config: launch.config });
     } catch (error) {
       setProviderNotice("Log in with a verified email before starting surveys.");
     }
@@ -636,17 +636,7 @@ function OffersPage({ api }) {
           </div>
         )}
       </div>
-      {modal && (
-        <div className="survey-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="survey-modal">
-            <div className="survey-modal-head">
-              <div><span>Offer wall</span><strong>{modal.name}</strong></div>
-              <button className="btn alt" onClick={closeModal}>Close</button>
-            </div>
-            <iframe title={`${modal.name} surveys`} src={modal.url} loading="lazy" />
-          </div>
-        </div>
-      )}
+      {modal && <SurveyModal modal={modal} onClose={closeModal} />}
     </main>
   );
 }
@@ -676,7 +666,7 @@ export function SurveysPage({ api }) {
         return;
       }
       const providerName = providers[provider]?.name || surveyProviders.find(item => item.key === provider)?.name || "Survey provider";
-      setModal({ provider, name: providerName, url: launch.url });
+      setModal({ provider, name: providerName, url: launch.url, integration: launch.integration, scriptSrc: launch.scriptSrc, config: launch.config });
     } catch (error) {
       setNotice("Log in with a verified email before opening survey walls.");
     }
@@ -804,8 +794,60 @@ function SurveyModal({ modal, onClose }) {
           </div>
           <button className="icon-link" type="button" onClick={onClose}>Close</button>
         </div>
-        <iframe title={`${modal.name} surveys`} src={modal.url} loading="lazy" />
+        {modal.integration === "cpx_script"
+          ? <CpxFullscreenWidget modal={modal} />
+          : <iframe title={`${modal.name} surveys`} src={modal.url} loading="lazy" />}
       </div>
+    </div>
+  );
+}
+
+function CpxFullscreenWidget({ modal }) {
+  useEffect(() => {
+    if (!modal?.config || !modal?.scriptSrc) return undefined;
+
+    const scriptId = "earnwave-cpx-script-tag";
+    document.getElementById(scriptId)?.remove();
+    window.config = {
+      ...modal.config,
+      functions: {
+        no_surveys_available: () => {
+          window.dispatchEvent(new CustomEvent("earnwave:cpx_no_surveys_available"));
+        },
+        count_new_surveys: countsurveys => {
+          window.dispatchEvent(new CustomEvent("earnwave:cpx_count_new_surveys", { detail: { count: countsurveys } }));
+        },
+        get_all_surveys: surveys => {
+          window.dispatchEvent(new CustomEvent("earnwave:cpx_get_all_surveys", { detail: { surveys } }));
+        },
+        get_transaction: transactions => {
+          window.dispatchEvent(new CustomEvent("earnwave:cpx_get_transaction", { detail: { transactions } }));
+        }
+      }
+    };
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.type = "text/javascript";
+    script.src = modal.scriptSrc;
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.getElementById(scriptId)?.remove();
+      if (window.config?.general_config?.ext_user_id === modal.config?.general_config?.ext_user_id) {
+        delete window.config;
+      }
+    };
+  }, [modal]);
+
+  return (
+    <div className="cpx-fullscreen-shell">
+      <div className="cpx-loading-copy">
+        <strong>Loading CPX Research surveys</strong>
+        <span>Matched surveys will appear here when available.</span>
+      </div>
+      <div style={{ maxWidth: 950, margin: "auto" }} id="fullscreen" />
     </div>
   );
 }

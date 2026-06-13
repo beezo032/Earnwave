@@ -24,7 +24,16 @@ function mockApi() {
           }
         };
       }
-      if (path === "/offerwalls/cpx/launch") return { configured: true, url: "https://survey.example/cpx?user_id=user_123" };
+      if (path === "/offerwalls/cpx/launch") return {
+        configured: true,
+        url: "https://survey.example/cpx?user_id=user_123",
+        integration: "cpx_script",
+        scriptSrc: "https://cdn.cpx-research.com/assets/js/script_tag_v2.0.js",
+        config: {
+          general_config: { app_id: 33553, ext_user_id: "user_123", secure_hash: "hash" },
+          script_config: [{ div_id: "fullscreen", theme_style: 1, order_by: 2, limit_surveys: 7 }]
+        }
+      };
       if (path === "/offerwalls/theorem/launch") return { configured: true, url: "https://survey.example/theorem?user_id=user_123" };
       return {};
     })
@@ -86,11 +95,14 @@ describe("SurveysPage", () => {
     expect(api.request).toHaveBeenCalledWith("/offerwalls/cpx/launch");
     expect(opened).toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "CPX Research survey wall" })).toBeInTheDocument();
-    expect(screen.getByTitle("CPX Research surveys")).toHaveAttribute("src", expect.stringContaining("user_id=user_123"));
+    expect(screen.getByText("Loading CPX Research surveys")).toBeInTheDocument();
+    expect(document.getElementById("fullscreen")).toBeInTheDocument();
+    expect(window.config.general_config.ext_user_id).toBe("user_123");
 
     await user.click(screen.getByRole("button", { name: "Close" }));
 
     expect(closed).toHaveBeenCalled();
+    expect(window.config).toBeUndefined();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     window.removeEventListener("earnwave:survey_provider_opened", opened);
     window.removeEventListener("earnwave:survey_modal_closed", closed);
