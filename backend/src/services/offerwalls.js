@@ -411,7 +411,41 @@ async function recordOfferwallEvent(event, signature) {
     created_at: new Date().toISOString()
   };
   if (!signature.verified && !env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS) {
-    return { ...row, rejected: true, reason: signature.reason || "Callback signature verification failed" };
+    const rejectedRow = {
+      ...row,
+      provider_event_id: `${eventKey}:rejected:${crypto.randomUUID()}`,
+      event_type: `rejected:${event.status || "unknown"}`,
+      payload: {
+        ...event.raw,
+        _earnwave: {
+          rejected: true,
+          reason: signature.reason || "Callback signature verification failed",
+          normalized_event: {
+            provider: event.provider,
+            userId: event.userId,
+            transactionId: event.transactionId,
+            offerId: event.offerId,
+            amount: event.amount,
+            amount_wavecoins: event.amount_wavecoins,
+            status: event.status
+          }
+        }
+      },
+      rejected: true,
+      reason: signature.reason || "Callback signature verification failed"
+    };
+
+    if (!env.DATABASE_URL) {
+      paymentEvents.unshift(rejectedRow);
+      return rejectedRow;
+    }
+
+    await query(
+      `INSERT INTO payment_events (provider, provider_event_id, event_type, payload)
+       VALUES ($1, $2, $3, $4)`,
+      [rejectedRow.provider, rejectedRow.provider_event_id, rejectedRow.event_type, JSON.stringify(rejectedRow.payload)]
+    );
+    return rejectedRow;
   }
 
   if (!env.DATABASE_URL) {
@@ -435,8 +469,40 @@ async function recordOfferwallEvent(event, signature) {
   return result.rows[0];
 }
 
+function serializeCallbackEvent(row) {
+  const payload = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
+  const rejected = String(row.event_type || "").startsWith("rejected:");
+  return {
+    id: row.id,
+    provider: row.provider,
+    provider_event_id: row.provider_event_id,
+    event_type: row.event_type,
+    verified: rejected ? false : undefined,
+    rejected,
+    reason: payload?._earnwave?.reason,
+    normalized_event: payload?._earnwave?.normalized_event,
+    payload,
+    created_at: row.created_at
+  };
+}
+
+async function listOfferwallCallbackEvents({ limit = 50 } = {}) {
+  if (!env.DATABASE_URL) {
+    return paymentEvents.slice(0, limit).map(serializeCallbackEvent);
+  }
+
+  const result = await query(
+    `SELECT * FROM payment_events
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return result.rows.map(serializeCallbackEvent);
+}
+
 module.exports = {
   buildLaunchUrl,
+  listOfferwallCallbackEvents,
   normalizeCallback,
   providerAdapters,
   publicProviders,

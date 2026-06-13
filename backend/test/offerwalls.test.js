@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const { createApp } = require("../src/app");
 const { createToken } = require("../src/middleware/auth");
 const { env } = require("../src/config/env");
+const { listOfferwallCallbackEvents } = require("../src/services/offerwalls");
 const store = require("../src/db/demoStore");
 
 function resetDemoStore() {
@@ -186,8 +187,43 @@ test("unsigned CPX callback is rejected and does not credit balance", async () =
     assert.equal(response.status, 403);
     assert.equal(payload.verified, false);
     assert.equal(user.balance_wavecoins, startingBalance);
-    assert.equal(store.paymentEvents.length, 0);
+    assert.equal(store.paymentEvents.length, 1);
+    assert.equal(store.paymentEvents[0].rejected, true);
     assert.equal(store.ledgerEntries.length, 0);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("admin callback log includes rejected CPX callback diagnostics", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "Callback Diagnostics", email: "callback-diagnostics@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const params = new URLSearchParams({
+      user_id: user.id,
+      trans_id: "txn-cpx-rejected-log",
+      amount_local: "100",
+      amount_usd: "1.00",
+      status: "1"
+    }).toString();
+    await fetch(`${baseUrl}/api/offerwalls/cpx/callback?${params}`);
+    const callbacks = await listOfferwallCallbackEvents({ limit: 5 });
+
+    assert.equal(callbacks.length, 1);
+    assert.equal(callbacks[0].provider, "cpx");
+    assert.equal(callbacks[0].rejected, true);
+    assert.equal(callbacks[0].normalized_event.userId, user.id);
+    assert.equal(callbacks[0].normalized_event.transactionId, "txn-cpx-rejected-log");
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
