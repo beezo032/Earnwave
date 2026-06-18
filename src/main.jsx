@@ -59,8 +59,8 @@ import {
 import "./styles.css";
 
 const demoOffers = [
-  { id: 1, title: "CPX Research Survey Wall", category: "Surveys", reward: 4.25, description: "Answer matching CPX surveys and earn when your responses qualify.", difficulty: "Easy", time: "5-18 min", provider: "CPX Research" },
-  { id: 2, title: "TheoremReach Survey Wall", category: "Surveys", reward: 5.5, description: "Open TheoremReach surveys with verified callback tracking.", difficulty: "Easy", time: "6-20 min", provider: "TheoremReach" },
+  { id: 1, title: "CPX Research Survey Wall", category: "Surveys", reward: 2.98, description: "Answer matching CPX surveys and earn the displayed user reward when your responses qualify.", difficulty: "Easy", time: "5-18 min", provider: "CPX Research" },
+  { id: 2, title: "TheoremReach Survey Wall", category: "Surveys", reward: 3.85, description: "Open TheoremReach surveys with verified callback tracking and user-side reward estimates.", difficulty: "Easy", time: "6-20 min", provider: "TheoremReach" },
   { id: 5, title: "Daily Check-in", category: "Bonus", reward: .75, description: "Claim today's streak reward and keep your bonus multiplier alive.", difficulty: "Easy", time: "1 min", provider: "EarnWave" },
   { id: 6, title: "Survey Streak Bonus", category: "Bonus", reward: 1.25, description: "Keep your survey streak active for better daily momentum.", difficulty: "Easy", time: "1 min", provider: "EarnWave" }
 ];
@@ -117,8 +117,8 @@ const surveyProviders = [
     key: "cpx",
     name: "CPX Research",
     description: "High-volume survey inventory with profile matching, global routing, and fast research tasks.",
-    rewardRange: "40-650 WaveCoins",
-    usdRange: "$0.40-$6.50",
+    rewardRange: "28-455 WaveCoins",
+    usdRange: "$0.28-$4.55",
     averageTime: "5-18 min",
     gradient: "linear-gradient(135deg, rgba(50,230,161,.22), rgba(69,200,255,.14))"
   },
@@ -126,8 +126,8 @@ const surveyProviders = [
     key: "theorem",
     name: "TheoremReach",
     description: "Trusted survey wall built for qualified responses, clear completion flow, and reliable callbacks.",
-    rewardRange: "50-600 WaveCoins",
-    usdRange: "$0.50-$6.00",
+    rewardRange: "35-420 WaveCoins",
+    usdRange: "$0.35-$4.20",
     averageTime: "6-20 min",
     gradient: "linear-gradient(135deg, rgba(69,200,255,.22), rgba(255,107,138,.13))"
   }
@@ -313,7 +313,15 @@ function Shell({ route, navigate, api, children }) {
             ))}
             {isAuthed ? (
               <>
-                <span className="topbar-balance nav-balance">{formatBalance(api.session?.user || {}, api.session?.user?.balance_wavecoins ?? dollarsToWaveCoins(api.session?.user?.balance || 0))}</span>
+                <button
+                  className="topbar-balance nav-balance"
+                  type="button"
+                  onClick={() => navigate("/wallet")}
+                  aria-label="Open wallet balance"
+                  title="Open wallet"
+                >
+                  {formatBalance(api.session?.user || {}, api.session?.user?.balance_wavecoins ?? dollarsToWaveCoins(api.session?.user?.balance || 0))}
+                </button>
                 <TopNotifications api={api} navigate={navigate} />
                 <button className="icon-link" onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
               </>
@@ -747,7 +755,7 @@ function SurveyProviderCard({ provider, enabled, onOpen }) {
           <span className={enabled ? "pill" : "pill blue"}>{enabled ? "Live" : "Preview"}</span>
         </div>
         <div className="survey-provider-stats">
-          <span><Gift size={15} /> {provider.rewardRange}</span>
+          <span><Gift size={15} /> User reward: {provider.rewardRange}</span>
           <span><DollarSign size={15} /> {provider.usdRange}</span>
           <span><Clock size={15} /> Avg. {provider.averageTime}</span>
           <span><ShieldCheck size={15} /> Trusted provider</span>

@@ -393,6 +393,8 @@ input:focus, select:focus, textarea:focus {
 .dashboard-topbar strong { color: var(--soft); }
 .topbar-actions { position: relative; display: flex; align-items: center; gap: 10px; }
 .topbar-balance { display: inline-flex; align-items: center; min-height: 38px; padding: 0 12px; border: 1px solid rgba(50,230,161,.24); border-radius: 999px; background: rgba(50,230,161,.08); color: var(--mint) !important; white-space: nowrap; }
+button.topbar-balance { cursor: pointer; font-weight: 950; }
+button.topbar-balance:hover { border-color: rgba(50,230,161,.5); background: rgba(50,230,161,.14); transform: translateY(-1px); }
 .top-notifications { position: relative; }
 .top-bell { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(69, 200, 255, .34); border-radius: 999px; background: rgba(69, 200, 255, .10); color: var(--mint-2); cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
 .top-bell:hover { transform: translateY(-1px); border-color: rgba(50,230,161,.56); background: rgba(50,230,161,.13); }
