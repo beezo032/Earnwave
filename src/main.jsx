@@ -811,21 +811,30 @@ function SurveyModal({ modal, onClose }) {
 }
 
 function CpxFullscreenWidget({ modal }) {
+  const [status, setStatus] = useState("loading");
+  const [useFallback, setUseFallback] = useState(false);
+
   useEffect(() => {
     if (!modal?.config || !modal?.scriptSrc) return undefined;
 
     const scriptId = "earnwave-cpx-script-tag";
+    const containerId = modal.config?.script_config?.[0]?.div_id || "fullscreen";
+    setStatus("loading");
+    setUseFallback(false);
     document.getElementById(scriptId)?.remove();
     window.config = {
       ...modal.config,
       functions: {
         no_surveys_available: () => {
+          setStatus("no_surveys");
           window.dispatchEvent(new CustomEvent("earnwave:cpx_no_surveys_available"));
         },
         count_new_surveys: countsurveys => {
+          setStatus(Number(countsurveys || 0) > 0 ? "ready" : "no_surveys");
           window.dispatchEvent(new CustomEvent("earnwave:cpx_count_new_surveys", { detail: { count: countsurveys } }));
         },
         get_all_surveys: surveys => {
+          setStatus(Array.isArray(surveys) && surveys.length > 0 ? "ready" : "no_surveys");
           window.dispatchEvent(new CustomEvent("earnwave:cpx_get_all_surveys", { detail: { surveys } }));
         },
         get_transaction: transactions => {
@@ -839,9 +848,25 @@ function CpxFullscreenWidget({ modal }) {
     script.type = "text/javascript";
     script.src = modal.scriptSrc;
     script.async = true;
+    script.onload = () => {
+      window.setTimeout(() => {
+        const container = document.getElementById(containerId);
+        if (!container?.children?.length) setUseFallback(true);
+      }, 3500);
+    };
+    script.onerror = () => {
+      setStatus("error");
+      setUseFallback(true);
+    };
     document.body.appendChild(script);
 
+    const fallbackTimer = window.setTimeout(() => {
+      const container = document.getElementById(containerId);
+      if (!container?.children?.length) setUseFallback(true);
+    }, 6000);
+
     return () => {
+      window.clearTimeout(fallbackTimer);
       document.getElementById(scriptId)?.remove();
       if (window.config?.general_config?.ext_user_id === modal.config?.general_config?.ext_user_id) {
         delete window.config;
@@ -852,10 +877,18 @@ function CpxFullscreenWidget({ modal }) {
   return (
     <div className="cpx-fullscreen-shell">
       <div className="cpx-loading-copy">
-        <strong>Loading CPX Research surveys</strong>
-        <span>Matched surveys will appear here when available.</span>
+        <strong>{useFallback ? "Opening CPX Research surveys" : "Loading CPX Research surveys"}</strong>
+        <span>
+          {status === "no_surveys"
+            ? "CPX says there may be no matched surveys for this profile right now."
+            : useFallback
+              ? "Using the direct CPX wall because the script widget did not render."
+              : "Matched surveys will appear here when available."}
+        </span>
       </div>
-      <div style={{ maxWidth: 950, margin: "auto" }} id="fullscreen" />
+      {useFallback
+        ? <iframe title="CPX Research surveys" src={modal.url} loading="lazy" />
+        : <div style={{ maxWidth: 950, margin: "auto" }} id="fullscreen" />}
     </div>
   );
 }

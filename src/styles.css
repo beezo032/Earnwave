@@ -283,7 +283,7 @@ section { padding: 58px 0; }
 .survey-modal-head span { display: block; color: var(--muted); font-size: .8rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
 .survey-modal-head strong { display: block; color: var(--soft); }
 .survey-modal iframe { width: 100%; height: 100%; border: 0; background: white; }
-.cpx-fullscreen-shell { min-height: 100%; overflow: auto; padding: 22px; background: radial-gradient(circle at 20% 0%, rgba(50,230,161,.12), transparent 24rem), #071015; }
+.cpx-fullscreen-shell { min-height: 100%; display: grid; grid-template-rows: auto 1fr; overflow: auto; padding: 22px; background: radial-gradient(circle at 20% 0%, rgba(50,230,161,.12), transparent 24rem), #071015; }
 .cpx-loading-copy { width: min(950px, 100%); margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); }
 .cpx-loading-copy strong { color: var(--soft); }
 #fullscreen { min-height: 620px; border-radius: 12px; overflow: hidden; }
