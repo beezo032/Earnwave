@@ -1694,6 +1694,7 @@ function AdminPage({ navigate, api }) {
     { id: "demo-pay-2", user_name: "GiftAce", method: "Gift Card", amount: 10, status: "review", risk_score: 18, destination_value: "gift@example.com" },
     { id: "demo-pay-3", user_name: "ChainUser", method: "Crypto", amount: 42, status: "held", risk_score: 61, destination_value: "0x..." }
   ]);
+  const [users, setUsers] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [emails, setEmails] = useState([]);
   const [complianceUsers, setComplianceUsers] = useState([]);
@@ -1709,6 +1710,7 @@ function AdminPage({ navigate, api }) {
   useEffect(() => {
     api.request("/admin/moderation").then(setModeration).catch(() => {});
     api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+    api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
     api.request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
     api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
@@ -1759,6 +1761,19 @@ function AdminPage({ navigate, api }) {
         <Stat label="Avg Review" value="19h" />
       </div>
       <div className="workspace-grid">
+        <div className="card payout-queue-card">
+          <SectionTitle title="Users and tracking IDs" copy="Use these IDs to confirm provider callbacks are mapped to real EarnWave accounts." />
+          <DataTable rows={(users.length ? users : [
+            { id: "none", username: "No test users found", email: "Create a normal user account first", email_verified: false, balance_wavecoins: 0, created_at: "" }
+          ]).map(item => [
+            item.id,
+            item.username || item.name || "member",
+            item.email,
+            item.email_verified ? "Verified" : "Unverified",
+            `${Number(item.balance_wavecoins || 0).toLocaleString()} WaveCoins`,
+            String(item.created_at || "").slice(0, 10) || item.status || "active"
+          ])} />
+        </div>
         <div className="card">
           <SectionTitle title="Moderation queue" copy="Admin endpoints support approve, reject, hold, ban, and note actions." />
           <DataTable rows={(moderation.queue.length ? moderation.queue : [

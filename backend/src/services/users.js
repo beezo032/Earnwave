@@ -116,4 +116,24 @@ async function findUserByEmail(email) {
   return result.rows[0] ? serializeUser(result.rows[0]) : null;
 }
 
-module.exports = { createUser, findUserByEmail, normalizeUsername, verifyUser, findUserById, serializeUser };
+async function listUsersForAdmin({ limit = 100 } = {}) {
+  if (!env.DATABASE_URL) {
+    return [...users.values()]
+      .slice()
+      .sort((a, b) => Number(b.id) - Number(a.id))
+      .slice(0, limit)
+      .map(serializeUser);
+  }
+
+  const result = await query(
+    `SELECT id, name, username, email, role, status, email_verified, balance_wavecoins,
+            total_earned_wavecoins, fraud_score, referral_code, created_at
+     FROM users
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return result.rows.map(serializeUser);
+}
+
+module.exports = { createUser, findUserByEmail, listUsersForAdmin, normalizeUsername, verifyUser, findUserById, serializeUser };
