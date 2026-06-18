@@ -950,15 +950,6 @@ function Dashboard({ api, navigate }) {
       <OnboardingChecklist user={user} navigate={navigate} />
       <EarnDashboardCards loading={earnLoading} navigate={navigate} />
       <div className="dashboard-hero-card">
-        <div className="balance-card">
-          <p>Available Balance</p>
-          <strong>{formatBalance(user, userAmountWaveCoins(user, user.balance))}</strong>
-          <span>Every withdrawal is reviewed before payout automation runs.</span>
-          <div className="actions">
-            <button className="btn" onClick={() => { trackActivity("clicks"); navigate("/surveys"); }}>Find Surveys</button>
-            <button className="btn alt" onClick={() => { trackActivity("clicks"); navigate("/wallet"); }}>Withdraw</button>
-          </div>
-        </div>
         <div className="analytics-card">
           <div className="mini-chart-head">
             <div><p>7-day earning trend</p><strong>{formatBalance(user, userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins"))}</strong></div>
@@ -979,12 +970,6 @@ function Dashboard({ api, navigate }) {
               <Area type="monotone" dataKey="revenue" stroke="#32e6a1" fill="url(#earnWaveGradient)" strokeWidth={3} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-        <div className="notification-card">
-          <div className="feed-title"><Bell size={16} /><span>Reward reminders</span></div>
-          <div className="mini-alert"><Clock size={16} /> Payout reviews usually complete within 24h.</div>
-          <div className="mini-alert"><Flame size={16} /> Your streak bonus is ready today.</div>
-          <div className="mini-alert"><Star size={16} /> Bonus code WELCOME adds XP.</div>
         </div>
       </div>
       <div className="stats">
