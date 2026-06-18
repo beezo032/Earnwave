@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -813,28 +813,34 @@ function SurveyModal({ modal, onClose }) {
 function CpxFullscreenWidget({ modal }) {
   const [status, setStatus] = useState("loading");
   const [useFallback, setUseFallback] = useState(false);
+  const statusRef = useRef("loading");
+
+  function updateStatus(nextStatus) {
+    statusRef.current = nextStatus;
+    setStatus(nextStatus);
+  }
 
   useEffect(() => {
     if (!modal?.config || !modal?.scriptSrc) return undefined;
 
     const scriptId = "earnwave-cpx-script-tag";
     const containerId = modal.config?.script_config?.[0]?.div_id || "fullscreen";
-    setStatus("loading");
+    updateStatus("loading");
     setUseFallback(false);
     document.getElementById(scriptId)?.remove();
     window.config = {
       ...modal.config,
       functions: {
         no_surveys_available: () => {
-          setStatus("no_surveys");
+          updateStatus("no_surveys");
           window.dispatchEvent(new CustomEvent("earnwave:cpx_no_surveys_available"));
         },
         count_new_surveys: countsurveys => {
-          setStatus(Number(countsurveys || 0) > 0 ? "ready" : "no_surveys");
+          updateStatus(Number(countsurveys || 0) > 0 ? "ready" : "no_surveys");
           window.dispatchEvent(new CustomEvent("earnwave:cpx_count_new_surveys", { detail: { count: countsurveys } }));
         },
         get_all_surveys: surveys => {
-          setStatus(Array.isArray(surveys) && surveys.length > 0 ? "ready" : "no_surveys");
+          updateStatus(Array.isArray(surveys) && surveys.length > 0 ? "ready" : "no_surveys");
           window.dispatchEvent(new CustomEvent("earnwave:cpx_get_all_surveys", { detail: { surveys } }));
         },
         get_transaction: transactions => {
@@ -851,18 +857,17 @@ function CpxFullscreenWidget({ modal }) {
     script.onload = () => {
       window.setTimeout(() => {
         const container = document.getElementById(containerId);
-        if (!container?.children?.length) setUseFallback(true);
+        if (statusRef.current === "loading" && !container?.querySelector("iframe, a[href], button")) setUseFallback(true);
       }, 3500);
     };
     script.onerror = () => {
-      setStatus("error");
+      updateStatus("error");
       setUseFallback(true);
     };
     document.body.appendChild(script);
 
     const fallbackTimer = window.setTimeout(() => {
-      const container = document.getElementById(containerId);
-      if (!container?.children?.length) setUseFallback(true);
+      if (statusRef.current === "loading") setUseFallback(true);
     }, 6000);
 
     return () => {
