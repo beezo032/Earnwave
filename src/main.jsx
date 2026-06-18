@@ -1698,8 +1698,13 @@ function AdminPage({ navigate, api }) {
   const [emails, setEmails] = useState([]);
   const [complianceUsers, setComplianceUsers] = useState([]);
   const [offerwallEconomics, setOfferwallEconomics] = useState([]);
+  const [offerwallCallbacks, setOfferwallCallbacks] = useState([]);
   const [reasonCodes, setReasonCodes] = useState({});
   const [payoutNotice, setPayoutNotice] = useState("Manual approval is required before any automated payout is sent.");
+
+  function refreshOfferwallCallbacks() {
+    api.request("/admin/offerwall-callbacks").then(data => setOfferwallCallbacks(data.callbacks || [])).catch(() => {});
+  }
 
   useEffect(() => {
     api.request("/admin/moderation").then(setModeration).catch(() => {});
@@ -1707,6 +1712,7 @@ function AdminPage({ navigate, api }) {
     api.request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
     api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
+    refreshOfferwallCallbacks();
     api.request("/account/admin/support/tickets").then(data => setSupportTickets(data.tickets || [])).catch(() => {});
     api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
   }, []);
@@ -1805,6 +1811,28 @@ function AdminPage({ navigate, api }) {
             money((item.platform_margin_usd_cents || 0) / 100),
             item.status
           ])} />
+        </div>
+        <div className="card payout-queue-card">
+          <SectionTitle
+            title="Offerwall callback log"
+            copy="Use this after CPX or Theorem tests to confirm whether the provider reached EarnWave, passed verification, and sent a matching user ID."
+            action={<button className="btn alt" type="button" onClick={refreshOfferwallCallbacks}>Refresh</button>}
+          />
+          <DataTable rows={(offerwallCallbacks.length ? offerwallCallbacks : [
+            { provider: "cpx", event_type: "waiting", normalized_event: { userId: "No callback yet", transactionId: "Check CPX postback URL", amount: 0, status: "pending" }, rejected: false, reason: "Complete a test survey, then refresh." }
+          ]).map(item => {
+            const normalized = item.normalized_event || {};
+            const payload = item.payload || {};
+            const amountUsd = normalized.amount || payload.amount_usd || payload.amount || 0;
+            return [
+              item.provider || "provider",
+              item.rejected ? "Rejected" : "Accepted",
+              normalized.userId || payload.user_id || payload.ext_user_id || "Missing user",
+              normalized.transactionId || payload.trans_id || payload.transaction_id || "Missing transaction",
+              amountUsd ? money(Number(amountUsd)) : "Reward varies",
+              item.reason || normalized.status || item.event_type || "ok"
+            ];
+          })} />
         </div>
         <div className="card">
           <SectionTitle title="Suspicious activity flags" copy="Open flags from VPN/proxy checks, device fingerprint reuse, duplicate account signals, and withdrawal reviews." />
