@@ -2227,10 +2227,6 @@ function DashboardLayout({ active, navigate, api, children }) {
               <span>{active}</span>
               <strong>{api.session?.user?.username ? `@${api.session.user.username}` : api.session?.user?.email || "EarnWave"}</strong>
             </div>
-            <div className="topbar-actions">
-              <span className="topbar-balance">{formatBalance(api.session?.user || {}, api.session?.user?.balance_wavecoins ?? dollarsToWaveCoins(api.session?.user?.balance || 0))}</span>
-              <TopNotifications api={api} navigate={navigate} />
-            </div>
           </div>
           {children}
         </div>
