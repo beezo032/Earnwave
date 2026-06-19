@@ -3,7 +3,7 @@ const { z } = require("zod");
 const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const { createWithdrawal, listWithdrawals } = require("../services/wallet");
 const { evaluatePayoutEligibility } = require("../services/compliance");
-const { buildRisk, flagSuspiciousActivity, persistRiskReview } = require("../services/fraud");
+const { buildRisk, duplicateAccountSignals, duplicatePayoutDestinationSignals, flagSuspiciousActivity, persistRiskReview, providerReversalCountForUser } = require("../services/fraud");
 const { findUserById } = require("../services/users");
 
 const walletRouter = express.Router();
@@ -41,7 +41,21 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
         compliance
       });
     }
-    const risk = await buildRisk(req, { highValue: payoutAmountUsd >= 25, withdrawalAmount: payoutAmountUsd, balance: serverBalanceUsd });
+    const accountAgeDays = user.created_at ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000) : undefined;
+    const duplicateSignals = await duplicateAccountSignals({ email: user.email, req, currentUserId: req.user.id });
+    const duplicateHouseholdIndicators = await duplicatePayoutDestinationSignals({ userId: req.user.id, destinationValue: input.destinationValue });
+    const providerReversalCount = await providerReversalCountForUser(req.user.id);
+    const risk = await buildRisk(req, {
+      highValue: payoutAmountUsd >= 25,
+      withdrawalAmount: payoutAmountUsd,
+      balance: serverBalanceUsd,
+      duplicateSignals,
+      accountAgeDays,
+      accountCountry: user.country,
+      payoutCountry: req.headers["x-payout-country"] || user.country,
+      providerReversalCount,
+      duplicateHouseholdIndicators
+    });
     await persistRiskReview({
       userId: req.user.id,
       eventType: "withdrawal_review",
@@ -86,3 +100,4 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
 });
 
 module.exports = { walletRouter };
+

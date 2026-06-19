@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const { query } = require("../db/postgres");
 const { env } = require("../config/env");
-const { devices, suspiciousActivity, users, riskReviews } = require("../db/demoStore");
+const { devices, suspiciousActivity, users, riskReviews, withdrawals, ledgerEntries } = require("../db/demoStore");
 
 const knownProxyHeaders = [
   "x-forwarded-for",
@@ -169,6 +169,48 @@ async function duplicateAccountSignals({ email, req, currentUserId }) {
   return signals;
 }
 
+async function providerReversalCountForUser(userId) {
+  if (!userId) return 0;
+
+  if (!env.DATABASE_URL) {
+    return ledgerEntries.filter(entry =>
+      String(entry.user_id) === String(userId)
+      && (String(entry.type || "").includes("reversal") || String(entry.status || entry.payout_status || "").toLowerCase() === "reversed")
+    ).length;
+  }
+
+  const result = await query(
+    `SELECT COUNT(*) AS reversal_count
+     FROM ledger_entries
+     WHERE user_id = $1
+       AND (type ILIKE '%reversal%' OR payout_status = 'reversed')`,
+    [userId]
+  );
+  return Number(result.rows[0]?.reversal_count || 0);
+}
+
+async function duplicatePayoutDestinationSignals({ userId, destinationValue }) {
+  const normalizedDestination = String(destinationValue || "").trim().toLowerCase();
+  if (!normalizedDestination) return [];
+
+  if (!env.DATABASE_URL) {
+    const seenElsewhere = withdrawals.some(item =>
+      String(item.user_id) !== String(userId)
+      && String(item.destination_value || "").trim().toLowerCase() === normalizedDestination
+    );
+    return seenElsewhere ? ["payout_destination_seen_on_other_account"] : [];
+  }
+
+  const result = await query(
+    `SELECT COUNT(DISTINCT user_id) AS matched_accounts
+     FROM withdrawals
+     WHERE lower(destination_value) = $1
+       AND user_id::text <> $2`,
+    [normalizedDestination, String(userId)]
+  );
+
+  return Number(result.rows[0]?.matched_accounts || 0) > 0 ? ["payout_destination_seen_on_other_account"] : [];
+}
 async function flagSuspiciousActivity({ userId, eventType, risk, metadata = {} }) {
   const score = risk.risk_score ?? risk.score ?? 0;
   const reasonCodes = risk.reason_codes || risk.signals || [];
@@ -379,11 +421,14 @@ module.exports = {
   closeSuspiciousActivity,
   detectProxy,
   duplicateAccountSignals,
+  duplicatePayoutDestinationSignals,
   flagSuspiciousActivity,
   getClientIp,
   getDeviceHash,
   listSuspiciousActivity,
   persistRiskReview,
+  providerReversalCountForUser,
   registerDevice,
   scoreFraudRisk
 };
+
