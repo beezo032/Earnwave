@@ -737,6 +737,135 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
 .footer-links button:hover { color: var(--mint); }
 
 @keyframes growBar { from { width: 0; } }
+.dashboard-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.summary-hero-card,
+.summary-metric-card,
+.path-card,
+.provider-action-card,
+.account-overview-panel,
+.achievements-panel,
+.daily-bonus-feature,
+.referral-feature-card,
+.leaderboard-preview-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.02)),
+    var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+.summary-hero-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(50,230,161,.20), transparent 22rem),
+    radial-gradient(circle at 86% 8%, rgba(69,200,255,.14), transparent 20rem),
+    linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.018)),
+    var(--surface);
+}
+.summary-hero-card h1 { margin: 0; font-size: clamp(2.05rem, 4.8vw, 4rem); letter-spacing: 0; }
+.summary-hero-card p { max-width: 620px; color: var(--soft); font-weight: 800; }
+.summary-cta { width: fit-content; min-width: 178px; }
+.cashout-track { display: grid; gap: 9px; max-width: 660px; }
+.cashout-track .row { color: var(--soft); font-weight: 850; }
+.summary-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.summary-metric-card { min-height: 136px; display: grid; align-content: space-between; gap: 10px; padding: 16px; transition: transform .18s ease, border-color .18s ease; }
+.summary-metric-card:hover { transform: translateY(-2px); border-color: rgba(50,230,161,.32); }
+.summary-metric-card > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: rgba(50,230,161,.13); color: var(--mint); }
+.summary-metric-card.blue > span { background: rgba(69,200,255,.13); color: var(--mint-2); }
+.summary-metric-card.gold > span { background: rgba(255,214,102,.12); color: #ffe08a; }
+.summary-metric-card p { color: var(--muted); font-weight: 850; }
+.summary-metric-card strong { color: var(--text); font-size: 1.25rem; }
+.dashboard-notices.compact { margin-bottom: 14px; }
+.fastest-path-section { margin-bottom: 14px; }
+.fastest-path-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.path-card {
+  min-height: 190px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 12px;
+  padding: 16px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.path-card:hover { transform: translateY(-3px); border-color: rgba(50,230,161,.42); background: linear-gradient(180deg, rgba(50,230,161,.09), rgba(69,200,255,.035)), var(--surface); }
+.path-rank { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: rgba(50,230,161,.16); color: var(--mint); font-weight: 950; }
+.path-card h3 { margin: 0 0 6px; }
+.path-card p { color: var(--soft); }
+.path-card small { display: block; margin-top: 8px; color: var(--muted); font-weight: 850; }
+.path-card strong { grid-column: 1 / -1; color: var(--mint); font-size: 1.12rem; }
+.path-card em { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 6px; color: var(--mint-2); font-style: normal; font-weight: 950; }
+.dashboard-focus-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr); gap: 14px; margin-bottom: 14px; align-items: start; }
+.dashboard-side-stack { display: grid; gap: 14px; }
+.dashboard-offer-panel { min-height: 100%; }
+.provider-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.provider-action-card { display: grid; gap: 12px; padding: 16px; background: linear-gradient(135deg, rgba(69,200,255,.08), rgba(50,230,161,.045)), var(--surface); }
+.provider-action-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.provider-action-top .icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 13px; background: rgba(69,200,255,.13); color: var(--mint-2); }
+.provider-action-card h3 { margin: 0; }
+.provider-action-card p { color: var(--soft); }
+.provider-action-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.provider-trust-note { min-height: 38px; display: inline-flex; align-items: center; gap: 8px; color: var(--soft); font-weight: 850; }
+.provider-trust-note svg { color: var(--mint); }
+.daily-bonus-feature,
+.referral-feature-card { display: grid; gap: 12px; padding: 18px; }
+.daily-bonus-feature { overflow: hidden; position: relative; background: radial-gradient(circle at 84% 12%, rgba(50,230,161,.18), transparent 12rem), linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.02)), var(--surface); }
+.daily-bonus-glow { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: rgba(50,230,161,.14); color: var(--mint); }
+.daily-bonus-feature h3 { margin: 0; font-size: 1.65rem; }
+.daily-bonus-feature p,
+.referral-feature-card p { color: var(--soft); }
+.daily-bonus-meta,
+.daily-bonus-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.referral-feature-card .copy-box { font-size: .9rem; }
+.account-overview-panel { margin-bottom: 18px; padding: 18px; }
+.account-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.achievements-panel { margin-bottom: 18px; padding: 18px; }
+.achievement-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.achievement-badge { min-height: 112px; display: grid; align-content: center; justify-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); text-align: center; }
+.achievement-badge span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; }
+.achievement-badge.unlocked { background: rgba(50,230,161,.09); border-color: rgba(50,230,161,.28); }
+.achievement-badge.unlocked span { background: rgba(50,230,161,.16); color: var(--mint); }
+.achievement-badge.locked { opacity: .66; background: rgba(255,255,255,.035); }
+.achievement-badge.locked span { background: rgba(255,255,255,.075); color: var(--muted); }
+.achievement-badge small { color: var(--muted); font-weight: 850; }
+.payout-proof-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; color: var(--soft); font-weight: 850; }
+.payout-proof-meta strong { color: var(--mint); white-space: nowrap; }
+.lower-dashboard-grid { align-items: start; }
+.bonus-form-card { display: grid; gap: 12px; }
+.leaderboard-preview-card { padding: 18px; }
+
+@media (max-width: 1040px) {
+  .dashboard-summary,
+  .dashboard-focus-grid { grid-template-columns: 1fr; }
+  .fastest-path-grid,
+  .account-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .summary-metric-grid,
+  .fastest-path-grid,
+  .provider-action-grid,
+  .account-overview-grid,
+  .achievement-grid { grid-template-columns: 1fr; }
+  .summary-hero-card { padding: 18px; }
+  .summary-cta,
+  .path-card,
+  .daily-bonus-actions .btn,
+  .referral-feature-card .btn { width: 100%; }
+  .path-card { min-height: auto; }
+  .payout-proof-meta { align-items: flex-start; flex-direction: column; }
+}
 @keyframes liftIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes skeletonPulse { to { background-position: -220% 0; } }
@@ -816,4 +945,3 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
 
 .turnstile-wrap { min-height: 65px; display: flex; align-items: center; justify-content: flex-start; }
 .turnstile-wrap:empty { display: none; }
-

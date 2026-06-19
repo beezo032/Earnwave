@@ -46,7 +46,6 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { EarnDashboardCards } from "./earnCards.jsx";
 import {
   earnWaveFallbackImage,
   filterOffersByCategory,
@@ -1000,7 +999,6 @@ function Dashboard({ api, navigate }) {
   const [dailyQuest, setDailyQuest] = useState(null);
   const [bonusCode, setBonusCode] = useState("");
   const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
-  const [earnLoading, setEarnLoading] = useState(true);
 
   useEffect(() => {
     refreshUser();
@@ -1009,8 +1007,7 @@ function Dashboard({ api, navigate }) {
       api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
     });
     api.request("/growth/quests/daily").then(data => setDailyQuest(data.quest)).catch(() => {});
-    const loadingTimer = window.setTimeout(() => setEarnLoading(false), 420);
-    return () => window.clearTimeout(loadingTimer);
+
   }, []);
 
   async function refreshUser() {
@@ -1069,63 +1066,326 @@ function Dashboard({ api, navigate }) {
     recordActivityMetric(type);
   }
 
+  const balanceWaveCoins = userAmountWaveCoins(user, user.balance);
+  const totalEarnedWaveCoins = userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins");
+  const pendingWaveCoins = Number(user.pending_wavecoins ?? user.pending_rewards_wavecoins ?? dollarsToWaveCoins(user.pending_rewards || 0));
+  const completedSurveys = Number(user.completed_surveys || user.completed_offers || 0);
+  const minimumCashoutWaveCoins = 500;
+  const cashoutProgress = Math.min(100, Math.round((balanceWaveCoins / minimumCashoutWaveCoins) * 100));
+  const hasRealActivityData = completedSurveys > 0 && totalEarnedWaveCoins >= minimumCashoutWaveCoins;
+
   return (
     <DashboardLayout active="Dashboard" navigate={navigate} api={api}>
-      <DashboardTop kicker="Member dashboard" title={`Welcome back, ${user.name}`} copy="Track progress, choose the next best offer, and manage rewards from one focused workspace." action={<button className="btn" onClick={() => navigate("/wallet")}>Review Payouts <ArrowRight size={17} /></button>} />
-      <div className="dashboard-notices" aria-label="Dashboard trust notices">
+      <DashboardRewardSummary
+        user={user}
+        growth={growth}
+        balanceWaveCoins={balanceWaveCoins}
+        pendingWaveCoins={pendingWaveCoins}
+        minimumCashoutWaveCoins={minimumCashoutWaveCoins}
+        cashoutProgress={cashoutProgress}
+        navigate={navigate}
+      />
+      <div className="dashboard-notices compact" aria-label="Dashboard trust notices">
         <div className="dashboard-notice"><ShieldCheck size={18} /><span>Rewards are verified before payout.</span></div>
         <div className="dashboard-notice blue"><Lock size={18} /><span>Withdrawals are reviewed for fraud protection.</span></div>
       </div>
-      <OnboardingChecklist user={user} navigate={navigate} />
-      <EarnDashboardCards loading={earnLoading} navigate={navigate} />
-      <div className="dashboard-hero-card">
-        <div className="analytics-card">
-          <div className="mini-chart-head">
-            <div><p>7-day earning trend</p><strong>{formatBalance(user, userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins"))}</strong></div>
-            <span className="tag"><TrendingUp size={14} /> Healthy</span>
+      <FastestPathToCashout navigate={navigate} claimStreak={claimStreak} trackActivity={trackActivity} />
+      <div className="dashboard-focus-grid">
+        <AvailableSurveyOffers navigate={navigate} />
+        <div className="dashboard-side-stack">
+          <DailyBonusFeature growth={growth} dailyQuest={dailyQuest} claimStreak={claimStreak} completeQuest={completeQuest} growthNotice={growthNotice} />
+          <ReferralProgressFeature growth={growth} />
+        </div>
+      </div>
+      {hasRealActivityData ? (
+        <div className="dashboard-hero-card">
+          <div className="analytics-card">
+            <div className="mini-chart-head">
+              <div><p>7-day earning trend</p><strong>{formatBalance(user, totalEarnedWaveCoins)}</strong></div>
+              <span className="tag"><TrendingUp size={14} /> Healthy</span>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={analyticsSeries}>
+                <defs>
+                  <linearGradient id="earnWaveGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#32e6a1" stopOpacity={0.34} />
+                    <stop offset="95%" stopColor="#46c7ff" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.07)" />
+                <XAxis dataKey="day" stroke="#9aa8ba" />
+                <YAxis stroke="#9aa8ba" />
+                <Tooltip />
+                <Area type="monotone" dataKey="revenue" stroke="#32e6a1" fill="url(#earnWaveGradient)" strokeWidth={3} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={analyticsSeries}>
-              <defs>
-                <linearGradient id="earnWaveGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#32e6a1" stopOpacity={0.34} />
-                  <stop offset="95%" stopColor="#46c7ff" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.07)" />
-              <XAxis dataKey="day" stroke="#9aa8ba" />
-              <YAxis stroke="#9aa8ba" />
-              <Tooltip />
-              <Area type="monotone" dataKey="revenue" stroke="#32e6a1" fill="url(#earnWaveGradient)" strokeWidth={3} />
-            </AreaChart>
-          </ResponsiveContainer>
         </div>
-      </div>
-      <div className="stats">
-        <Stat label="Total Earned" value={formatBalance(user, userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins"))} />
-        <Stat label="Level" value={growth.level} />
-        <Stat label="Daily Streak" value={`${growth.streak} days`} />
-        <Stat label="Referrals" value={growth.referrals} />
-      </div>
-      <PayoutProofSection compact />
-      <div className="workspace-grid">
-        <div className="card">
-          <SectionTitle title="Recommended next steps" copy="Survey options organized around value, time, provider, and confidence." action={<span className="tag">Tracking ready</span>} />
-          <div className="offers-grid compact">{demoOffers.slice(0, 4).map(offer => <OfferCard key={offer.id} offer={offer} actionLabel={`Start +${rewardLabel(offer.reward)}`} />)}</div>
-        </div>
-        <SideRail
+      ) : (
+        <AccountOverview
+          user={user}
           growth={growth}
-          leaderboard={leaderboard}
-          bonusCode={bonusCode}
-          setBonusCode={setBonusCode}
-          claimStreak={claimStreak}
-          redeemCode={redeemCode}
-          dailyQuest={dailyQuest}
-          completeQuest={completeQuest}
-          growthNotice={growthNotice}
+          totalEarnedWaveCoins={totalEarnedWaveCoins}
+          pendingWaveCoins={pendingWaveCoins}
+          completedSurveys={completedSurveys}
         />
+      )}
+      <PayoutProofSection compact />
+      <AchievementBadges growth={growth} totalEarnedWaveCoins={totalEarnedWaveCoins} completedSurveys={completedSurveys} />
+      <div className="workspace-grid lower-dashboard-grid">
+        <div className="card">
+          <SectionTitle title="Bonus tools" copy="Extra ways to build momentum after your next survey completion." action={<span className="tag">Optional boosts</span>} />
+          <div className="bonus-form-card">
+            <form className="bonus-form" onSubmit={redeemCode}>
+              <input value={bonusCode} onChange={event => setBonusCode(event.target.value)} placeholder="WELCOME" />
+              <button className="btn" type="submit">Redeem</button>
+            </form>
+            <div className="notice">{growthNotice}</div>
+          </div>
+        </div>
+        <LeaderboardPreview leaderboard={leaderboard} />
       </div>
     </DashboardLayout>
+  );
+}
+
+function DashboardRewardSummary({ user, growth, balanceWaveCoins, pendingWaveCoins, minimumCashoutWaveCoins, cashoutProgress, navigate }) {
+  const remaining = Math.max(0, minimumCashoutWaveCoins - balanceWaveCoins);
+  const summaryCards = [
+    { label: "Current balance", value: formatBalance(user, balanceWaveCoins), icon: <Wallet size={19} />, tone: "mint" },
+    { label: "Pending rewards", value: formatBalance({ preferredBalanceDisplay: "coins" }, pendingWaveCoins), icon: <Clock size={19} />, tone: "blue" },
+    { label: "Level", value: `Level ${growth.level || 1}`, icon: <Trophy size={19} />, tone: "gold" },
+    { label: "Daily streak", value: `${growth.streak || 0} days`, icon: <Flame size={19} />, tone: "mint" }
+  ];
+
+  return (
+    <section className="dashboard-summary" aria-label="Dashboard reward summary">
+      <div className="summary-hero-card">
+        <span className="eyebrow">Rewards dashboard</span>
+        <h1>{formatBalance(user, balanceWaveCoins)}</h1>
+        <p>{remaining > 0 ? `${remaining.toLocaleString()} WaveCoins until your first cashout.` : "You are eligible to request a payout."}</p>
+        <div className="cashout-track">
+          <div className="row"><span>Cashout progress</span><strong>{balanceWaveCoins.toLocaleString()} / {minimumCashoutWaveCoins.toLocaleString()} WaveCoins</strong></div>
+          <Meter value={cashoutProgress} />
+        </div>
+        <button className="btn summary-cta" onClick={() => navigate("/surveys")}>Start Best Offer <ArrowRight size={17} /></button>
+      </div>
+      <div className="summary-metric-grid">
+        {summaryCards.map(card => (
+          <div className={`summary-metric-card ${card.tone}`} key={card.label}>
+            <span>{card.icon}</span>
+            <p>{card.label}</p>
+            <strong>{card.value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FastestPathToCashout({ navigate, claimStreak, trackActivity }) {
+  const actions = [
+    {
+      title: "Complete TheoremReach survey wall",
+      reward: "+385 WaveCoins",
+      time: "Estimated time: 8-12 minutes",
+      copy: "Best first step for a larger survey reward estimate.",
+      cta: "Open TheoremReach",
+      action: () => {
+        trackActivity("clicks");
+        navigate("/surveys");
+      }
+    },
+    {
+      title: "Complete CPX Research survey wall",
+      reward: "+298 WaveCoins",
+      time: "Estimated time: 8-12 minutes",
+      copy: "Matched surveys based on your profile and region.",
+      cta: "Open CPX",
+      action: () => {
+        trackActivity("clicks");
+        navigate("/surveys");
+      }
+    },
+    {
+      title: "Claim daily bonus",
+      reward: "Bonus WaveCoins",
+      time: "Estimated time: under 1 minute",
+      copy: "Claim once per day to keep your streak moving.",
+      cta: "Claim Bonus",
+      action: claimStreak
+    }
+  ];
+
+  return (
+    <section className="fastest-path-section">
+      <SectionTitle title="Fastest Path to Cashout" copy="Start with the actions most likely to move your 500 WaveCoins cashout bar today." action={<span className="tag"><Rocket size={14} /> Recommended</span>} />
+      <div className="fastest-path-grid">
+        {actions.map((item, index) => (
+          <button className="path-card" key={item.title} onClick={item.action} type="button">
+            <span className="path-rank">{index + 1}</span>
+            <div>
+              <h3>{item.title}</h3>
+              <p>{item.copy}</p>
+              <small>{item.time}</small>
+            </div>
+            <strong>{item.reward}</strong>
+            <em>{item.cta} <ArrowRight size={15} /></em>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AvailableSurveyOffers({ navigate }) {
+  const providers = [
+    {
+      name: "CPX Research",
+      reward: "+298 WaveCoins estimate",
+      provider: "CPX Research",
+      description: "Profile-matched surveys with server-side reward callbacks.",
+      cta: "Open CPX",
+      icon: <Search size={22} />
+    },
+    {
+      name: "TheoremReach",
+      reward: "+385 WaveCoins estimate",
+      provider: "TheoremReach",
+      description: "Trusted survey wall with verified tracking before rewards become available.",
+      cta: "Open TheoremReach",
+      icon: <ClipboardList size={22} />
+    }
+  ];
+
+  return (
+    <section className="card dashboard-offer-panel">
+      <SectionTitle title="Available Offers" copy="Choose a trusted survey provider. Final rewards verify after the provider callback." action={<span className="tag">Available</span>} />
+      <div className="provider-action-grid">
+        {providers.map(provider => (
+          <div className="provider-action-card" key={provider.name}>
+            <div className="provider-action-top">
+              <span className="icon">{provider.icon}</span>
+              <span className="pill">Available</span>
+            </div>
+            <h3>{provider.name}</h3>
+            <p>{provider.description}</p>
+            <div className="provider-action-meta">
+              <span className="tag blue">Provider: {provider.provider}</span>
+              <span className="tag amber">{provider.reward || "Reward varies"}</span>
+            </div>
+            <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider callback</div>
+            <button className="btn" onClick={() => navigate("/surveys")}>{provider.cta} <ArrowRight size={16} /></button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DailyBonusFeature({ growth, dailyQuest, claimStreak, completeQuest, growthNotice }) {
+  return (
+    <section className="card daily-bonus-feature">
+      <div className="daily-bonus-glow"><Gift size={24} /></div>
+      <span className="eyebrow">Daily bonus</span>
+      <h3>{growth.streak || 0} day streak</h3>
+      <p>Claim once per day. Keeping the streak alive helps build your first-cashout momentum.</p>
+      <div className="daily-bonus-meta">
+        <span className="tag amber">Bonus WaveCoins</span>
+        {dailyQuest && <span className="tag blue">Quest: {dailyQuest.status || "available"}</span>}
+      </div>
+      <div className="daily-bonus-actions">
+        <button className="btn" onClick={claimStreak}>Claim Daily Bonus</button>
+        {dailyQuest && (
+          <button className="btn alt" disabled={dailyQuest.status === "completed"} onClick={completeQuest}>
+            {dailyQuest.status === "completed" ? "Quest Complete" : "Complete Quest"}
+          </button>
+        )}
+      </div>
+      <div className="notice">{growthNotice}</div>
+    </section>
+  );
+}
+
+function ReferralProgressFeature({ growth }) {
+  const [copied, setCopied] = useState(false);
+  const referralProgress = growth.referralProgress || { referrals: growth.referrals || 0, target: 5, progress: Math.min(100, Math.round(((growth.referrals || 0) / 5) * 100)) };
+
+  async function copyLink() {
+    await navigator.clipboard?.writeText(growth.referralUrl || "");
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <section className="card referral-feature-card">
+      <span className="eyebrow">Referral progress</span>
+      <div className="row"><h3>{growth.referralCode}</h3><span className="pill">{referralProgress.referrals}/{referralProgress.target}</span></div>
+      <div className="copy-box">{growth.referralUrl}</div>
+      <Meter value={referralProgress.progress || 0} />
+      <p>Invite verified users and earn referral rewards.</p>
+      <button className="btn alt" onClick={copyLink}>{copied ? "Copied" : "Copy Link"}</button>
+    </section>
+  );
+}
+
+function AccountOverview({ user, growth, totalEarnedWaveCoins, pendingWaveCoins, completedSurveys }) {
+  const items = [
+    { label: "Total earned", value: formatBalance(user, totalEarnedWaveCoins) },
+    { label: "Surveys completed", value: completedSurveys },
+    { label: "Pending rewards", value: formatBalance({ preferredBalanceDisplay: "coins" }, pendingWaveCoins) },
+    { label: "Referrals", value: growth.referrals || 0 },
+    { label: "Level", value: growth.level || 1 },
+    { label: "Daily streak", value: `${growth.streak || 0} days` }
+  ];
+
+  return (
+    <section className="card account-overview-panel">
+      <SectionTitle title="Account Overview" copy="Your chart will unlock after enough real earning activity is available." action={<span className="tag blue">New account view</span>} />
+      <div className="account-overview-grid">
+        {items.map(item => <Stat key={item.label} label={item.label} value={item.value} />)}
+      </div>
+    </section>
+  );
+}
+
+function AchievementBadges({ growth, totalEarnedWaveCoins, completedSurveys }) {
+  const achievements = [
+    { title: "First Survey", unlocked: completedSurveys > 0 || totalEarnedWaveCoins > 0, icon: <CheckCircle size={18} /> },
+    { title: "First Cashout", unlocked: false, icon: <CreditCard size={18} /> },
+    { title: "3 Day Streak", unlocked: Number(growth.streak || 0) >= 3, icon: <Flame size={18} /> },
+    { title: "5 Referrals", unlocked: Number(growth.referrals || 0) >= 5, icon: <Users size={18} /> },
+    { title: "Level 5", unlocked: Number(growth.level || 1) >= 5, icon: <Medal size={18} /> }
+  ];
+
+  return (
+    <section className="card achievements-panel">
+      <SectionTitle title="Achievements" copy="Milestones that help members build daily earning habits." />
+      <div className="achievement-grid">
+        {achievements.map(item => (
+          <div className={item.unlocked ? "achievement-badge unlocked" : "achievement-badge locked"} key={item.title}>
+            <span>{item.icon}</span>
+            <strong>{item.title}</strong>
+            <small>{item.unlocked ? "Unlocked" : "Locked"}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LeaderboardPreview({ leaderboard }) {
+  return (
+    <section className="card leaderboard-preview-card">
+      <SectionTitle title="Weekly leaderboard" copy="Friendly competition resets weekly." action={<span className="tag"><Trophy size={14} /> Live</span>} />
+      {leaderboard.slice(0, 5).map((row, index) => (
+        <div className="leader-row" key={`${row.name}-${index}`}>
+          <span className="avatar">{index + 1}</span>
+          <strong>{row.name}</strong>
+          <span className="pill">{rewardLabel(row.total_earned)}</span>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -1241,9 +1501,9 @@ function PayoutProofSection({ compact = false }) {
               <strong>{formatBalance({ preferredBalanceDisplay: "coins" }, item.amountWaveCoins)}</strong>
               <span>{money(waveCoinsToUsd(item.amountWaveCoins))}</span>
             </div>
-            <div className="row">
-              <span>{`Method: ${item.method}`}</span>
-              <strong>{item.preview ? "Example" : "Completed"}</strong>
+            <div className="payout-proof-meta">
+              <span>Method: {item.method}</span>
+              <strong>{item.preview ? "Preview example" : "Completed"}</strong>
             </div>
           </div>
           ))}
@@ -2660,4 +2920,3 @@ const rootElement = document.getElementById("root");
 if (rootElement) {
   createRoot(rootElement).render(<App />);
 }
-
