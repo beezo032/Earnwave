@@ -282,6 +282,64 @@ section { padding: 58px 0; }
 .survey-provider-stats svg { color: var(--mint); }
 .survey-provider-card .btn { justify-self: start; }
 .survey-trust-section { padding-bottom: 0; }
+.surveys-hero.upgraded { grid-template-columns: minmax(0, 1.05fr) minmax(320px, 420px); }
+.surveys-hero-copy { display: grid; align-content: center; gap: 14px; }
+.survey-balance-card.cashout-focused { align-content: stretch; }
+.compact-track { margin: 8px 0; }
+.compact-track .row { align-items: flex-start; flex-direction: column; gap: 4px; }
+.best-survey-grid { display: grid; grid-template-columns: minmax(0, .88fr) minmax(360px, 1.12fr); gap: 14px; margin-bottom: 18px; }
+.best-survey-card { display: grid; gap: 16px; padding: 20px; background: radial-gradient(circle at 88% 10%, rgba(50,230,161,.18), transparent 14rem), linear-gradient(135deg, rgba(69,200,255,.10), rgba(255,255,255,.035)), var(--surface); }
+.best-survey-card h2 { margin: 6px 0; font-size: clamp(1.65rem, 3vw, 2.35rem); }
+.best-survey-card p { color: var(--soft); }
+.best-survey-facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.available-earnings-card { padding: 18px; }
+.earnings-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.earnings-summary-grid .metric { min-height: 104px; padding: 12px; }
+.survey-missions-section { margin-bottom: 18px; }
+.mission-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mission-card { min-height: 128px; display: grid; align-content: start; gap: 8px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.045); color: var(--text); text-align: left; cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+.mission-card:hover { transform: translateY(-2px); border-color: rgba(50,230,161,.34); background: rgba(50,230,161,.075); }
+.mission-card > span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: rgba(69,200,255,.13); color: var(--mint-2); }
+.mission-card.complete { border-color: rgba(50,230,161,.32); background: rgba(50,230,161,.08); }
+.mission-card.complete > span { background: rgba(50,230,161,.16); color: var(--mint); }
+.mission-card em { color: var(--mint); font-style: normal; font-weight: 950; }
+.mission-card small { color: var(--muted); font-weight: 850; }
+.survey-account-stats { margin-bottom: 18px; padding: 18px; }
+.survey-stat-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.survey-provider-grid.improved { margin-bottom: 18px; }
+.survey-provider-stats.improved { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.survey-provider-stats.improved span { border-radius: 12px; }
+.survey-trust-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+.trust-signal-card { min-height: 86px; display: grid; align-content: center; justify-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)), var(--surface); color: var(--soft); text-align: center; font-weight: 850; }
+.trust-signal-card svg { color: var(--mint); }
+.survey-process-grid .feature { background: linear-gradient(180deg, rgba(69,200,255,.065), rgba(255,255,255,.025)), var(--surface); }
+.recent-survey-activity { margin-top: 18px; padding: 18px; }
+.activity-preview-list { display: grid; gap: 10px; }
+.activity-preview-row { display: grid; grid-template-columns: 36px .7fr 1fr auto; gap: 10px; align-items: center; padding: 11px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.04); }
+.activity-preview-row p { color: var(--soft); }
+.activity-preview-row em { color: var(--mint-2); font-style: normal; font-weight: 900; }
+
+@media (max-width: 1040px) {
+  .best-survey-grid,
+  .surveys-hero.upgraded { grid-template-columns: 1fr; }
+  .earnings-summary-grid,
+  .mission-grid,
+  .survey-stat-grid,
+  .survey-trust-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .survey-provider-stats.improved { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .earnings-summary-grid,
+  .mission-grid,
+  .survey-stat-grid,
+  .survey-trust-row,
+  .survey-provider-stats.improved { grid-template-columns: 1fr; }
+  .activity-preview-row { grid-template-columns: 36px 1fr; }
+  .activity-preview-row p,
+  .activity-preview-row em { grid-column: 2; }
+  .best-survey-card .btn { width: 100%; }
+}
 .survey-modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 18px; background: rgba(3,7,12,.72); backdrop-filter: blur(18px); animation: fadeUp .18s ease both; }
 .survey-modal { width: min(1120px, 100%); height: min(780px, calc(100vh - 36px)); display: grid; grid-template-rows: auto 1fr; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0b1020; box-shadow: 0 28px 90px rgba(0,0,0,.58); }
 .survey-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(135deg, rgba(50,230,161,.11), rgba(69,200,255,.08)); }

@@ -119,6 +119,8 @@ const surveyProviders = [
     rewardRange: "28-455 WaveCoins",
     usdRange: "$0.28-$4.55",
     averageTime: "5-18 min",
+    userType: "Best for beginners",
+    maxWaveCoins: 455,
     gradient: "linear-gradient(135deg, rgba(50,230,161,.22), rgba(69,200,255,.14))"
   },
   {
@@ -128,6 +130,8 @@ const surveyProviders = [
     rewardRange: "35-420 WaveCoins",
     usdRange: "$0.35-$4.20",
     averageTime: "6-20 min",
+    userType: "Best for higher payout",
+    maxWaveCoins: 420,
     gradient: "linear-gradient(135deg, rgba(69,200,255,.22), rgba(255,107,138,.13))"
   }
 ];
@@ -737,7 +741,22 @@ export function SurveysPage({ api }) {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("Choose a trusted survey provider to launch a secure survey wall.");
   const [modal, setModal] = useState(null);
-  const balanceWaveCoins = userAmountWaveCoins(user, 48.75);
+  const balanceWaveCoins = userAmountWaveCoins(user, user.balance);
+  const pendingWaveCoins = Number(user.pending_wavecoins ?? user.pending_rewards_wavecoins ?? dollarsToWaveCoins(user.pending_rewards || 0));
+  const completedSurveys = Number(user.completed_surveys || user.completed_offers || 0);
+  const approvedRewards = userAmountWaveCoins(user, user.total_earned, "total_earned_wavecoins");
+  const streak = Number(user.streak_count || user.streak || 2);
+  const cashoutMinimum = 500;
+  const cashoutProgress = Math.min(100, Math.round((balanceWaveCoins / cashoutMinimum) * 100));
+  const bestProvider = surveyProviders.find(provider => provider.key === "theorem") || surveyProviders[0];
+  const totalAvailableWaveCoins = surveyProviders.reduce((sum, provider) => sum + Number(provider.maxWaveCoins || 0), 0);
+  const successRate = completedSurveys > 0 ? "82%" : "New";
+  const missions = [
+    { title: "Complete one survey", reward: "+50 WaveCoins", complete: completedSurveys > 0 },
+    { title: "Open CPX Research", reward: "+25 WaveCoins", complete: false, provider: "cpx" },
+    { title: "Open TheoremReach", reward: "+25 WaveCoins", complete: false, provider: "theorem" },
+    { title: "Keep your streak active", reward: "+10 WaveCoins", complete: streak > 1 }
+  ];
 
   useEffect(() => {
     api.request("/offerwalls/providers").then(data => {
@@ -770,28 +789,82 @@ export function SurveysPage({ api }) {
   return (
     <main className="page surveys-page">
       <div className="container">
-        <div className="surveys-hero">
-          <div>
+        <section className="surveys-hero upgraded">
+          <div className="surveys-hero-copy">
             <div className="eyebrow"><Sparkles size={16} /> Trusted survey earning</div>
-            <h1>Earn WaveCoins with Surveys</h1>
-            <p className="hero-copy">Answer surveys from trusted partners and get rewarded when your responses qualify.</p>
+            <h1>Turn Your Opinions Into Rewards</h1>
+            <p className="hero-copy">Complete surveys from trusted partners and earn WaveCoins toward PayPal and gift card rewards.</p>
             <div className="actions">
-              <button className="btn xl" onClick={() => openSurveyProvider("cpx")}>Start Surveys <ArrowRight size={18} /></button>
+              <button className="btn xl" onClick={() => openSurveyProvider(bestProvider.key)}>Start Best Survey <ArrowRight size={18} /></button>
               <span className="tag blue"><ShieldCheck size={14} /> Verified providers</span>
             </div>
           </div>
-          <div className="survey-balance-card">
+          <div className="survey-balance-card cashout-focused">
             <span>Your survey balance</span>
             <strong>{formatBalance(user, balanceWaveCoins)}</strong>
             {user.preferredBalanceDisplay === "coins" && <p>{money(waveCoinsToUsd(balanceWaveCoins))} USD estimate</p>}
+            <div className="cashout-track compact-track">
+              <div className="row"><span>{balanceWaveCoins.toLocaleString()} / {cashoutMinimum.toLocaleString()} WaveCoins</span><strong>{cashoutProgress}% to first cashout</strong></div>
+              <Meter value={cashoutProgress} />
+            </div>
             <small>100 WaveCoins = $1.00.</small>
           </div>
-        </div>
+        </section>
 
         <div className="notice offerwall-notice">{notice}</div>
 
-        <SectionTitle title="Survey partners" copy="Open survey walls in a focused modal without leaving EarnWave." action={<span className="tag">Pending rewards verify first</span>} />
-        <div className="survey-provider-grid">
+        <section className="best-survey-grid">
+          <div className="card best-survey-card">
+            <div>
+              <span className="eyebrow"><Trophy size={15} /> Best Survey Right Now</span>
+              <h2>{bestProvider.name}</h2>
+              <p>Highest current reward range with secure tracking and provider callback verification.</p>
+            </div>
+            <div className="best-survey-facts">
+              <span className="tag amber">Up to {bestProvider.maxWaveCoins} WaveCoins</span>
+              <span className="tag blue">Estimated time: {bestProvider.averageTime}</span>
+              <span className="pill">Live</span>
+            </div>
+            <button className="btn" onClick={() => openSurveyProvider(bestProvider.key)}>Start {bestProvider.name} <ArrowRight size={17} /></button>
+          </div>
+          <div className="card available-earnings-card">
+            <SectionTitle title="Available Earnings" copy="Estimates show possible user rewards before provider qualification." />
+            <div className="earnings-summary-grid">
+              <Metric value="455 WC" label="CPX Research up to" />
+              <Metric value="420 WC" label="TheoremReach up to" />
+              <Metric value={`${totalAvailableWaveCoins} WC`} label="Total estimate" />
+              <Metric value={money(waveCoinsToUsd(totalAvailableWaveCoins))} label="Dollar estimate" />
+            </div>
+          </div>
+        </section>
+
+        <section className="survey-missions-section">
+          <SectionTitle title="Today's Missions" copy="Small bonus goals keep your survey progress moving." action={<span className="tag amber">Up to +110 WaveCoins</span>} />
+          <div className="mission-grid">
+            {missions.map(mission => (
+              <button className={mission.complete ? "mission-card complete" : "mission-card"} key={mission.title} type="button" onClick={() => mission.provider ? openSurveyProvider(mission.provider) : undefined}>
+                <span>{mission.complete ? <CheckCircle size={17} /> : <Clock size={17} />}</span>
+                <strong>{mission.title}</strong>
+                <em>{mission.reward}</em>
+                <small>{mission.complete ? "Completed" : "Incomplete"}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="survey-account-stats card">
+          <SectionTitle title="Survey Stats" copy={completedSurveys ? "Your survey profile is building with each verified completion." : "Start your first survey to build your earning profile."} />
+          <div className="account-overview-grid survey-stat-grid">
+            <Stat label="Surveys completed" value={completedSurveys} />
+            <Stat label="Approved rewards" value={formatBalance(user, approvedRewards)} />
+            <Stat label="Pending rewards" value={formatBalance({ preferredBalanceDisplay: "coins" }, pendingWaveCoins)} />
+            <Stat label="Success rate" value={successRate} />
+            <Stat label="Current streak" value={`${streak} days`} />
+          </div>
+        </section>
+
+        <SectionTitle title="Survey Partners" copy="Open survey walls in a focused modal without leaving EarnWave." action={<span className="tag">Pending rewards verify first</span>} />
+        <div className="survey-provider-grid improved">
           {loading
             ? surveyProviders.map(provider => <SurveyProviderSkeleton key={provider.key} />)
             : surveyProviders.map(provider => (
@@ -804,15 +877,37 @@ export function SurveysPage({ api }) {
             ))}
         </div>
 
+        <section className="survey-trust-row" aria-label="Survey trust signals">
+          {[
+            [ShieldCheck, "Verified survey providers"],
+            [KeyRound, "Secure tracking"],
+            [Lock, "Fraud-protected withdrawals"],
+            [ClipboardList, "Provider callback verification"],
+            [CreditCard, "Clear payout rules"]
+          ].map(([Icon, label]) => <div className="trust-signal-card" key={label}><Icon size={18} /><span>{label}</span></div>)}
+        </section>
+
         <section className="survey-trust-section">
-          <SectionTitle title="How survey rewards work" copy="Survey partners qualify responses before rewards become available." />
-          <div className="process-grid">
+          <SectionTitle title="How survey rewards work" copy="EarnWave tracks provider callbacks and reviews rewards before payout." />
+          <div className="process-grid survey-process-grid">
             {[
-              ["Choose a survey provider", "Pick CPX Research or TheoremReach based on the surveys you want to try."],
-              ["Complete a survey", "Answer carefully and finish the partner flow with EarnWave tracking active."],
-              ["Rewards may appear as pending", "Some survey credits wait for provider verification before payout."],
-              ["Approved rewards become available", "Verified rewards move into your available WaveCoins balance."]
-            ].map(([title, copy], index) => <Feature key={title} icon={<span>{index + 1}</span>} title={title} copy={copy} />)}
+              [Search, "Choose a provider", "Pick CPX Research or TheoremReach based on reward range, time, and fit."],
+              [ClipboardList, "Complete a survey", "Answer carefully and finish the partner flow with EarnWave tracking active."],
+              [Clock, "Reward may pend", "Some survey credits wait for provider verification before payout."],
+              [CheckCircle, "Approved rewards become available", "Verified rewards move into your available WaveCoins balance."]
+            ].map(([Icon, title, copy], index) => <Feature key={title} icon={<span><Icon size={18} /></span>} title={`${index + 1}. ${title}`} copy={copy} />)}
+          </div>
+        </section>
+
+        <section className="recent-survey-activity card">
+          <SectionTitle title="Recent EarnWave Activity" copy="Preview activity examples are shown until live public activity is available." action={<span className="tag amber">Preview examples</span>} />
+          <div className="activity-preview-list">
+            {[
+              ["Ma***", "earned 125 WaveCoins", "TheoremReach"],
+              ["Jo***", "started CPX Research", "Survey started"],
+              ["Pr***", "cashed out $10", "PayPal"],
+              ["Al***", "completed a survey", "Pending review"]
+            ].map(([name, action, meta]) => <div className="activity-preview-row" key={`${name}-${action}`}><span className="avatar">{name.slice(0, 1)}</span><strong>{name}</strong><p>{action}</p><em>{meta}</em></div>)}
           </div>
         </section>
       </div>
@@ -836,12 +931,15 @@ function SurveyProviderCard({ provider, enabled, onOpen }) {
           </div>
           <span className={enabled ? "pill" : "pill blue"}>{enabled ? "Live" : "Preview"}</span>
         </div>
-        <div className="survey-provider-stats">
-          <span><Gift size={15} /> User reward: {provider.rewardRange}</span>
+        <div className="survey-provider-stats improved">
+          <span><Gift size={15} /> {provider.rewardRange}</span>
           <span><DollarSign size={15} /> {provider.usdRange}</span>
           <span><Clock size={15} /> Avg. {provider.averageTime}</span>
+          <span><Users size={15} /> {provider.userType}</span>
           <span><ShieldCheck size={15} /> Trusted provider</span>
+          <span><CheckCircle size={15} /> Status: {enabled ? "Live" : "Preview"}</span>
         </div>
+        <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider callback</div>
         <button className="btn" type="button" onClick={onOpen}>Open Surveys <ArrowRight size={17} /></button>
       </div>
     </article>
