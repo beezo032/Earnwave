@@ -101,10 +101,10 @@ const payoutProofPreview = [
 ];
 
 const faqs = [
-  ["How do rewards get tracked?", "EarnWave records offerwall callbacks, device signals, ledger entries, and provider transaction IDs so credits can be reviewed cleanly."],
-  ["When can I cash out?", "The platform supports low minimum withdrawals, with manual review before PayPal, gift card, or crypto payout automation."],
+  ["How do rewards get tracked?", "Your wallet shows pending and available WaveCoins so you can follow rewards from completion to payout."],
+  ["When can I cash out?", "You can request a payout once you reach the minimum cashout. Payouts are reviewed before being sent through PayPal or gift cards."],
   ["Is this only for survey users?", "EarnWave currently focuses on surveys through CPX Research and TheoremReach, with referrals, streaks, and payout tracking around that core flow."],
-  ["How is fraud handled?", "VPN/proxy checks, device fingerprinting, duplicate-account signals, suspicious activity flags, and withdrawal review queues protect users and the business."]
+  ["Why are payouts reviewed?", "Reviews help reduce duplicate accounts, suspicious activity, and reversals so rewards stay fair for real members."]
 ];
 
 const defaultOfferwallProviders = {
@@ -125,7 +125,7 @@ const surveyProviders = [
   {
     key: "theorem",
     name: "TheoremReach",
-    description: "Trusted survey wall built for qualified responses, clear completion flow, and reliable callbacks.",
+    description: "Trusted survey wall built for qualified responses, clear completion flow, and reward tracking.",
     rewardRange: "35-420 WaveCoins",
     usdRange: "$0.35-$4.20",
     averageTime: "6-20 min",
@@ -520,12 +520,12 @@ function HowItWorksSection() {
   return (
     <section>
       <div className="container">
-        <SectionTitle title="How EarnWave works" copy="A simple, transparent flow designed to keep members informed from signup to payout." />
+        <SectionTitle title="How EarnWave Works" copy="Pick offers, earn WaveCoins, track your progress, and cash out with confidence." />
         <div className="process-grid">
-          <div className="card process-card"><span className="rank">1</span><h3>Create and verify</h3><p>Create your profile, confirm your email, and choose earning interests.</p></div>
-          <div className="card process-card"><span className="rank">2</span><h3>Choose earning paths</h3><p>Browse surveys, games, apps, and offers with provider labels and reward clarity.</p></div>
-          <div className="card process-card"><span className="rank">3</span><h3>Earn WaveCoins</h3><p>Provider callbacks and EarnWave ledger entries track verified reward activity.</p></div>
-          <div className="card process-card"><span className="rank">4</span><h3>Cash out confidently</h3><p>Redeem through PayPal or Tremendous gift cards after payout review.</p></div>
+          <div className="card process-card"><span className="rank">1</span><h3>Play Games & Complete Surveys</h3><p>Choose from surveys, games, apps, and special offers.</p></div>
+          <div className="card process-card"><span className="rank">2</span><h3>Earn WaveCoins</h3><p>Complete tasks and watch your WaveCoin balance grow.</p></div>
+          <div className="card process-card"><span className="rank">3</span><h3>Track Progress</h3><p>Monitor rewards, streaks, referrals, and account activity.</p></div>
+          <div className="card process-card"><span className="rank">4</span><h3>Cash Out</h3><p>Redeem PayPal cash or gift cards after payout review.</p></div>
         </div>
       </div>
     </section>
@@ -558,9 +558,9 @@ function TrustSection() {
 
 function PayoutMethodsSection() {
   const methods = [
-    <PaymentMethod key="paypal" icon={<CreditCard />} title="PayPal Cash" copy="Start with familiar PayPal cashouts after approval." />,
-    <PaymentMethod key="tremendous" icon={<Gift />} title="Tremendous Gift Cards" copy="Gift card delivery through Tremendous once requests pass review." />,
-    <PaymentMethod key="manual" icon={<Wallet />} title="Manual Review Queue" copy="Every payout starts reviewed before automation dispatches." />
+    <PaymentMethod key="paypal" icon={<CreditCard />} title="PayPal Cash" copy="Receive cash to your PayPal account after review." />,
+    <PaymentMethod key="tremendous" icon={<Gift />} title="Tremendous Gift Cards" copy="Redeem gift cards through Tremendous." />,
+    <PaymentMethod key="manual" icon={<Wallet />} title="Manual Review" copy="Payouts are reviewed before being sent to protect members and the platform." />
   ];
   if (ENABLE_CRYPTO_WITHDRAWALS) {
     methods.push(<PaymentMethod key="crypto" icon={<Bitcoin />} title="Crypto withdrawals" copy="Optional stablecoin-ready workflow when enabled." />);
@@ -1379,16 +1379,16 @@ function WalletPage({ navigate, api }) {
 
 function HowItWorksPage({ navigate }) {
   const steps = [
-    ["Discover", "Pick surveys, games, apps, finance tasks, or daily bonuses from tracked provider inventory."],
-    ["Complete", "EarnWave records completion signals, provider callbacks, fraud score, and ledger entries."],
-    ["Review", "Withdrawals enter manual review first so users and the business are protected."],
-    ["Cash out", "Approved payouts can move through PayPal, Tremendous gift cards, or crypto rails once credentials are live."]
+    ["Play Games & Complete Surveys", "Choose from surveys, games, apps, and special offers."],
+    ["Earn WaveCoins", "Complete tasks and watch your WaveCoin balance grow."],
+    ["Track Progress", "Monitor rewards, streaks, referrals, and account activity."],
+    ["Cash Out", "Redeem PayPal cash or gift cards after payout review."]
   ];
 
   return (
     <main className="page">
       <div className="container">
-        <DashboardTop kicker="How it works" title="A clear path from offer to payout." copy="EarnWave keeps the member journey simple while the platform handles tracking, risk checks, payout review, and records behind the scenes." action={<button className="btn" onClick={() => navigate("/signup")}>Create Account</button>} />
+        <DashboardTop kicker="How it works" title="How EarnWave Works" copy="Pick offers, earn WaveCoins, track your progress, and cash out with confidence." action={<button className="btn" onClick={() => navigate("/signup")}>Create Account</button>} />
         <div className="process-grid">
           {steps.map(([title, copy], index) => (
             <div className="card process-card" key={title}>
@@ -1399,42 +1399,24 @@ function HowItWorksPage({ navigate }) {
           ))}
         </div>
         <div className="split-grid page-band">
-          <Feature icon={<PackageCheck />} title="Offer tracking" copy="Provider launch URLs and callback routes are ready for real offerwall credentials." />
-          <Feature icon={<ShieldCheck />} title="Risk review" copy="Device fingerprinting, VPN/proxy heuristics, duplicate checks, and withdrawal flags are already wired." />
+          <Feature icon={<PackageCheck />} title="Clear reward status" copy="Your wallet separates pending and available WaveCoins so you know what can be cashed out." />
+          <Feature icon={<ShieldCheck />} title="Reviewed payouts" copy="Payouts are reviewed before being sent to help keep EarnWave fair for real members." />
         </div>
       </div>
     </main>
   );
 }
 
-function TrustPage({ navigate, api }) {
-  const [health, setHealth] = useState(null);
-
-  useEffect(() => {
-    fetch("/api/health").then(response => response.json()).then(setHealth).catch(() => {});
-  }, []);
-
-  const remaining = health?.readiness?.remaining || [];
+function TrustPage({ navigate }) {
   return (
     <main className="page">
       <div className="container">
-        <DashboardTop kicker="Trust center" title="Clear systems for rewards, support, and payouts." copy="EarnWave is built to feel accountable before a member ever starts an offer." action={<button className="btn alt" onClick={() => navigate("/legal")}>View Policies</button>} />
+        <DashboardTop kicker="Trust" title="Why Members Trust EarnWave" copy="EarnWave keeps rewards clear, payout reviews visible, and account activity easy to follow." action={<button className="btn alt" onClick={() => navigate("/legal")}>View Policies</button>} />
         <div className="cards">
-          <Feature icon={<Lock />} title="Reviewed payouts" copy="Every withdrawal enters review before payout automation can dispatch." />
-          <Feature icon={<Activity />} title="Ledger history" copy="Credits and debits are recorded with reference IDs and balance-after snapshots." />
-          <Feature icon={<Mail />} title="Support trail" copy="Support tickets and admin replies create a clear account-service history." />
-        </div>
-        <div className="card readiness-card">
-          <SectionTitle title="Launch readiness" copy="Live status from the backend health endpoint." action={<span className="tag blue">{health?.database || "demo"}</span>} />
-          <div className="readiness-grid">
-            <ReadinessItem label="PostgreSQL" ready={Boolean(health?.readiness?.database)} />
-            <ReadinessItem label="Redis" ready={Boolean(health?.readiness?.redis)} />
-            <ReadinessItem label="Admin bootstrap" ready={Boolean(health?.readiness?.adminBootstrap)} />
-            <ReadinessItem label="Offerwalls" ready={health?.readiness && Object.values(health.readiness.offerwalls || {}).some(Boolean)} />
-            <ReadinessItem label="Payout providers" ready={health?.readiness && Object.values(health.readiness.payouts || {}).some(Boolean)} />
-            <ReadinessItem label="Fraud review" ready />
-          </div>
-          {remaining.length > 0 && <div className="notice">Remaining: {remaining.join("; ")}</div>}
+          <Feature icon={<Lock />} title="Reviewed Payouts" copy="Every payout is reviewed before processing." />
+          <Feature icon={<Activity />} title="Fraud Protection" copy="Duplicate accounts and suspicious activity are monitored." />
+          <Feature icon={<Wallet />} title="Transparent Rewards" copy="Track rewards through your wallet and account history." />
+          <Feature icon={<Mail />} title="Support Access" copy="Get help through support when something needs review." />
         </div>
       </div>
     </main>
