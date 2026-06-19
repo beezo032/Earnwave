@@ -133,6 +133,50 @@ const surveyProviders = [
   }
 ];
 
+const ENABLE_CRYPTO_WITHDRAWALS = import.meta.env.VITE_ENABLE_CRYPTO_WITHDRAWALS === "true";
+const ENABLE_PREVIEW_PAYOUTS = import.meta.env.VITE_ENABLE_PREVIEW_PAYOUTS !== "false";
+const ENABLE_TRENDING_MOCK_OFFERS = import.meta.env.VITE_ENABLE_TRENDING_MOCK_OFFERS !== "false";
+
+const trendingEarnCards = [
+  {
+    id: "home-game-quest",
+    title: "Game Quest",
+    category: "Game",
+    provider: "CPX Research",
+    rewardWaveCoins: 1200,
+    rewardUsdCents: 1200,
+    label: "Example"
+  },
+  {
+    id: "home-finance-survey",
+    title: "Finance Survey",
+    category: "Survey",
+    provider: "TheoremReach",
+    rewardWaveCoins: 625,
+    rewardUsdCents: 625,
+    label: "Example"
+  },
+  {
+    id: "home-app-trial",
+    title: "Mobile App Trial",
+    category: "App",
+    provider: "CPX Research",
+    rewardWaveCoins: 850,
+    rewardUsdCents: 850,
+    label: "Example"
+  },
+  {
+    id: "home-daily-survey",
+    title: "Daily Survey",
+    category: "Offer",
+    provider: "TheoremReach",
+    rewardWaveCoins: null,
+    rewardUsdCents: null,
+    rewardLabel: "Reward varies",
+    label: "Curated"
+  }
+];
+
 function trackEvent(eventName, payload = {}) {
   const detail = { surface: "earnwave", ...payload };
   window.dispatchEvent(new CustomEvent(`earnwave:${eventName}`, { detail }));
@@ -289,13 +333,21 @@ function useApi() {
 function Shell({ route, navigate, api, children }) {
   const isAuthed = Boolean(api.session?.user);
   const isAdmin = api.session?.user?.role === "admin";
-  const navItems = [
+  const loggedInNavItems = [
     ["/surveys", "Surveys"],
     ["/dashboard", "Dashboard"],
     ["/wallet", "Wallet"],
-    ["/referrals", "Referrals"]
+    ["/referrals", "Referrals"],
+    ["/support", "Support"]
+  ];
+  const loggedOutNavItems = [
+    ["/surveys", "Surveys"],
+    ["/how-it-works", "How It Works"],
+    ["/offers", "Rewards"],
+    ["/trust", "Trust"]
   ];
   const adminItems = isAdmin ? [["/analytics", "Analytics"], ["/admin", "Admin"]] : [];
+  const navItems = isAuthed ? loggedInNavItems : loggedOutNavItems;
 
   return (
     <>
@@ -327,8 +379,8 @@ function Shell({ route, navigate, api, children }) {
               </>
             ) : (
               <>
-                <button onClick={() => navigate("/login")}>Log in</button>
-                <button className="btn" onClick={() => navigate("/signup")}>Join Free</button>
+                <button onClick={() => navigate("/login")}>Login</button>
+                <button className="btn" onClick={() => navigate("/signup")}>Create Account</button>
               </>
             )}
           </nav>
@@ -362,182 +414,212 @@ function Footer({ navigate }) {
 function Landing({ navigate }) {
   return (
     <main>
-      <section className="hero">
-        <div className="hero-orbit" aria-hidden="true" />
-        <div className="container hero-grid">
-          <div className="hero-copy-block">
-            <div className="eyebrow"><ShieldCheck size={16} /> Verified accounts - reviewed payouts - transparent rewards</div>
-            <h1>The smarter way to turn free time into real rewards.</h1>
-            <p className="hero-copy">EarnWave brings premium offer discovery, account protection, progress tracking, and payout confidence into one modern rewards experience.</p>
-            <div className="actions">
-              <button className="btn xl" onClick={() => navigate("/signup")}>Create Verified Account <ArrowRight size={18} /></button>
-              <button className="btn alt xl" onClick={() => navigate("/surveys")}>Explore Surveys</button>
-            </div>
-            <div className="trust-strip">
-              <Metric value="$0.50" label="Starter cashout path" />
-              <Metric value="Review" label="Every withdrawal checked" />
-              <Metric value="Verified" label="Account-first earning" />
-            </div>
-          </div>
-          <div className="hero-product" aria-label="Animated earnings dashboard preview">
-            <div className="dash-window">
-              <div className="window-top"><span /><span /><span /><strong>EarnWave Live</strong></div>
-              <div className="balance-panel hero-balance">
-                <div>
-                  <p>Ready to cash out</p>
-                  <div className="balance count-up">$48.75</div>
-                </div>
-                <span className="tag blue"><TrendingUp size={14} /> +18.4%</span>
-                <Meter value={76} />
-                <p>76% toward today&apos;s progress tier</p>
-              </div>
-              <div className="hero-chart">
-                {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%` }} />)}
-              </div>
-              <div className="feed-card">
-                <div className="feed-title"><Activity size={16} /> Real-time earnings</div>
-                {earningsFeed.map(item => (
-                  <div className="feed-row" key={`${item.user}-${item.time}`}>
-                    <span className="avatar">{item.user.slice(0, 1)}</span>
-                    <p><strong>{item.user}</strong> {item.action}</p>
-                    <strong>+{rewardLabel(item.amount)}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="logo-band">
-        <div className="container trust-logos">
-          <span><Lock size={16} /> Manual payout review</span>
-          <span><ShieldCheck size={16} /> Fraud monitoring</span>
-          <span><CreditCard size={16} /> PayPal</span>
-          <span><Gift size={16} /> Gift cards</span>
-          <span><Bitcoin size={16} /> Crypto-ready</span>
-        </div>
-      </section>
-
-      <section>
-        <div className="container">
-          <SectionTitle title="How EarnWave works" copy="A simple, transparent flow designed to keep members informed from signup to payout." />
-          <div className="process-grid">
-            <div className="card process-card"><span className="rank">1</span><h3>Verify your account</h3><p>Create your profile, confirm your email, and start with a trusted account foundation.</p></div>
-            <div className="card process-card"><span className="rank">2</span><h3>Choose reward paths</h3><p>Browse surveys, games, apps, and bonuses with clear reward values and provider labels.</p></div>
-            <div className="card process-card"><span className="rank">3</span><h3>Track progress</h3><p>Follow completions, streaks, referrals, and account activity from your member dashboard.</p></div>
-            <div className="card process-card"><span className="rank">4</span><h3>Cash out confidently</h3><p>Submit withdrawals into a review-first payout flow built for trust and accountability.</p></div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="container">
-          <SectionTitle title="Built for modern earners" copy="A focused rewards flow for students, gamers, side hustlers, remote workers, survey users, crypto users, and budget-conscious adults." />
-          <div className="cards">
-            <Feature icon={<Gamepad2 />} title="Clear reward discovery" copy="Reward value, provider, category, difficulty, and timing are shown up front so members can choose with confidence." />
-            <Feature icon={<ShieldCheck />} title="Trust-first by design" copy="Verified accounts, ledger history, fraud review, and payout status make the platform feel accountable from day one." />
-            <Feature icon={<Sparkles />} title="Momentum without noise" copy="Streaks, levels, referrals, leaderboards, and bonus codes encourage daily progress without clutter." />
-          </div>
-        </div>
-      </section>
-
-      <section className="split-section">
-        <div className="container split-grid">
-          <div>
-            <SectionTitle title="Safety users can see" copy="EarnWave makes trust visible with verified accounts, reviewed payouts, fraud signals, support access, and transparent account controls." />
-            <div className="security-list">
-              {["VPN/proxy detection", "Device fingerprinting", "Duplicate account checks", "Withdrawal review queue"].map(item => (
-                <div className="security-row" key={item}><CheckCircle size={18} /><span>{item}</span></div>
-              ))}
-            </div>
-          </div>
-          <div className="card security-panel">
-            <div className="risk-score"><span>Risk monitor</span><strong>Low</strong></div>
-            <Meter value={18} />
-            <div className="row"><span>Session integrity</span><span className="pill">Verified</span></div>
-            <div className="row"><span>Payout review</span><span className="pill blue">Queued</span></div>
-            <div className="row"><span>Ledger audit</span><span className="pill">Synced</span></div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="container">
-          <SectionTitle title="Payouts with confidence built in" copy="Members can choose familiar redemption paths while EarnWave keeps manual review and auditability in place." />
-          <div className="payment-grid">
-            <PaymentMethod icon={<CreditCard />} title="PayPal Payouts" copy="Fast digital cashouts after moderation approval." />
-            <PaymentMethod icon={<Gift />} title="Tremendous cards" copy="Gift card delivery for flexible reward redemption." />
-            <PaymentMethod icon={<Bitcoin />} title="Crypto withdrawals" copy="Stablecoin-ready workflow for crypto-native users." />
-            <PaymentMethod icon={<Wallet />} title="Manual queue" copy="Every payout starts reviewed before automation dispatches." />
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="container">
-          <PayoutProofSection />
-        </div>
-      </section>
-
+      <HeroSection navigate={navigate} />
+      <TrendingOffersSection navigate={navigate} />
+      <WaveCoinsExplainer />
+      <HowItWorksSection />
+      <TrustSection />
+      <PayoutMethodsSection />
+      <RecentPayoutsSection />
+      <PlatformBenefitsSection />
       <section className="stats-section">
         <div className="container stats-hero">
-          <Metric value="6" label="Provider paths supported" />
+          <Metric value="2" label="Survey partners live" />
           <Metric value="100%" label="Payouts reviewed first" />
-          <Metric value="18-55" label="Designed across generations" />
+          <Metric value="100 WC" label="Equals $1.00" />
           <Metric value="Daily" label="Progress loops built in" />
         </div>
       </section>
+      <FooterCTA navigate={navigate} />
+    </main>
+  );
+}
 
-      <section>
-        <div className="container">
-          <SectionTitle title="Designed around real routines" copy="EarnWave stays clear and credible whether someone earns between classes, after work, during game time, or as a steady side routine." />
-          <div className="testimonial-grid">
-            {testimonials.map(item => <Testimonial key={item.name} {...item} />)}
+function HeroSection({ navigate }) {
+  return (
+    <section className="hero">
+      <div className="hero-orbit" aria-hidden="true" />
+      <div className="container hero-grid">
+        <div className="hero-copy-block">
+          <div className="eyebrow"><ShieldCheck size={16} /> Reviewed payouts - clear WaveCoins - trusted survey walls</div>
+          <h1>Ride the Reward Wave.</h1>
+          <p className="hero-copy">Earn WaveCoins through surveys, games, apps, and offers. Redeem rewards through PayPal and gift cards.</p>
+          <div className="actions">
+            <button className="btn xl" onClick={() => navigate("/signup")}>Create Free Account <ArrowRight size={18} /></button>
+            <button className="btn alt xl" onClick={() => navigate("/surveys")}>Browse Surveys</button>
+          </div>
+          <p className="cta-helper">100 WaveCoins = $1.00. Payouts are reviewed before being sent.</p>
+          <div className="conversion-strip" aria-label="WaveCoins conversion examples">
+            <Metric value="500 WC" label="$5" />
+            <Metric value="1,000 WC" label="$10" />
+            <Metric value="2,500 WC" label="$25" />
           </div>
         </div>
-      </section>
-
-      <section>
-        <div className="container split-grid">
-          <div>
-            <SectionTitle title="Momentum you can feel" copy="Social proof stays clean: visible activity, clear rewards, and a simple path for new members to start building progress." />
-            <div className="top-earners">
-              {[
-                { name: "WaveHunter", amount: 184.2, badge: "Surveys" },
-                { name: "NovaEarns", amount: 143.75, badge: "Surveys" },
-                { name: "CPXPro", amount: 121.4, badge: "Surveys" }
-              ].map((row, index) => (
-                <div className="earner-row" key={row.name}>
-                  <span className="rank">{index + 1}</span>
-                  <div><strong>{row.name}</strong><p>{row.badge} streak active</p></div>
-                  <span className="reward">{rewardLabel(row.amount)}</span>
+        <div className="hero-product" aria-label="Animated earnings dashboard preview">
+          <div className="dash-window">
+            <div className="window-top"><span /><span /><span /><strong>EarnWave Live</strong></div>
+            <div className="balance-panel hero-balance">
+              <div>
+                <p>Ready to cash out</p>
+                <div className="balance count-up">4,875 WaveCoins</div>
+              </div>
+              <span className="tag blue"><TrendingUp size={14} /> $48.75</span>
+              <Meter value={76} />
+              <p>76% toward today&apos;s progress tier</p>
+            </div>
+            <div className="hero-chart">
+              {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%` }} />)}
+            </div>
+            <div className="feed-card">
+              <div className="feed-title"><Activity size={16} /> Live earning paths</div>
+              {earningsFeed.map(item => (
+                <div className="feed-row" key={`${item.user}-${item.time}`}>
+                  <span className="avatar">{item.user.slice(0, 1)}</span>
+                  <p><strong>{item.user}</strong> {item.action}</p>
+                  <strong>+{rewardLabel(item.amount)}</strong>
                 </div>
               ))}
             </div>
           </div>
-          <div className="card social-proof-card">
-            <div className="icon"><Users /></div>
-            <h3>Designed for daily retention</h3>
-            <p>Levels, streaks, bonus codes, referral sharing, and public rankings give users a reason to come back without turning the product into clutter.</p>
-            <button className="btn alt" onClick={() => navigate("/leaderboard")}>View Leaderboard</button>
-          </div>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      <section>
-        <div className="container faq-wrap">
-          <SectionTitle title="FAQ" copy="Straight answers help users trust the product before they create an account." />
-          <div className="faq-grid">
-            {faqs.map(([question, answer], index) => <FaqItem key={question} question={question} answer={answer} defaultOpen={index === 0} />)}
-          </div>
-          <div className="final-cta">
-            <h2>Start verified. Track progress. Cash out confidently.</h2>
-            <button className="btn xl" onClick={() => navigate("/signup")}>Create Your Account <ArrowRight size={18} /></button>
+function TrendingOffersSection({ navigate }) {
+  const cards = ENABLE_TRENDING_MOCK_OFFERS ? trendingEarnCards : trendingEarnCards.map(card => ({ ...card, rewardWaveCoins: null, rewardUsdCents: null, rewardLabel: "Reward varies", label: "Curated" }));
+  return (
+    <section className="home-section-tight">
+      <div className="container">
+        <SectionTitle title="Trending Ways to Earn" copy="Launch-mode examples show the kinds of surveys, games, apps, and offers EarnWave is built to route clearly." action={<span className="tag amber">Example rewards</span>} />
+        <div className="trending-offers-grid">
+          {cards.map(card => <OfferCard key={card.id} offer={{ ...card, isFeatured: true }} actionLabel="Start Earning" onStart={() => navigate("/signup")} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WaveCoinsExplainer() {
+  return (
+    <section className="home-section-tight">
+      <div className="container">
+        <SectionTitle title="WaveCoins made simple" copy="WaveCoins are EarnWave reward credits. 100 WaveCoins equals $1.00 when redeemed." />
+        <div className="wavecoins-grid">
+          <Metric value="100 WC" label="$1" />
+          <Metric value="500 WC" label="$5" />
+          <Metric value="1,000 WC" label="$10" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HowItWorksSection() {
+  return (
+    <section>
+      <div className="container">
+        <SectionTitle title="How EarnWave works" copy="A simple, transparent flow designed to keep members informed from signup to payout." />
+        <div className="process-grid">
+          <div className="card process-card"><span className="rank">1</span><h3>Create and verify</h3><p>Create your profile, confirm your email, and choose earning interests.</p></div>
+          <div className="card process-card"><span className="rank">2</span><h3>Choose earning paths</h3><p>Browse surveys, games, apps, and offers with provider labels and reward clarity.</p></div>
+          <div className="card process-card"><span className="rank">3</span><h3>Earn WaveCoins</h3><p>Provider callbacks and EarnWave ledger entries track verified reward activity.</p></div>
+          <div className="card process-card"><span className="rank">4</span><h3>Cash out confidently</h3><p>Redeem through PayPal or Tremendous gift cards after payout review.</p></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TrustSection() {
+  return (
+    <section className="split-section">
+      <div className="container split-grid">
+        <div>
+          <SectionTitle title="Trust built into every payout" copy="EarnWave reviews payouts before sending them to reduce fraud and protect the platform." />
+          <div className="security-list">
+            {["Fraud monitoring", "Device fingerprinting", "Payout review queue", "Ledger audit trail"].map(item => (
+              <div className="security-row" key={item}><CheckCircle size={18} /><span>{item}</span></div>
+            ))}
           </div>
         </div>
-      </section>
-    </main>
+        <div className="card security-panel">
+          <div className="risk-score"><span>Payout review</span><strong>Manual first</strong></div>
+          <Meter value={72} />
+          <div className="row"><span>Provider callback</span><span className="pill">Tracked</span></div>
+          <div className="row"><span>Withdrawal status</span><span className="pill blue">Reviewed</span></div>
+          <div className="row"><span>Balance changes</span><span className="pill">Ledgered</span></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PayoutMethodsSection() {
+  const methods = [
+    <PaymentMethod key="paypal" icon={<CreditCard />} title="PayPal Cash" copy="Start with familiar PayPal cashouts after approval." />,
+    <PaymentMethod key="tremendous" icon={<Gift />} title="Tremendous Gift Cards" copy="Gift card delivery through Tremendous once requests pass review." />,
+    <PaymentMethod key="manual" icon={<Wallet />} title="Manual Review Queue" copy="Every payout starts reviewed before automation dispatches." />
+  ];
+  if (ENABLE_CRYPTO_WITHDRAWALS) {
+    methods.push(<PaymentMethod key="crypto" icon={<Bitcoin />} title="Crypto withdrawals" copy="Optional stablecoin-ready workflow when enabled." />);
+  }
+  return (
+    <section>
+      <div className="container">
+        <SectionTitle title="Payouts with confidence built in" copy="Start with PayPal and gift cards. More payout options can be added later." />
+        <div className="payment-grid">{methods}</div>
+      </div>
+    </section>
+  );
+}
+
+function RecentPayoutsSection() {
+  return (
+    <section>
+      <div className="container">
+        <PayoutProofSection />
+      </div>
+    </section>
+  );
+}
+
+function PlatformBenefitsSection() {
+  const benefitCards = [
+    { icon: <ClipboardList />, title: "Built for students", copy: "Quick surveys and simple progress tracking fit into small breaks without confusing payout rules." },
+    { icon: <Gamepad2 />, title: "Built for gamers", copy: "Game, app, and quest-style earning paths can be surfaced as provider inventory grows." },
+    { icon: <Rocket />, title: "Built for side hustlers", copy: "Clear reward credits, reviewed cashouts, referrals, and streaks support consistent earning habits." }
+  ];
+  return (
+    <section>
+      <div className="container">
+        <SectionTitle title="What EarnWave is built for" copy="Honest launch-safe benefits for the audiences EarnWave is designed to serve." />
+        <div className="benefit-grid">
+          {benefitCards.map(item => <Feature key={item.title} {...item} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FooterCTA({ navigate }) {
+  return (
+    <section>
+      <div className="container faq-wrap">
+        <SectionTitle title="FAQ" copy="Straight answers help users trust the product before they create an account." />
+        <div className="faq-grid">
+          {faqs.map(([question, answer], index) => <FaqItem key={question} question={question} answer={answer} defaultOpen={index === 0} />)}
+        </div>
+        <div className="final-cta">
+          <div>
+            <h2>Start earning WaveCoins with a reviewed payout path.</h2>
+            <p>Browse surveys, build progress, and redeem through PayPal or Tremendous gift cards after review.</p>
+          </div>
+          <button className="btn xl" onClick={() => navigate("/signup")}>Create Free Account <ArrowRight size={18} /></button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1132,18 +1214,19 @@ function PayoutProofSection({ compact = false }) {
       .catch(() => setProofs([]));
   }, []);
 
-  const visibleProofs = proofs?.length ? proofs : payoutProofPreview;
+  const visibleProofs = proofs?.length ? proofs : ENABLE_PREVIEW_PAYOUTS ? payoutProofPreview : [];
   const isPreview = !proofs?.length;
 
   return (
     <section className={compact ? "payout-proof-section compact" : "payout-proof-section"}>
       <SectionTitle
-        title="Paid today"
-        copy={isPreview ? "Live completed payouts will appear here automatically after the first payout is dispatched." : "Recent completed payouts with private user details redacted."}
-        action={<span className={isPreview ? "tag amber" : "tag"}><ShieldCheck size={14} /> {isPreview ? "Preview" : "Verified proof"}</span>}
+        title="Recent Payouts"
+        copy={isPreview ? "Live completed payouts will appear here after the first verified payout. Preview examples are clearly labeled." : "Recent completed payouts with private user details redacted."}
+        action={<span className={isPreview ? "tag amber" : "tag"}><ShieldCheck size={14} /> {isPreview ? "Preview examples" : "Verified proof"}</span>}
       />
-      <div className="payout-proof-grid">
-        {visibleProofs.map(item => (
+      {visibleProofs.length ? (
+        <div className="payout-proof-grid">
+          {visibleProofs.map(item => (
           <div className="card payout-proof-card" key={`${item.name}-${item.completedAt}`}>
             <div className="payout-proof-top">
               <span className="avatar">{item.name.slice(0, 1)}</span>
@@ -1158,12 +1241,19 @@ function PayoutProofSection({ compact = false }) {
               <span>{money(waveCoinsToUsd(item.amountWaveCoins))}</span>
             </div>
             <div className="row">
-              <span>Method</span>
-              <strong>{item.method}</strong>
+              <span>{`Method: ${item.method}`}</span>
+              <strong>{item.preview ? "Example" : "Completed"}</strong>
             </div>
           </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card payout-empty-state">
+          <div className="icon"><CreditCard /></div>
+          <h3>Live completed payouts will appear here after the first verified payout.</h3>
+          <p>No fake payout proof is shown in production when preview payouts are disabled.</p>
+        </div>
+      )}
     </section>
   );
 }

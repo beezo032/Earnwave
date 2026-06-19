@@ -134,8 +134,11 @@ h3 { font-size: 1.06rem; line-height: 1.3; }
   text-transform: uppercase;
 }
 .hero-copy { max-width: 690px; margin: 22px 0 26px; color: #c5d2e2; font-size: 1.12rem; }
+.cta-helper { margin: 12px 0 0; color: var(--muted); font-weight: 850; }
+.home-section-tight { padding: 34px 0; }
 .actions, .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .trust-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 30px; }
+.conversion-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 22px; }
 .trust-item, .card, .panel, .dash-window {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -189,7 +192,9 @@ section { padding: 58px 0; }
 .page { padding: 46px 0 70px; }
 .section-title { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 20px; }
 .section-title p { max-width: 620px; }
-.cards, .offers-grid, .payment-grid, .testimonial-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.cards, .offers-grid, .payment-grid, .testimonial-grid, .trending-offers-grid, .benefit-grid, .wavecoins-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.trending-offers-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wavecoins-grid .trust-item { min-height: 128px; display: grid; align-content: center; background: linear-gradient(135deg, rgba(50,230,161,.13), rgba(69,200,255,.07)), var(--surface); }
 .payment-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .provider-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
 .provider-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 118px; }
@@ -646,6 +651,7 @@ button.topbar-balance:hover { border-color: rgba(50,230,161,.5); background: rgb
 .payout-proof-amount { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
 .payout-proof-amount strong { color: var(--mint); font-size: 1.45rem; }
 .payout-proof-amount span { color: var(--mint-2); font-weight: 950; }
+.payout-empty-state { min-height: 220px; display: grid; align-content: center; gap: 12px; background: linear-gradient(135deg, rgba(69,200,255,.10), rgba(255,255,255,.035)), var(--surface); }
 .stat-card { min-height: 118px; }
 .stat-card strong { display: block; margin-top: 8px; font-size: 1.75rem; }
 .mini-stats { margin-bottom: 0; }
@@ -748,7 +754,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   .dashboard-topbar { position: relative; top: auto; align-items: flex-start; flex-direction: column; }
   .topbar-actions { width: 100%; justify-content: space-between; }
   .notification-dropdown { right: -2px; }
-  .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .process-grid, .readiness-grid, .earn-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .trending-offers-grid, .benefit-grid, .wavecoins-grid, .stats, .stats-hero, .process-grid, .readiness-grid, .earn-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .offerwall-hero, .offerwall-widgets { grid-template-columns: 1fr; }
   .top-earners-widget { grid-template-columns: 1fr; }
   .surveys-hero, .survey-provider-grid { grid-template-columns: 1fr; }
@@ -774,7 +780,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
     background: rgba(6, 9, 15, .84);
     backdrop-filter: blur(16px);
   }
-  .trust-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .stats, .stats-hero, .wallet-summary-grid, .support-help-grid, .method-grid, .dashboard-notices, .dashboard-hero-card, .earn-dashboard-grid, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
+  .trust-strip, .conversion-strip, .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .trending-offers-grid, .benefit-grid, .wavecoins-grid, .stats, .stats-hero, .wallet-summary-grid, .support-help-grid, .method-grid, .dashboard-notices, .dashboard-hero-card, .earn-dashboard-grid, .security-list, .faq-grid, .process-grid, .readiness-grid { grid-template-columns: 1fr; }
   .leaderboard-stage { grid-template-columns: 1fr; }
   .earner-row { grid-template-columns: 42px 1fr; }
   .earner-row .reward { grid-column: 2; }
