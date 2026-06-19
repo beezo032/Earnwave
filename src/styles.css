@@ -813,3 +813,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   .onboarding-steps, .payout-proof-grid { grid-template-columns: 1fr; }
   h1 { font-size: 2.75rem; }
 }
+
+.turnstile-wrap { min-height: 65px; display: flex; align-items: center; justify-content: flex-start; }
+.turnstile-wrap:empty { display: none; }
+

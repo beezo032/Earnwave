@@ -3,7 +3,8 @@ const { z } = require("zod");
 const { createToken, requireAuth } = require("../middleware/auth");
 const { createUser, verifyUser, findUserByEmail, findUserById } = require("../services/users");
 const { requestPasswordReset, resetPassword, sendVerificationEmail, verifyEmailToken } = require("../services/authLifecycle");
-const { buildRisk, duplicateAccountSignals, flagSuspiciousActivity, registerDevice } = require("../services/fraud");
+const { env } = require("../config/env");
+const { buildRisk, duplicateAccountSignals, flagSuspiciousActivity, lookupIpReputation, registerDevice, verifyTurnstileToken } = require("../services/fraud");
 
 const authRouter = express.Router();
 const signupSchema = z.object({
@@ -11,7 +12,8 @@ const signupSchema = z.object({
   username: z.string().min(3).max(24),
   email: z.string().email(),
   password: z.string().min(6),
-  referralCode: z.string().max(32).optional()
+  referralCode: z.string().max(32).optional(),
+  turnstileToken: z.string().max(4096).optional()
 });
 const loginSchema = z.object({
   email: z.string().email(),
@@ -22,7 +24,16 @@ authRouter.post("/signup", async (req, res, next) => {
   try {
     const input = signupSchema.parse(req.body);
     const duplicateSignals = await duplicateAccountSignals({ email: input.email, req });
-    const risk = await buildRisk(req, { duplicateSignals });
+    const ipIntel = await lookupIpReputation(req);
+    const turnstile = await verifyTurnstileToken({ token: input.turnstileToken || req.headers["x-turnstile-token"], ip: ipIntel.ip });
+    const risk = await buildRisk(req, {
+      duplicateSignals,
+      requiresTurnstile: env.REQUIRE_TURNSTILE_SIGNUP,
+      turnstileResult: turnstile.result,
+      ipReputation: ipIntel.reputation,
+      asn: ipIntel.asn,
+      ipCountry: ipIntel.country
+    });
     const user = await createUser(input);
     const verification = await sendVerificationEmail(user);
     await registerDevice({ userId: user.id, req });
@@ -31,7 +42,7 @@ authRouter.post("/signup", async (req, res, next) => {
         userId: user.id,
         eventType: "signup_risk",
         risk,
-        metadata: { email: input.email }
+        metadata: { email: input.email, ipIntel: { source: ipIntel.source, country: ipIntel.country, asn: ipIntel.asn }, turnstile: { success: turnstile.success, result: turnstile.result, reason: turnstile.reason } }
       });
     }
     res.status(201).json({
@@ -129,3 +140,4 @@ authRouter.get("/me", requireAuth, async (req, res, next) => {
 });
 
 module.exports = { authRouter };
+

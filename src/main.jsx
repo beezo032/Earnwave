@@ -136,6 +136,7 @@ const surveyProviders = [
 const ENABLE_CRYPTO_WITHDRAWALS = import.meta.env.VITE_ENABLE_CRYPTO_WITHDRAWALS === "true";
 const ENABLE_PREVIEW_PAYOUTS = import.meta.env.VITE_ENABLE_PREVIEW_PAYOUTS !== "false";
 const ENABLE_TRENDING_MOCK_OFFERS = import.meta.env.VITE_ENABLE_TRENDING_MOCK_OFFERS !== "false";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 
 const trendingEarnCards = [
   {
@@ -1261,7 +1262,7 @@ function PayoutProofSection({ compact = false }) {
 function WalletPage({ navigate, api }) {
   const [walletUser, setWalletUser] = useState(api.session?.user || { balance: 48.75 });
   const minimumCashoutWaveCoins = 500;
-  const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amountWaveCoins: "", destinationType: "EMAIL", destinationValue: "" });
+  const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amountWaveCoins: "", destinationType: "EMAIL", destinationValue: "", turnstileToken: "" });
   const [notice, setNotice] = useState("All cashouts enter review before approval.");
   const [withdrawals, setWithdrawals] = useState([]);
   const [transactions, setTransactions] = useState([
@@ -1348,6 +1349,7 @@ function WalletPage({ navigate, api }) {
               <label>Network<select value={withdrawal.destinationType} onChange={event => setWithdrawal({ ...withdrawal, destinationType: event.target.value })}><option>ETH</option><option>SOL</option><option>AVAX</option><option>MATIC</option></select></label>
             )}
             <label>{withdrawal.method === "Crypto" ? "Wallet address" : "Recipient email"}<input required placeholder={withdrawal.method === "Crypto" ? "0x..." : "member@example.com"} value={withdrawal.destinationValue} onChange={event => setWithdrawal({ ...withdrawal, destinationValue: event.target.value })} /></label>
+            <TurnstileField onToken={token => setWithdrawal(current => ({ ...current, turnstileToken: token }))} />
             <button className="btn">Request Withdrawal</button>
             <div className="notice">{notice}</div>
           </form>
@@ -2166,10 +2168,55 @@ function TokenForm({ title, copy, token, setToken, notice, submit, button, navig
   );
 }
 
+function TurnstileField({ onToken }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !containerRef.current) return;
+    let widgetId = null;
+    let cancelled = false;
+
+    const renderWidget = () => {
+      if (cancelled || !window.turnstile || !containerRef.current || containerRef.current.dataset.rendered === "true") return;
+      widgetId = window.turnstile.render(containerRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: "dark",
+        callback: token => onToken(token),
+        "expired-callback": () => onToken("")
+      });
+      containerRef.current.dataset.rendered = "true";
+    };
+
+    if (!window.turnstile) {
+      const existing = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"]');
+      if (!existing) {
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.onload = renderWidget;
+        document.head.appendChild(script);
+      } else {
+        existing.addEventListener("load", renderWidget, { once: true });
+      }
+    } else {
+      renderWidget();
+    }
+
+    return () => {
+      cancelled = true;
+      if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
+      if (containerRef.current) containerRef.current.dataset.rendered = "false";
+    };
+  }, [onToken]);
+
+  if (!TURNSTILE_SITE_KEY) return null;
+  return <div className="turnstile-wrap" ref={containerRef} />;
+}
 function AuthPage({ mode, api, navigate }) {
   const [form, setForm] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return { name: "", username: "", email: "", password: "", referralCode: params.get("ref") || "" };
+    return { name: "", username: "", email: "", password: "", referralCode: params.get("ref") || "", turnstileToken: "" };
   });
   const [notice, setNotice] = useState("Create a verified account before entering EarnWave.");
 
@@ -2202,6 +2249,7 @@ function AuthPage({ mode, api, navigate }) {
           <label>Email<input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} required /></label>
           <label>Password<input type="password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} required /></label>
           {mode === "signup" && <label>Referral code<input value={form.referralCode} onChange={event => setForm({ ...form, referralCode: event.target.value })} placeholder="Optional" /></label>}
+          {mode === "signup" && <TurnstileField onToken={token => setForm(current => ({ ...current, turnstileToken: token }))} />}
           <button className="btn" type="submit">{mode === "signup" ? "Create Account" : "Login"}</button>
           {mode === "login" && <button className="btn alt" type="button" onClick={() => navigate("/forgot-password")}>Forgot Password</button>}
           <div className="notice">{notice}</div>
@@ -2612,3 +2660,4 @@ const rootElement = document.getElementById("root");
 if (rootElement) {
   createRoot(rootElement).render(<App />);
 }
+

@@ -37,6 +37,9 @@ const REASON_CODE_CATALOG = {
   IOS_APP_ATTEST_FAILED: "iOS App Attest status failed or was not trusted.",
   DUPLICATE_HOUSEHOLD: "Household or payment destination indicators overlap with another account.",
   WITHDRAWAL_THRESHOLD_PRESSURE: "The payout would withdraw most of the available balance.",
+  PAYOUT_VELOCITY_HIGH: "Recent withdrawal attempts or payout volume are unusually high.",
+  PAYOUT_DESTINATION_REUSED: "The payout destination has been used by another account.",
+  IP_REPUTATION_UNAVAILABLE: "Configured IP reputation provider did not return a usable result.",
   PRIVATE_NETWORK_IP: "The request came through a private network address.",
   MULTI_HOP_FORWARDED_FOR: "Forwarded headers show a multi-hop network path.",
   MANY_PROXY_HEADERS: "Several proxy-related headers appeared on the request.",
@@ -209,7 +212,90 @@ async function duplicatePayoutDestinationSignals({ userId, destinationValue }) {
     [normalizedDestination, String(userId)]
   );
 
-  return Number(result.rows[0]?.matched_accounts || 0) > 0 ? ["payout_destination_seen_on_other_account"] : [];
+  return Number(result.rows[0]?.matched_accounts || 0) > 0 ? ["payout_destination_reused"] : [];
+}
+async function verifyTurnstileToken({ token, ip }) {
+  if (!token) return { result: "missing", success: false, reason: "missing_token" };
+  if (!env.TURNSTILE_SECRET_KEY) return { result: "missing", success: false, reason: "missing_secret" };
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: ip || "" })
+    });
+    const payload = await response.json();
+    return { result: payload.success ? "success" : "failed", success: Boolean(payload.success), payload };
+  } catch (error) {
+    return { result: "failed", success: false, reason: "verification_error", message: error.message };
+  }
+}
+
+async function lookupIpReputation(req) {
+  const ip = getClientIp(req);
+  const provider = String(env.IP_REPUTATION_PROVIDER || "").toLowerCase();
+  const fallback = {
+    ip,
+    reputation: req.headers["x-ip-intel"] || req.headers["x-ip-risk"] || "",
+    asn: req.headers["x-asn"] || req.headers["x-asn-type"] || "",
+    country: req.headers["x-ip-country"] || "",
+    source: "headers"
+  };
+
+  if (!provider || !env.IP_REPUTATION_API_KEY) return fallback;
+
+  try {
+    if (provider === "ipqualityscore" || provider === "ipqs") {
+      const response = await fetch(`https://ipqualityscore.com/api/json/ip/${env.IP_REPUTATION_API_KEY}/${encodeURIComponent(ip)}?strictness=1&allow_public_access_points=true`);
+      const payload = await response.json();
+      const risky = [payload.proxy && "proxy", payload.vpn && "vpn", payload.tor && "tor", payload.active_vpn && "vpn", payload.active_tor && "tor", payload.recent_abuse && "abuse", payload.bot_status && "bot"].filter(Boolean).join(" ");
+      return { ip, reputation: risky || String(payload.fraud_score || ""), asn: payload.ISP || payload.organization || "", country: payload.country_code || "", source: provider, raw: payload };
+    }
+
+    if (provider === "ipinfo") {
+      const response = await fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${env.IP_REPUTATION_API_KEY}`);
+      const payload = await response.json();
+      const privacy = payload.privacy || {};
+      const risky = [privacy.vpn && "vpn", privacy.proxy && "proxy", privacy.tor && "tor", privacy.hosting && "hosting"].filter(Boolean).join(" ");
+      return { ip, reputation: risky, asn: payload.org || "", country: payload.country || "", source: provider, raw: payload };
+    }
+
+    return fallback;
+  } catch (error) {
+    return { ...fallback, reputation: env.IP_REPUTATION_STRICT ? "unavailable high" : fallback.reputation, source: provider, error: error.message };
+  }
+}
+
+async function withdrawalVelocitySignals({ userId, amountWaveCoins = 0 }) {
+  const now = Date.now();
+  const dayAgo = new Date(now - 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const dailyLimit = env.WITHDRAWAL_VELOCITY_DAILY_LIMIT;
+  const weeklyLimit = env.WITHDRAWAL_VELOCITY_WEEKLY_LIMIT;
+  const dailyWaveCoinLimit = env.WITHDRAWAL_VELOCITY_DAILY_WAVECOINS;
+
+  if (!env.DATABASE_URL) {
+    const userRows = withdrawals.filter(item => String(item.user_id) === String(userId));
+    const lastDay = userRows.filter(item => new Date(item.created_at || 0) >= dayAgo);
+    const lastWeek = userRows.filter(item => new Date(item.created_at || 0) >= weekAgo);
+    const dailyWaveCoins = lastDay.reduce((sum, item) => sum + Number(item.amount_wavecoins || Math.round(Number(item.amount || 0) * 100) || 0), 0) + Number(amountWaveCoins || 0);
+    return [lastDay.length >= dailyLimit, lastWeek.length >= weeklyLimit, dailyWaveCoins > dailyWaveCoinLimit].some(Boolean) ? ["payout_velocity_high"] : [];
+  }
+
+  const result = await query(
+    `SELECT
+       COUNT(*) FILTER (WHERE created_at >= now() - interval '24 hours') AS day_count,
+       COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days') AS week_count,
+       COALESCE(SUM(CASE WHEN created_at >= now() - interval '24 hours' THEN amount_cents ELSE 0 END), 0) AS day_wavecoins
+     FROM withdrawals
+     WHERE user_id = $1`,
+    [userId]
+  );
+  const row = result.rows[0] || {};
+  const dayCount = Number(row.day_count || 0);
+  const weekCount = Number(row.week_count || 0);
+  const dailyWaveCoins = Number(row.day_wavecoins || 0) + Number(amountWaveCoins || 0);
+  return [dayCount >= dailyLimit, weekCount >= weeklyLimit, dailyWaveCoins > dailyWaveCoinLimit].some(Boolean) ? ["payout_velocity_high"] : [];
 }
 async function flagSuspiciousActivity({ userId, eventType, risk, metadata = {} }) {
   const score = risk.risk_score ?? risk.score ?? 0;
@@ -312,6 +398,11 @@ function scoreFraudRisk(input = {}) {
     if (REASON_CODE_CATALOG[code]) addReason(state, code, 20);
   }
 
+  for (const signal of input.payoutVelocitySignals || []) {
+    const code = String(signal).toUpperCase();
+    if (REASON_CODE_CATALOG[code]) addReason(state, code, 30);
+  }
+
   if (accountAgeDays < 7 && payoutAmount >= 25) addReason(state, "NEW_ACCOUNT_HIGH_VALUE_PAYOUT", 25);
   if (providerReversalCount > 0) addReason(state, "PROVIDER_REVERSAL_HISTORY", Math.min(35, providerReversalCount * 15));
   if (payoutAmount >= 100) addReason(state, "HIGH_PAYOUT_AMOUNT", 25);
@@ -325,7 +416,9 @@ function scoreFraudRisk(input = {}) {
     addReason(state, "IOS_APP_ATTEST_FAILED", 30);
   }
 
-  if (duplicateHouseholdIndicators.length) {
+  if (duplicateHouseholdIndicators.includes("payout_destination_reused")) {
+    addReason(state, "PAYOUT_DESTINATION_REUSED", 35);
+  } else if (duplicateHouseholdIndicators.length) {
     addReason(state, "DUPLICATE_HOUSEHOLD", Math.min(30, duplicateHouseholdIndicators.length * 15));
   }
 
@@ -384,6 +477,12 @@ async function buildRisk(req, extra = {}) {
     if (signal === "device_seen_on_other_account") return "DEVICE_SEEN_ON_OTHER_ACCOUNT";
     if (signal === "multiple_accounts_same_ip") return "MULTIPLE_ACCOUNTS_SAME_IP";
     if (signal === "many_accounts_same_email_domain") return "MANY_ACCOUNTS_SAME_EMAIL_DOMAIN";
+    if (signal === "payout_velocity_high") return "PAYOUT_VELOCITY_HIGH";
+    return signal;
+  });
+
+  const payoutVelocitySignals = (extra.payoutVelocitySignals || []).map(signal => {
+    if (signal === "payout_velocity_high") return "PAYOUT_VELOCITY_HIGH";
     return signal;
   });
 
@@ -403,6 +502,7 @@ async function buildRisk(req, extra = {}) {
     iosAppAttestStatus: extra.iosAppAttestStatus || req.headers["x-app-attest"],
     duplicateHouseholdIndicators: extra.duplicateHouseholdIndicators || [],
     duplicateAccountSignals,
+    payoutVelocitySignals,
     networkSignals: proxy.signals,
     withdrawalAmount: extra.withdrawalAmount,
     balance: extra.balance
@@ -426,9 +526,12 @@ module.exports = {
   getClientIp,
   getDeviceHash,
   listSuspiciousActivity,
+  lookupIpReputation,
   persistRiskReview,
   providerReversalCountForUser,
   registerDevice,
-  scoreFraudRisk
+  scoreFraudRisk,
+  verifyTurnstileToken,
+  withdrawalVelocitySignals
 };
 

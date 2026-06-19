@@ -3,8 +3,9 @@ const { z } = require("zod");
 const { requireAuth, requireVerifiedEmail } = require("../middleware/auth");
 const { createWithdrawal, listWithdrawals } = require("../services/wallet");
 const { evaluatePayoutEligibility } = require("../services/compliance");
-const { buildRisk, duplicateAccountSignals, duplicatePayoutDestinationSignals, flagSuspiciousActivity, persistRiskReview, providerReversalCountForUser } = require("../services/fraud");
+const { buildRisk, duplicateAccountSignals, duplicatePayoutDestinationSignals, flagSuspiciousActivity, lookupIpReputation, persistRiskReview, providerReversalCountForUser, verifyTurnstileToken, withdrawalVelocitySignals } = require("../services/fraud");
 const { findUserById } = require("../services/users");
+const { env } = require("../config/env");
 
 const walletRouter = express.Router();
 const withdrawalSchema = z.object({
@@ -12,7 +13,8 @@ const withdrawalSchema = z.object({
   amount: z.coerce.number().positive().optional(),
   amountWaveCoins: z.coerce.number().int().positive().optional(),
   destinationType: z.string().max(32).optional(),
-  destinationValue: z.string().min(3).max(255)
+  destinationValue: z.string().min(3).max(255),
+  turnstileToken: z.string().max(4096).optional()
 }).refine(body => body.amount || body.amountWaveCoins, { message: "Amount is required" });
 
 walletRouter.get("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
@@ -45,14 +47,23 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
     const duplicateSignals = await duplicateAccountSignals({ email: user.email, req, currentUserId: req.user.id });
     const duplicateHouseholdIndicators = await duplicatePayoutDestinationSignals({ userId: req.user.id, destinationValue: input.destinationValue });
     const providerReversalCount = await providerReversalCountForUser(req.user.id);
+    const ipIntel = await lookupIpReputation(req);
+    const turnstile = await verifyTurnstileToken({ token: input.turnstileToken || req.headers["x-turnstile-token"], ip: ipIntel.ip });
+    const payoutVelocitySignals = await withdrawalVelocitySignals({ userId: req.user.id, amountWaveCoins: input.amountWaveCoins || payoutAmountCents });
     const risk = await buildRisk(req, {
       highValue: payoutAmountUsd >= 25,
       withdrawalAmount: payoutAmountUsd,
       balance: serverBalanceUsd,
       duplicateSignals,
+      payoutVelocitySignals,
       accountAgeDays,
       accountCountry: user.country,
       payoutCountry: req.headers["x-payout-country"] || user.country,
+      requiresTurnstile: env.REQUIRE_TURNSTILE_WITHDRAWALS,
+      turnstileResult: turnstile.result,
+      ipReputation: ipIntel.reputation,
+      asn: ipIntel.asn,
+      ipCountry: ipIntel.country,
       providerReversalCount,
       duplicateHouseholdIndicators
     });
@@ -63,7 +74,10 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
       input: {
         payoutAmount: payoutAmountUsd,
         method: input.method,
-        destinationType: input.destinationType || (input.method === "Crypto" ? "ETH" : "EMAIL")
+        destinationType: input.destinationType || (input.method === "Crypto" ? "ETH" : "EMAIL"),
+        ipIntel: { source: ipIntel.source, country: ipIntel.country, asn: ipIntel.asn },
+        turnstile: { success: turnstile.success, result: turnstile.result, reason: turnstile.reason },
+        payoutVelocitySignals
       },
       metadata: { compliance }
     });
