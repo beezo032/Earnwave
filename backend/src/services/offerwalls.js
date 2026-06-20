@@ -103,12 +103,31 @@ const providerAdapters = {
       if (env.CPX_POSTBACK_SECRET && postbackSecret === env.CPX_POSTBACK_SECRET) {
         return { verified: true, method: "postback_secret" };
       }
-      if (!env.CPX_SECURE_HASH_SECRET) return { verified: false, reason: "CPX_SECURE_HASH_SECRET not set" };
+      if (env.CPX_POSTBACK_SECRET && postbackSecret && postbackSecret !== env.CPX_POSTBACK_SECRET) {
+        return { verified: false, reason: "CPX postback_secret did not match Render CPX_POSTBACK_SECRET." };
+      }
+      if (!env.CPX_SECURE_HASH_SECRET) {
+        return {
+          verified: false,
+          reason: "CPX callback missing postback_secret and CPX_SECURE_HASH_SECRET is not set. Add postback_secret=YOUR_CPX_POSTBACK_SECRET to the CPX Postback URL and set the same value in Render."
+        };
+      }
       const received = payload.secure_hash || payload.hash;
+      if (!received) {
+        return {
+          verified: false,
+          reason: "CPX callback missing postback_secret or secure_hash. Add postback_secret=YOUR_CPX_POSTBACK_SECRET to the CPX Postback URL and set the same CPX_POSTBACK_SECRET in Render."
+        };
+      }
       const expected = sha256(sortedQuery(payload) + env.CPX_SECURE_HASH_SECRET);
       const userId = payload.ext_user_id || payload.user_id || payload.subid_2;
       const entryHash = userId ? md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`) : "";
-      return { verified: received === expected || received === entryHash, expected };
+      const verified = received === expected || received === entryHash;
+      return {
+        verified,
+        expected,
+        reason: verified ? undefined : "CPX secure_hash/hash did not match expected signature. Use the postback_secret URL option or confirm CPX_SECURE_HASH_SECRET matches CPX."
+      };
     },
     normalize(payload) {
       return {

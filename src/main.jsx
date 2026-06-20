@@ -2575,6 +2575,14 @@ function AdminPage({ navigate, api }) {
             copy="Use this after CPX or Theorem tests to confirm whether the provider reached EarnWave, passed verification, and sent a matching user ID."
             action={<button className="btn alt" type="button" onClick={refreshOfferwallCallbacks}>Refresh</button>}
           />
+          <div className="callback-setup-card">
+            <div>
+              <strong>CPX postback URL required</strong>
+              <p>Rejected CPX callbacks usually mean CPX is missing <code>postback_secret</code> or Render has a different <code>CPX_POSTBACK_SECRET</code>. Put this URL in CPX, then replace <code>YOUR_CPX_POSTBACK_SECRET</code> with the exact same secret value saved in Render.</p>
+              <code className="callback-url-box">{getCpxPostbackUrl()}</code>
+            </div>
+            <button className="btn alt" type="button" onClick={() => navigator.clipboard?.writeText(getCpxPostbackUrl())}>Copy URL</button>
+          </div>
           <DataTable rows={(offerwallCallbacks.length ? offerwallCallbacks : [
             { provider: "cpx", event_type: "waiting", normalized_event: { userId: "No callback yet", transactionId: "Check CPX postback URL", amount: 0, status: "pending" }, rejected: false, reason: "Complete a test survey, then refresh." }
           ]).map(item => {
@@ -2636,21 +2644,13 @@ function AdminPage({ navigate, api }) {
   );
 }
 
+function getCpxPostbackUrl() {
+  const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "https://getearnwave.com";
+  return `${origin}/api/offerwalls/cpx/callback?user_id={user_id}&trans_id={trans_id}&amount_local={amount_local}&amount_usd={amount_usd}&status={status}&postback_secret=YOUR_CPX_POSTBACK_SECRET`;
+}
+
 function ProviderRewardReviewPanel({ entries, notice, onRelease, onReverse }) {
-  const visibleEntries = entries.length ? entries : [
-    {
-      id: "preview-reward",
-      provider: "cpx",
-      provider_transaction_id: "preview-transaction",
-      user_name: "Preview Member",
-      user_email: "member@example.com",
-      provider_gross_usd_cents: 100,
-      user_reward_wavecoins: 70,
-      platform_margin_usd_cents: 30,
-      status: "pending",
-      release_eligible_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    }
-  ];
+  const hasRealEntries = entries.length > 0;
 
   function releaseText(item) {
     if (item.status !== "pending") return item.status;
@@ -2671,34 +2671,46 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReverse }) {
         action={<span className="tag amber">Pending funds</span>}
       />
       <div className="notice">{notice}</div>
-      <div className="provider-reward-list">
-        {visibleEntries.map(item => {
-          const userReward = Number(item.user_reward_wavecoins || item.amount_wavecoins || 0);
-          const isPending = item.status === "pending";
-          const isPreview = String(item.id).startsWith("preview");
-          return (
-            <div className="provider-reward-row" key={item.id}>
-              <div>
-                <div className="provider-reward-head">
-                  <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
-                  <span className={isPending ? "tag amber" : item.status === "available" ? "tag" : "tag rose"}>{item.status}</span>
+      {!hasRealEntries ? (
+        <div className="provider-reward-empty">
+          <strong>No real provider rewards are ready to release yet.</strong>
+          <p>Accepted CPX or TheoremReach callbacks will create pending rewards here. Rejected callbacks do not create funds, so there is nothing to release or reverse until callback verification passes.</p>
+          <div className="reward-split-grid">
+            <span><small>Example gross</small>$1.00</span>
+            <span><small>User would get</small>70 WaveCoins ($0.70)</span>
+            <span><small>EarnWave margin</small>$0.30</span>
+            <span><small>Status</small>Preview only</span>
+          </div>
+        </div>
+      ) : (
+        <div className="provider-reward-list">
+          {entries.map(item => {
+            const userReward = Number(item.user_reward_wavecoins || item.amount_wavecoins || 0);
+            const isPending = item.status === "pending";
+            return (
+              <div className="provider-reward-row" key={item.id}>
+                <div>
+                  <div className="provider-reward-head">
+                    <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
+                    <span className={isPending ? "tag amber" : item.status === "available" ? "tag" : "tag rose"}>{item.status}</span>
+                  </div>
+                  <p>{item.provider || "provider"} | {item.provider_transaction_id || "no transaction id"}</p>
+                  <div className="reward-split-grid">
+                    <span><small>Provider gross</small>{money(Number(item.provider_gross_usd_cents || 0) / 100)}</span>
+                    <span><small>User gets</small>{userReward.toLocaleString()} WaveCoins ({money(waveCoinsToUsd(userReward))})</span>
+                    <span><small>EarnWave margin</small>{money(Number(item.platform_margin_usd_cents || 0) / 100)}</span>
+                    <span><small>Release timer</small>{releaseText(item)}</span>
+                  </div>
                 </div>
-                <p>{item.provider || "provider"} | {item.provider_transaction_id || "no transaction id"}</p>
-                <div className="reward-split-grid">
-                  <span><small>Provider gross</small>{money(Number(item.provider_gross_usd_cents || 0) / 100)}</span>
-                  <span><small>User gets</small>{userReward.toLocaleString()} WaveCoins ({money(waveCoinsToUsd(userReward))})</span>
-                  <span><small>EarnWave margin</small>{money(Number(item.platform_margin_usd_cents || 0) / 100)}</span>
-                  <span><small>Release timer</small>{releaseText(item)}</span>
+                <div className="provider-reward-actions">
+                  <button className="btn" type="button" disabled={!isPending} onClick={() => onRelease(item.id)}>Release</button>
+                  <button className="btn alt" type="button" disabled={item.status === "reversed"} onClick={() => onReverse(item.id)}>Reverse</button>
                 </div>
               </div>
-              <div className="provider-reward-actions">
-                <button className="btn" type="button" disabled={!isPending || isPreview} onClick={() => onRelease(item.id)}>Release</button>
-                <button className="btn alt" type="button" disabled={item.status === "reversed" || isPreview} onClick={() => onReverse(item.id)}>Reverse</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
