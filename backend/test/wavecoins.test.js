@@ -9,6 +9,7 @@ const {
 } = require("../src/services/currency");
 const { recordOfferwallEvent } = require("../src/services/offerwalls");
 const { releaseProviderReward } = require("../src/services/ledger");
+const { findUserById } = require("../src/services/users");
 
 function resetDemoStore() {
   store.users.clear();
@@ -54,4 +55,36 @@ test("duplicate provider transactions cannot credit twice", async () => {
   await releaseProviderReward({ id: store.ledgerEntries[0].id, adminId: "admin-test" });
   assert.equal(user.balance_wavecoins, 350);
   assert.equal(user.total_earned_wavecoins, 350);
+});
+
+test("released provider rewards clear pending total in refreshed user data", async () => {
+  env.DATABASE_URL = "";
+  resetDemoStore();
+  const user = await store.createDemoUser({ name: "Pending Tester", email: "pending@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  user.balance = 0;
+  user.total_earned = 0;
+  user.balance_wavecoins = 0;
+  user.total_earned_wavecoins = 0;
+
+  await recordOfferwallEvent({
+    provider: "cpx",
+    userId: user.id,
+    transactionId: "provider-pending-release",
+    offerId: "survey-pending-release",
+    amount: 1,
+    status: "approved",
+    raw: { transaction_id: "provider-pending-release" }
+  }, { verified: true });
+
+  const pendingUser = await findUserById(user.id);
+  assert.equal(pendingUser.balance_wavecoins, 0);
+  assert.equal(pendingUser.pending_wavecoins, 70);
+
+  await releaseProviderReward({ id: store.ledgerEntries[0].id, adminId: "admin-test" });
+
+  const releasedUser = await findUserById(user.id);
+  assert.equal(releasedUser.balance_wavecoins, 70);
+  assert.equal(releasedUser.pending_wavecoins, 0);
+  assert.equal(store.ledgerEntries[0].status, "available");
 });

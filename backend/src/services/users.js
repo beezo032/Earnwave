@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const { query } = require("../db/postgres");
 const { env } = require("../config/env");
-const { users, createDemoUser } = require("../db/demoStore");
+const { users, createDemoUser, ledgerEntries } = require("../db/demoStore");
 
 function makeReferralCode(name = "EW") {
   const base = name.replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase() || "WAVE";
@@ -15,6 +15,7 @@ function normalizeUsername(value = "") {
 function serializeUser(user) {
   const balanceWaveCoins = user.balance_wavecoins ?? user.balanceWaveCoins ?? (user.balance_cents !== undefined ? Number(user.balance_cents || 0) : Math.round(Number(user.balance || 0) * 100));
   const totalEarnedWaveCoins = user.total_earned_wavecoins ?? user.totalEarnedWaveCoins ?? (user.total_earned_cents !== undefined ? Number(user.total_earned_cents || 0) : Math.round(Number(user.total_earned || 0) * 100));
+  const pendingWaveCoins = Number(user.pending_wavecoins || user.pendingWaveCoins || 0);
   return {
     id: user.id,
     name: user.name,
@@ -40,9 +41,37 @@ function serializeUser(user) {
     last_streak_at: user.last_streak_at,
     balance: balanceWaveCoins / 100,
     total_earned: totalEarnedWaveCoins / 100,
+    pending_rewards: pendingWaveCoins / 100,
     balance_wavecoins: balanceWaveCoins,
-    total_earned_wavecoins: totalEarnedWaveCoins
+    total_earned_wavecoins: totalEarnedWaveCoins,
+    pending_wavecoins: pendingWaveCoins,
+    pending_rewards_wavecoins: pendingWaveCoins
   };
+}
+
+function attachPendingRewards(user, pendingWaveCoins = 0) {
+  return serializeUser({ ...user, pending_wavecoins: Math.max(0, Math.round(Number(pendingWaveCoins || 0))) });
+}
+
+async function pendingRewardWaveCoinsForUser(userId) {
+  if (!userId) return 0;
+  if (!env.DATABASE_URL) {
+    return ledgerEntries
+      .filter(entry => String(entry.user_id) === String(userId)
+        && entry.direction === "credit"
+        && String(entry.status || entry.payout_status || "").toLowerCase() === "pending")
+      .reduce((sum, entry) => sum + Number(entry.user_reward_wavecoins || entry.amount_wavecoins || 0), 0);
+  }
+
+  const result = await query(
+    `SELECT COALESCE(SUM(COALESCE(NULLIF(user_reward_wavecoins, 0), NULLIF(amount_wavecoins, 0), amount_cents, 0)), 0) AS pending_wavecoins
+     FROM ledger_entries
+     WHERE user_id = $1
+       AND direction = 'credit'
+       AND payout_status = 'pending'`,
+    [userId]
+  );
+  return Number(result.rows[0]?.pending_wavecoins || 0);
 }
 
 async function createUser({ name, username: rawUsername, email, password, referralCode }) {
@@ -57,7 +86,7 @@ async function createUser({ name, username: rawUsername, email, password, referr
       const referrer = [...users.values()].find(item => item.referral_code === referralCode);
       if (referrer) user.referred_by = referrer.id;
     }
-    return serializeUser(user);
+    return attachPendingRewards(user, await pendingRewardWaveCoinsForUser(user.id));
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -82,7 +111,7 @@ async function verifyUser(email, password) {
     const valid = await bcrypt.compare(password, found.password_hash);
     if (!valid) throw new Error("Invalid login details");
     if (!found.email_verified && found.role !== "admin") throw new Error("Verify your email before logging in.");
-    return serializeUser(found);
+    return attachPendingRewards(found, await pendingRewardWaveCoinsForUser(found.id));
   }
 
   const result = await query("SELECT * FROM users WHERE email = $1", [email]);
@@ -93,27 +122,27 @@ async function verifyUser(email, password) {
   if (!user.email_verified && user.role !== "admin") {
     throw new Error("Verify your email before logging in.");
   }
-  return serializeUser(user);
+  return attachPendingRewards(user, await pendingRewardWaveCoinsForUser(user.id));
 }
 
 async function findUserById(id) {
   if (!env.DATABASE_URL) {
     const user = users.get(String(id));
-    return user ? serializeUser(user) : null;
+    return user ? attachPendingRewards(user, await pendingRewardWaveCoinsForUser(user.id)) : null;
   }
 
   const result = await query("SELECT * FROM users WHERE id = $1", [id]);
-  return result.rows[0] ? serializeUser(result.rows[0]) : null;
+  return result.rows[0] ? attachPendingRewards(result.rows[0], await pendingRewardWaveCoinsForUser(result.rows[0].id)) : null;
 }
 
 async function findUserByEmail(email) {
   if (!env.DATABASE_URL) {
     const user = [...users.values()].find(item => item.email === email);
-    return user ? serializeUser(user) : null;
+    return user ? attachPendingRewards(user, await pendingRewardWaveCoinsForUser(user.id)) : null;
   }
 
   const result = await query("SELECT * FROM users WHERE email = $1", [email]);
-  return result.rows[0] ? serializeUser(result.rows[0]) : null;
+  return result.rows[0] ? attachPendingRewards(result.rows[0], await pendingRewardWaveCoinsForUser(result.rows[0].id)) : null;
 }
 
 async function listUsersForAdmin({ limit = 100 } = {}) {
@@ -136,4 +165,4 @@ async function listUsersForAdmin({ limit = 100 } = {}) {
   return result.rows.map(serializeUser);
 }
 
-module.exports = { createUser, findUserByEmail, listUsersForAdmin, normalizeUsername, verifyUser, findUserById, serializeUser };
+module.exports = { createUser, findUserByEmail, listUsersForAdmin, normalizeUsername, verifyUser, findUserById, serializeUser, pendingRewardWaveCoinsForUser };

@@ -1640,9 +1640,9 @@ function WalletPage({ navigate, api }) {
   }, []);
 
   const availableWaveCoins = userAmountWaveCoins(walletUser, walletUser.balance);
-  const pendingWaveCoins = transactions
-    .filter(item => ["pending", "held", "review"].includes(String(item.status || "").toLowerCase()))
-    .reduce((sum, item) => sum + Number(item.amount_wavecoins ?? dollarsToWaveCoins(item.amount || 0)), 0);
+  const pendingWaveCoins = Number(walletUser.pending_wavecoins ?? walletUser.pending_rewards_wavecoins ?? transactions
+    .filter(item => item.direction === "credit" && String(item.status || "").toLowerCase() === "pending")
+    .reduce((sum, item) => sum + Number(item.user_reward_wavecoins ?? item.amount_wavecoins ?? dollarsToWaveCoins(item.amount || 0)), 0));
   const cashoutProgress = Math.min(100, Math.round((availableWaveCoins / minimumCashoutWaveCoins) * 100));
   const latestWithdrawal = withdrawals[0];
   const payoutStatus = latestWithdrawal?.status || "No withdrawal yet";
