@@ -8,6 +8,7 @@ const {
   waveCoinsToUsdCents
 } = require("../src/services/currency");
 const { recordOfferwallEvent } = require("../src/services/offerwalls");
+const { releaseProviderReward } = require("../src/services/ledger");
 
 function resetDemoStore() {
   store.users.clear();
@@ -45,8 +46,12 @@ test("duplicate provider transactions cannot credit twice", async () => {
   await recordOfferwallEvent(event, signature);
   await recordOfferwallEvent(event, signature);
 
+  assert.equal(user.balance_wavecoins, 0);
+  assert.equal(user.total_earned_wavecoins, 0);
+  assert.equal(store.ledgerEntries.length, 1);
+  assert.equal(store.ledgerEntries[0].status, "pending");
+  assert.equal(store.paymentEvents.length, 1);
+  await releaseProviderReward({ id: store.ledgerEntries[0].id, adminId: "admin-test" });
   assert.equal(user.balance_wavecoins, 350);
   assert.equal(user.total_earned_wavecoins, 350);
-  assert.equal(store.ledgerEntries.length, 1);
-  assert.equal(store.paymentEvents.length, 1);
 });

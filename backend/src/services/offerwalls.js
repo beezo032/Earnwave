@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const { env } = require("../config/env");
 const { paymentEvents, users } = require("../db/demoStore");
 const { query } = require("../db/postgres");
-const { recordLedgerEntry } = require("./ledger");
+const { recordLedgerEntry, reverseProviderRewardByTransaction } = require("./ledger");
 const { waveCoinsToUsdCents } = require("./currency");
 const { calculateRewardSplit } = require("./rewardSplit");
 
@@ -349,29 +349,25 @@ async function applyOfferwallLedgerEvent(event, signature) {
     ?? (event.amount_wavecoins !== undefined ? waveCoinsToUsdCents(event.amount_wavecoins) : Math.round(Number(event.amount || 0) * 100));
   const split = calculateRewardSplit({ provider: event.provider, grossUsdCents: providerGrossUsdCents });
   const amountWaveCoins = split.userRewardWaveCoins;
-  const usdValueCents = waveCoinsToUsdCents(amountWaveCoins);
 
   if (!event.userId || !amountWaveCoins || (!isReversal && !isCredit)) return null;
   if (!signature?.verified && !env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS) return null;
 
+  if (isReversal) {
+    const reversed = await reverseProviderRewardByTransaction({
+      provider: event.provider,
+      providerTransactionId: event.transactionId,
+      note: "Provider reversal callback"
+    });
+    if (reversed) return reversed;
+  }
+
   if (!env.DATABASE_URL) {
     const user = users.get(String(event.userId));
     if (!user) return null;
-    user.balance_wavecoins = Math.max(0, Number(user.balance_wavecoins || Math.round(Number(user.balance || 0) * 100)) + (isReversal ? -amountWaveCoins : amountWaveCoins));
-    user.total_earned_wavecoins = Number(user.total_earned_wavecoins || Math.round(Number(user.total_earned || 0) * 100)) + (isReversal ? 0 : amountWaveCoins);
-    user.balance = user.balance_wavecoins / 100;
-    user.total_earned = user.total_earned_wavecoins / 100;
-  } else if (isReversal) {
-    await query(
-      "UPDATE users SET balance_wavecoins = GREATEST(balance_wavecoins - $1, 0), balance_cents = GREATEST(balance_cents - $2, 0) WHERE id = $3",
-      [amountWaveCoins, usdValueCents, event.userId]
-    );
-  } else {
-    await query(
-      "UPDATE users SET balance_wavecoins = balance_wavecoins + $1, total_earned_wavecoins = total_earned_wavecoins + $1, balance_cents = balance_cents + $2, total_earned_cents = total_earned_cents + $2 WHERE id = $3",
-      [amountWaveCoins, usdValueCents, event.userId]
-    );
   }
+
+  const releaseEligibleAt = new Date(Date.now() + Math.max(0, Number(env.REWARD_PENDING_HOLD_HOURS || 0)) * 60 * 60 * 1000).toISOString();
 
   return recordLedgerEntry({
     userId: event.userId,
@@ -383,7 +379,7 @@ async function applyOfferwallLedgerEvent(event, signature) {
     platformMarginUsdCents: split.platformMarginUsdCents,
     provider: event.provider,
     providerTransactionId: event.transactionId,
-    status: isReversal ? "reversed" : "available",
+    status: isReversal ? "reversed" : "pending",
     referenceType: "offerwall",
     referenceId: event.transactionId,
     description: `${event.provider} ${isReversal ? "reversal" : "credit"}`,
@@ -391,6 +387,8 @@ async function applyOfferwallLedgerEvent(event, signature) {
       offerId: event.offerId,
       status: event.status,
       verified: Boolean(signature?.verified),
+      release_eligible_at: releaseEligibleAt,
+      release_hold_hours: Number(env.REWARD_PENDING_HOLD_HOURS || 0),
       provider_gross_usd_cents: split.providerGrossUsdCents,
       user_reward_percent: split.userRewardPercent,
       user_reward_wavecoins: split.userRewardWaveCoins,

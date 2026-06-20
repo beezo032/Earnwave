@@ -5,6 +5,7 @@ const { createApp } = require("../src/app");
 const { createToken } = require("../src/middleware/auth");
 const { env } = require("../src/config/env");
 const { listOfferwallCallbackEvents } = require("../src/services/offerwalls");
+const { releaseProviderReward } = require("../src/services/ledger");
 const store = require("../src/db/demoStore");
 
 function resetDemoStore() {
@@ -137,7 +138,8 @@ test("CPX callback normalizes amount_local, amount_usd, and status reversal", as
 
     assert.equal(creditResponse.status, 200);
     assert.equal(creditPayload.event.amount, 5);
-    assert.equal(user.balance_wavecoins, 1350);
+    assert.equal(user.balance_wavecoins, 1000);
+    assert.equal(store.ledgerEntries[0].status, "pending");
     assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 500);
     assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 350);
     assert.equal(store.ledgerEntries[0].platform_margin_usd_cents, 150);
@@ -155,6 +157,7 @@ test("CPX callback normalizes amount_local, amount_usd, and status reversal", as
 
     assert.equal(reversalResponse.status, 200);
     assert.equal(user.balance_wavecoins, 1000);
+    assert.equal(store.ledgerEntries[0].status, "reversed");
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
@@ -261,6 +264,9 @@ test("CPX callback accepts configured postback secret and credits user split", a
     assert.equal(payload.verified, true);
     assert.equal(payload.event.userId, user.id);
     assert.equal(payload.event.transactionId, "txn-cpx-secret");
+    assert.equal(user.balance_wavecoins - startingBalance, 0);
+    assert.equal(store.ledgerEntries[0].status, "pending");
+    await releaseProviderReward({ id: store.ledgerEntries[0].id, adminId: "admin-test" });
     assert.equal(user.balance_wavecoins - startingBalance, 70);
     assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 100);
     assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 70);

@@ -5,7 +5,7 @@ const { listModerationQueue, recordModerationAction, listOffers } = require("../
 const { closeSuspiciousActivity, listSuspiciousActivity } = require("../services/fraud");
 const { approveAndDispatch, listPayoutQueue, rejectPayout } = require("../services/payouts");
 const { REASON_CODE_CATALOG } = require("../services/fraud");
-const { listProviderRewardEconomics } = require("../services/ledger");
+const { listProviderRewardEconomics, releaseProviderReward, reverseProviderReward } = require("../services/ledger");
 const { listOfferwallCallbackEvents } = require("../services/offerwalls");
 const { listUsersForAdmin } = require("../services/users");
 const {
@@ -132,6 +132,24 @@ adminRouter.get("/offerwall-economics", async (req, res, next) => {
   }
 });
 
+
+adminRouter.post("/provider-rewards/:id/release", async (req, res, next) => {
+  try {
+    const body = z.object({ note: z.string().max(1000).optional() }).parse(req.body);
+    res.json({ reward: await releaseProviderReward({ id: req.params.id, adminId: req.user.id, note: body.note }) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/provider-rewards/:id/reverse", async (req, res, next) => {
+  try {
+    const body = z.object({ note: z.string().max(1000).optional() }).parse(req.body);
+    res.json({ reward: await reverseProviderReward({ id: req.params.id, adminId: req.user.id, note: body.note }) });
+  } catch (error) {
+    next(error);
+  }
+});
 adminRouter.get("/offerwall-callbacks", async (req, res, next) => {
   try {
     res.json({ callbacks: await listOfferwallCallbackEvents({ limit: Number(req.query.limit || 50) }) });

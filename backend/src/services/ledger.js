@@ -7,11 +7,22 @@ function cents(value) {
   return Math.round(Number(value || 0) * 100);
 }
 
+function parseMetadata(value) {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try { return JSON.parse(value); } catch (_) { return {}; }
+  }
+  return value;
+}
+
 function serializeLedgerEntry(row) {
   const amountWaveCoins = row.amount_wavecoins ?? row.amountWaveCoins ?? (row.amount_cents !== undefined ? Number(row.amount_cents || 0) : usdDollarsToWaveCoins(row.amount));
+  const metadata = parseMetadata(row.metadata);
   return {
     id: row.id,
     user_id: row.user_id,
+    user_name: row.user_name,
+    user_email: row.user_email,
     type: row.type,
     direction: row.direction,
     amount: row.amount ?? amountWaveCoins / 100,
@@ -23,11 +34,12 @@ function serializeLedgerEntry(row) {
     provider: row.provider,
     provider_transaction_id: row.provider_transaction_id,
     status: row.payout_status || row.status || (row.direction === "credit" ? "available" : "paid"),
+    release_eligible_at: metadata.release_eligible_at || row.release_eligible_at,
     balance_after: row.balance_after ?? Number(row.balance_after_cents || 0) / 100,
     reference_type: row.reference_type,
     reference_id: row.reference_id,
     description: row.description,
-    metadata: row.metadata || {},
+    metadata,
     created_at: row.created_at
   };
 }
@@ -47,6 +59,8 @@ async function recordLedgerEntry({ userId, type, direction, amount, amountCents,
     const row = {
       id: String(ledgerEntries.length + 1),
       user_id: userId,
+      user_name: user?.name,
+      user_email: user?.email,
       type,
       direction,
       amount: normalizedWaveCoins / 100,
@@ -95,18 +109,126 @@ async function listProviderRewardEconomics({ limit = 50 } = {}) {
     return ledgerEntries
       .filter(item => item.provider && item.provider_transaction_id)
       .slice(0, limit)
-      .map(serializeLedgerEntry);
+      .map(item => serializeLedgerEntry({ ...item, user_name: users.get(String(item.user_id))?.name, user_email: users.get(String(item.user_id))?.email }));
   }
 
   const result = await query(
-    `SELECT * FROM ledger_entries
-     WHERE provider IS NOT NULL
-       AND provider_transaction_id IS NOT NULL
-     ORDER BY created_at DESC
+    `SELECT l.*, u.name AS user_name, u.email AS user_email
+     FROM ledger_entries l
+     LEFT JOIN users u ON u.id = l.user_id
+     WHERE l.provider IS NOT NULL
+       AND l.provider_transaction_id IS NOT NULL
+     ORDER BY l.created_at DESC
      LIMIT $1`,
     [limit]
   );
   return result.rows.map(serializeLedgerEntry);
 }
 
-module.exports = { cents, listLedgerEntries, listProviderRewardEconomics, recordLedgerEntry, serializeLedgerEntry };
+async function releaseProviderReward({ id, adminId, note = "Released by admin review" }) {
+  if (!env.DATABASE_URL) {
+    const entry = ledgerEntries.find(item => String(item.id) === String(id));
+    if (!entry) throw new Error("Reward ledger entry not found");
+    if (entry.status !== "pending" && entry.payout_status !== "pending") throw new Error(`Reward is already ${entry.status || entry.payout_status}`);
+    const user = users.get(String(entry.user_id));
+    if (!user) throw new Error("User not found");
+    const amountWaveCoins = Number(entry.user_reward_wavecoins || entry.amount_wavecoins || 0);
+    user.balance_wavecoins = Number(user.balance_wavecoins || Math.round(Number(user.balance || 0) * 100)) + amountWaveCoins;
+    user.total_earned_wavecoins = Number(user.total_earned_wavecoins || Math.round(Number(user.total_earned || 0) * 100)) + amountWaveCoins;
+    user.balance = user.balance_wavecoins / 100;
+    user.total_earned = user.total_earned_wavecoins / 100;
+    entry.status = "available";
+    entry.payout_status = "available";
+    entry.balance_after = user.balance;
+    entry.metadata = { ...parseMetadata(entry.metadata), released_by: adminId, released_at: new Date().toISOString(), release_note: note };
+    return serializeLedgerEntry(entry);
+  }
+
+  const result = await query(
+    `UPDATE ledger_entries
+     SET payout_status = 'available',
+         metadata = metadata || $2::jsonb
+     WHERE id = $1
+       AND payout_status = 'pending'
+       AND direction = 'credit'
+     RETURNING *`,
+    [id, JSON.stringify({ released_by: adminId, released_at: new Date().toISOString(), release_note: note })]
+  );
+  const entry = result.rows[0];
+  if (!entry) throw new Error("Reward ledger entry not found or already released");
+  const amountWaveCoins = Number(entry.user_reward_wavecoins || entry.amount_wavecoins || 0);
+  await query(
+    `UPDATE users
+     SET balance_wavecoins = balance_wavecoins + $1,
+         total_earned_wavecoins = total_earned_wavecoins + $1,
+         balance_cents = balance_cents + $2,
+         total_earned_cents = total_earned_cents + $2
+     WHERE id = $3`,
+    [amountWaveCoins, waveCoinsToUsdCents(amountWaveCoins), entry.user_id]
+  );
+  return serializeLedgerEntry(entry);
+}
+
+async function reverseProviderReward({ id, adminId, note = "Reversed by admin/provider review" }) {
+  if (!env.DATABASE_URL) {
+    const entry = ledgerEntries.find(item => String(item.id) === String(id));
+    if (!entry) throw new Error("Reward ledger entry not found");
+    const currentStatus = entry.status || entry.payout_status;
+    if (currentStatus === "reversed") return serializeLedgerEntry(entry);
+    const user = users.get(String(entry.user_id));
+    const amountWaveCoins = Number(entry.user_reward_wavecoins || entry.amount_wavecoins || 0);
+    if (user && currentStatus === "available") {
+      user.balance_wavecoins = Math.max(0, Number(user.balance_wavecoins || Math.round(Number(user.balance || 0) * 100)) - amountWaveCoins);
+      user.balance = user.balance_wavecoins / 100;
+    }
+    entry.status = "reversed";
+    entry.payout_status = "reversed";
+    entry.metadata = { ...parseMetadata(entry.metadata), reversed_by: adminId, reversed_at: new Date().toISOString(), reversal_note: note };
+    return serializeLedgerEntry(entry);
+  }
+
+  const existing = await query("SELECT * FROM ledger_entries WHERE id = $1", [id]);
+  const entry = existing.rows[0];
+  if (!entry) throw new Error("Reward ledger entry not found");
+  if (entry.payout_status === "reversed") return serializeLedgerEntry(entry);
+  if (entry.payout_status === "available") {
+    const amountWaveCoins = Number(entry.user_reward_wavecoins || entry.amount_wavecoins || 0);
+    await query(
+      "UPDATE users SET balance_wavecoins = GREATEST(balance_wavecoins - $1, 0), balance_cents = GREATEST(balance_cents - $2, 0) WHERE id = $3",
+      [amountWaveCoins, waveCoinsToUsdCents(amountWaveCoins), entry.user_id]
+    );
+  }
+  const result = await query(
+    `UPDATE ledger_entries
+     SET payout_status = 'reversed',
+         metadata = metadata || $2::jsonb
+     WHERE id = $1
+     RETURNING *`,
+    [id, JSON.stringify({ reversed_by: adminId, reversed_at: new Date().toISOString(), reversal_note: note })]
+  );
+  return serializeLedgerEntry(result.rows[0]);
+}
+
+async function reverseProviderRewardByTransaction({ provider, providerTransactionId, adminId = null, note }) {
+  if (!providerTransactionId) return null;
+  if (!env.DATABASE_URL) {
+    const entry = ledgerEntries.find(item => String(item.provider) === String(provider) && String(item.provider_transaction_id) === String(providerTransactionId) && item.direction === "credit");
+    return entry ? reverseProviderReward({ id: entry.id, adminId, note }) : null;
+  }
+  const result = await query(
+    "SELECT id FROM ledger_entries WHERE provider = $1 AND provider_transaction_id = $2 AND direction = 'credit' ORDER BY created_at DESC LIMIT 1",
+    [provider, providerTransactionId]
+  );
+  return result.rows[0] ? reverseProviderReward({ id: result.rows[0].id, adminId, note }) : null;
+}
+
+module.exports = {
+  cents,
+  listLedgerEntries,
+  listProviderRewardEconomics,
+  recordLedgerEntry,
+  releaseProviderReward,
+  reverseProviderReward,
+  reverseProviderRewardByTransaction,
+  serializeLedgerEntry
+};

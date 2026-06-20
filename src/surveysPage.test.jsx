@@ -64,7 +64,7 @@ describe("SurveysPage", () => {
     window.history.pushState({}, "", "/surveys");
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Earn WaveCoins with Surveys" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Turn Your Opinions Into Rewards" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Surveys" })).toHaveClass("active-link");
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/offerwalls/providers"), expect.any(Object)));
   });
@@ -75,7 +75,7 @@ describe("SurveysPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Surveys" }));
 
-    expect(screen.getByRole("heading", { name: "Earn WaveCoins with Surveys" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Turn Your Opinions Into Rewards" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/surveys");
   });
 

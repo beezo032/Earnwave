@@ -2361,9 +2361,14 @@ function AdminPage({ navigate, api }) {
   const [offerwallCallbacks, setOfferwallCallbacks] = useState([]);
   const [reasonCodes, setReasonCodes] = useState({});
   const [payoutNotice, setPayoutNotice] = useState("Manual approval is required before any automated payout is sent.");
+  const [rewardNotice, setRewardNotice] = useState("Provider rewards stay pending until you release or reverse them.");
 
   function refreshOfferwallCallbacks() {
     api.request("/admin/offerwall-callbacks").then(data => setOfferwallCallbacks(data.callbacks || [])).catch(() => {});
+  }
+
+  function refreshRewardEconomics() {
+    api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
   }
 
   useEffect(() => {
@@ -2372,7 +2377,7 @@ function AdminPage({ navigate, api }) {
     api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
     api.request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
     api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
-    api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
+    refreshRewardEconomics();
     refreshOfferwallCallbacks();
     refreshSupportTickets();
     api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
@@ -2406,6 +2411,34 @@ function AdminPage({ navigate, api }) {
     }
   }
 
+
+  async function releaseProviderReward(id) {
+    try {
+      const result = await api.request(`/admin/provider-rewards/${id}/release`, {
+        method: "POST",
+        body: JSON.stringify({ note: "Released from admin reward review" })
+      });
+      setRewardNotice(`${Number(result.reward.user_reward_wavecoins || result.reward.amount_wavecoins || 0).toLocaleString()} WaveCoins released to the user.`);
+      refreshRewardEconomics();
+      api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      setRewardNotice(error.message);
+    }
+  }
+
+  async function reverseProviderReward(id) {
+    try {
+      const result = await api.request(`/admin/provider-rewards/${id}/reverse`, {
+        method: "POST",
+        body: JSON.stringify({ note: "Reversed from admin reward review" })
+      });
+      setRewardNotice(`Reward ${result.reward.provider_transaction_id || id} reversed.`);
+      refreshRewardEconomics();
+      api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      setRewardNotice(error.message);
+    }
+  }
   function reasonSummary(codes = []) {
     return (codes.length ? codes : ["BASELINE_LOW_RISK"]).map(code => `${code}: ${reasonCodes[code] || "Review this risk signal."}`);
   }
@@ -2530,19 +2563,12 @@ function AdminPage({ navigate, api }) {
             item.profile?.country || "Missing"
           ])} />
         </div>
-        <div className="card payout-queue-card">
-          <SectionTitle title="Offerwall reward economics" copy="Admin-only split view for provider gross payout, user WaveCoins, and EarnWave margin." />
-          <DataTable rows={(offerwallEconomics.length ? offerwallEconomics : [
-            { provider: "cpx", provider_transaction_id: "example", provider_gross_usd_cents: 100, user_reward_wavecoins: 70, platform_margin_usd_cents: 30, status: "available" }
-          ]).map(item => [
-            item.provider,
-            item.provider_transaction_id,
-            money((item.provider_gross_usd_cents || 0) / 100),
-            `${Number(item.user_reward_wavecoins || item.amount_wavecoins || 0).toLocaleString()} WaveCoins`,
-            money((item.platform_margin_usd_cents || 0) / 100),
-            item.status
-          ])} />
-        </div>
+        <ProviderRewardReviewPanel
+          entries={offerwallEconomics}
+          notice={rewardNotice}
+          onRelease={releaseProviderReward}
+          onReverse={reverseProviderReward}
+        />
         <div className="card payout-queue-card">
           <SectionTitle
             title="Offerwall callback log"
@@ -2610,6 +2636,72 @@ function AdminPage({ navigate, api }) {
   );
 }
 
+function ProviderRewardReviewPanel({ entries, notice, onRelease, onReverse }) {
+  const visibleEntries = entries.length ? entries : [
+    {
+      id: "preview-reward",
+      provider: "cpx",
+      provider_transaction_id: "preview-transaction",
+      user_name: "Preview Member",
+      user_email: "member@example.com",
+      provider_gross_usd_cents: 100,
+      user_reward_wavecoins: 70,
+      platform_margin_usd_cents: 30,
+      status: "pending",
+      release_eligible_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
+  function releaseText(item) {
+    if (item.status !== "pending") return item.status;
+    if (!item.release_eligible_at) return "manual review";
+    const releaseAt = new Date(item.release_eligible_at);
+    if (Number.isNaN(releaseAt.getTime())) return "manual review";
+    const minutes = Math.max(0, Math.ceil((releaseAt.getTime() - Date.now()) / 60000));
+    if (!minutes) return "eligible now";
+    if (minutes < 60) return `${minutes}m hold left`;
+    return `${Math.ceil(minutes / 60)}h hold left`;
+  }
+
+  return (
+    <div className="card payout-queue-card provider-reward-review">
+      <SectionTitle
+        title="Provider reward review"
+        copy="Users see only their net WaveCoins. Admin sees provider gross payout, user reward, EarnWave margin, and pending release status."
+        action={<span className="tag amber">Pending funds</span>}
+      />
+      <div className="notice">{notice}</div>
+      <div className="provider-reward-list">
+        {visibleEntries.map(item => {
+          const userReward = Number(item.user_reward_wavecoins || item.amount_wavecoins || 0);
+          const isPending = item.status === "pending";
+          const isPreview = String(item.id).startsWith("preview");
+          return (
+            <div className="provider-reward-row" key={item.id}>
+              <div>
+                <div className="provider-reward-head">
+                  <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
+                  <span className={isPending ? "tag amber" : item.status === "available" ? "tag" : "tag rose"}>{item.status}</span>
+                </div>
+                <p>{item.provider || "provider"} | {item.provider_transaction_id || "no transaction id"}</p>
+                <div className="reward-split-grid">
+                  <span><small>Provider gross</small>{money(Number(item.provider_gross_usd_cents || 0) / 100)}</span>
+                  <span><small>User gets</small>{userReward.toLocaleString()} WaveCoins ({money(waveCoinsToUsd(userReward))})</span>
+                  <span><small>EarnWave margin</small>{money(Number(item.platform_margin_usd_cents || 0) / 100)}</span>
+                  <span><small>Release timer</small>{releaseText(item)}</span>
+                </div>
+              </div>
+              <div className="provider-reward-actions">
+                <button className="btn" type="button" disabled={!isPending || isPreview} onClick={() => onRelease(item.id)}>Release</button>
+                <button className="btn alt" type="button" disabled={item.status === "reversed" || isPreview} onClick={() => onReverse(item.id)}>Reverse</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, setReply, replyStatus, setReplyStatus, internal, setInternal, notice, onReply, onRefresh, onStatusChange }) {
   const visibleTickets = tickets.length ? tickets : [
     { id: "preview-1", user_name: "Preview Member", user_email: "member@example.com", subject: "Payout timing", category: "payout", priority: "high", status: "open", message: "Preview ticket until live support requests arrive.", messages: [] },

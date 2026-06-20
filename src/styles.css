@@ -924,6 +924,25 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   .path-card { min-height: auto; }
   .payout-proof-meta { align-items: flex-start; flex-direction: column; }
 }
+.provider-reward-review { grid-column: 1 / -1; }
+.provider-reward-list { display: grid; gap: 12px; margin-top: 12px; }
+.provider-reward-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(50,230,161,.08), rgba(69,200,255,.045));
+}
+.provider-reward-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.provider-reward-row p { color: var(--muted); overflow-wrap: anywhere; }
+.reward-split-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.reward-split-grid span { display: grid; gap: 3px; min-height: 58px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.045); font-weight: 950; }
+.reward-split-grid small { color: var(--muted); font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
+.provider-reward-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.provider-reward-actions .btn { min-width: 104px; }
 .support-admin-panel { grid-column: 1 / -1; }
 .support-admin-grid { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr); gap: 14px; align-items: start; }
 .support-ticket-list { display: grid; gap: 10px; }
@@ -956,12 +975,16 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
 
 @media (max-width: 1040px) {
   .support-admin-grid { grid-template-columns: 1fr; }
+  .provider-reward-row { grid-template-columns: 1fr; }
+  .reward-split-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .provider-reward-actions { justify-content: flex-start; }
 }
 
 @media (max-width: 720px) {
   .support-ticket-row,
   .support-reply-controls { grid-template-columns: 1fr; }
   .admin-status-actions { grid-template-columns: 1fr; }
+  .reward-split-grid { grid-template-columns: 1fr; }
   .support-ticket-head { flex-direction: column; }
   .support-ticket-badges { justify-content: flex-start; }
 }
