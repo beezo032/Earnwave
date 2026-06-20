@@ -945,6 +945,14 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
 .support-reply-controls { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(180px, .8fr) auto; gap: 10px; align-items: end; }
 .support-internal-toggle { min-height: 48px; margin: 0; }
 .support-internal-toggle input { width: 18px; min-height: 18px; }
+.admin-ticket-timeline { margin: 12px 0; }
+.admin-status-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.admin-status-actions .btn { min-height: 40px; padding: 9px 11px; }
 
 @media (max-width: 1040px) {
   .support-admin-grid { grid-template-columns: 1fr; }
@@ -953,6 +961,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
 @media (max-width: 720px) {
   .support-ticket-row,
   .support-reply-controls { grid-template-columns: 1fr; }
+  .admin-status-actions { grid-template-columns: 1fr; }
   .support-ticket-head { flex-direction: column; }
   .support-ticket-badges { justify-content: flex-start; }
 }

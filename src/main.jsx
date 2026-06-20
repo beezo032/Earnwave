@@ -2421,6 +2421,12 @@ function AdminPage({ navigate, api }) {
     }).catch(() => {});
   }
 
+  function updateSelectedSupportTicket(updatedTicket) {
+    setSupportTickets(current => current.map(ticket => String(ticket.id) === String(updatedTicket.id) ? updatedTicket : ticket));
+    setSelectedSupportTicket(updatedTicket);
+    setSupportReplyStatus(updatedTicket.status || "pending");
+  }
+
   async function sendSupportReply(event) {
     event.preventDefault();
     if (!selectedSupportTicket?.id || !supportReply.trim()) return;
@@ -2429,12 +2435,33 @@ function AdminPage({ navigate, api }) {
         method: "POST",
         body: JSON.stringify({ message: supportReply.trim(), status: supportReplyStatus, internal: supportInternal })
       });
-      const updatedTicket = result.ticket;
-      setSupportTickets(current => current.map(ticket => String(ticket.id) === String(updatedTicket.id) ? updatedTicket : ticket));
-      setSelectedSupportTicket(updatedTicket);
+      updateSelectedSupportTicket(result.ticket);
       setSupportReply("");
       setSupportInternal(false);
       setSupportNotice(supportInternal ? "Internal note saved." : "Reply saved and queued to email the user.");
+      api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
+    } catch (error) {
+      setSupportNotice(error.message);
+    }
+  }
+
+  async function updateSupportTicketStatus(status) {
+    if (!selectedSupportTicket?.id) return;
+    const statusMessages = {
+      open: "Support status updated: this ticket is open for review.",
+      pending: "Support status updated: this ticket is pending review.",
+      waiting_provider: "Support status updated: this ticket is waiting for provider verification.",
+      resolved: "Support status updated: this ticket has been resolved.",
+      closed: "Support status updated: this ticket has been closed.",
+      denied: "Support status updated: this request was denied after review."
+    };
+    try {
+      const result = await api.request(`/account/admin/support/tickets/${selectedSupportTicket.id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ message: statusMessages[status] || `Support status updated: ${status}.`, status, internal: false })
+      });
+      updateSelectedSupportTicket(result.ticket);
+      setSupportNotice(`Ticket status changed to ${status.replace("_", " ")}.`);
       api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
     } catch (error) {
       setSupportNotice(error.message);
@@ -2569,6 +2596,7 @@ function AdminPage({ navigate, api }) {
           notice={supportNotice}
           onReply={sendSupportReply}
           onRefresh={refreshSupportTickets}
+          onStatusChange={updateSupportTicketStatus}
         />
         <div className="card">
           <SectionTitle title="Email outbox" copy="Delivery trail for verification, reset, payout, and support messages." />
@@ -2582,7 +2610,7 @@ function AdminPage({ navigate, api }) {
   );
 }
 
-function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, setReply, replyStatus, setReplyStatus, internal, setInternal, notice, onReply, onRefresh }) {
+function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, setReply, replyStatus, setReplyStatus, internal, setInternal, notice, onReply, onRefresh, onStatusChange }) {
   const visibleTickets = tickets.length ? tickets : [
     { id: "preview-1", user_name: "Preview Member", user_email: "member@example.com", subject: "Payout timing", category: "payout", priority: "high", status: "open", message: "Preview ticket until live support requests arrive.", messages: [] },
     { id: "preview-2", user_name: "Survey User", user_email: "survey@example.com", subject: "Offer missing credit", category: "offer", priority: "normal", status: "pending", message: "Example missing reward report.", messages: [] }
@@ -2597,6 +2625,21 @@ function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, 
     internal: false,
     created_at: activeTicket.created_at
   }] : [];
+  const statusOptions = [
+    ["open", "Open"],
+    ["pending", "Pending"],
+    ["waiting_provider", "Waiting for Provider"],
+    ["resolved", "Resolved"],
+    ["denied", "Denied"],
+    ["closed", "Closed"]
+  ];
+  const statusTimeline = [
+    ["Submitted", true],
+    ["Under Review", ["pending", "waiting_provider", "resolved", "closed", "denied"].includes(activeTicket?.status)],
+    ["Waiting for Provider", activeTicket?.status === "waiting_provider"],
+    ["Resolved / Denied", ["resolved", "closed", "denied"].includes(activeTicket?.status)],
+    ["Closed", activeTicket?.status === "closed"]
+  ];
 
   return (
     <div className="card payout-queue-card support-admin-panel">
@@ -2612,7 +2655,7 @@ function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, 
               className={activeTicket && String(activeTicket.id) === String(ticket.id) ? "support-ticket-row active" : "support-ticket-row"}
               key={ticket.id}
               type="button"
-              onClick={() => setSelectedTicket(ticket)}
+              onClick={() => { setSelectedTicket(ticket); setReplyStatus(ticket.status || "pending"); }}
             >
               <span className="avatar">{String(ticket.user_name || ticket.user_email || "M").slice(0, 1)}</span>
               <div>
@@ -2638,6 +2681,13 @@ function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, 
                   <span className="pill blue">{activeTicket.status}</span>
                 </div>
               </div>
+              <div className="ticket-timeline admin-ticket-timeline">{statusTimeline.map(([label, active]) => <span className={active ? "active" : ""} key={label}>{label}</span>)}</div>
+              <div className="admin-status-actions">
+                <button className="btn alt" type="button" onClick={() => onStatusChange("waiting_provider")}>Waiting for Provider</button>
+                <button className="btn alt" type="button" onClick={() => onStatusChange("resolved")}>Resolve</button>
+                <button className="btn alt" type="button" onClick={() => onStatusChange("denied")}>Deny</button>
+                <button className="btn alt" type="button" onClick={() => onStatusChange("closed")}>Close</button>
+              </div>
               <div className="support-message-thread">
                 {messages.map(message => (
                   <div className={message.internal ? "support-message internal" : "support-message"} key={message.id || `${message.created_at}-${message.sender_id}`}>
@@ -2657,15 +2707,14 @@ function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, 
                 <div className="support-reply-controls">
                   <label>Status
                     <select value={replyStatus} onChange={event => setReplyStatus(event.target.value)}>
-                      <option value="open">Open</option>
-                      <option value="pending">Pending</option>
-                      <option value="resolved">Resolved</option>
+                      {statusOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
                     </select>
                   </label>
                   <label className="toggle-row support-internal-toggle">
                     <span>Internal note only</span>
                     <input type="checkbox" checked={internal} onChange={event => setInternal(event.target.checked)} />
                   </label>
+                  <button className="btn alt" type="button" onClick={() => onStatusChange(replyStatus)}>Update Status</button>
                   <button className="btn" type="submit">Send Reply</button>
                 </div>
                 <div className="notice">{notice}</div>
