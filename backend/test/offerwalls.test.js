@@ -316,6 +316,44 @@ test("TheoremReach callback route verifies and records callback events", async (
   }
 });
 
+test("TheoremReach callback accepts documented tx_id and reward_amount_in_dollars parameters", async () => {
+  env.DATABASE_URL = "";
+  env.THEOREM_SECRET_KEY = "theorem-secret";
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "Theorem Params", email: "theorem-params@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const port = server.address().port;
+  const baseUrl = `http://127.0.0.1:${port}`;
+  env.PUBLIC_URL = baseUrl;
+
+  try {
+    const params = {
+      user_id: user.id,
+      tx_id: "txn-theorem-docs",
+      reward_amount_in_dollars: "2.50",
+      screenout: "2"
+    };
+    const queryString = new URLSearchParams(params).toString();
+    const urlBeforeHash = `${env.PUBLIC_URL}/api/offerwalls/theorem/callback?${queryString}`;
+    const hash = theoremExpectedHash(urlBeforeHash, env.THEOREM_SECRET_KEY);
+    const response = await fetch(`${baseUrl}/api/offerwalls/theorem/callback?${queryString}&hash=${encodeURIComponent(hash)}`);
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.verified, true);
+    assert.equal(payload.event.userId, user.id);
+    assert.equal(payload.event.transactionId, "txn-theorem-docs");
+    assert.equal(payload.event.amount, 2.5);
+    assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 250);
+    assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 175);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
 test("TheoremReach launch URL includes required IDs and url-safe hmac hash", async () => {
   env.DATABASE_URL = "";
   env.THEOREM_API_KEY = "theorem-api-key";

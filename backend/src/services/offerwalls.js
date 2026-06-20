@@ -171,13 +171,16 @@ const providerAdapters = {
       return { verified: received === expected, expected };
     },
     normalize(payload) {
+      const transactionId = payload.transaction_id || payload.tx_id || payload.external_transaction_id || payload.session_id;
+      const amount = payload.reward_amount_in_dollars ?? payload.currency ?? payload.reward ?? payload.amount ?? 0;
+      const isReversal = String(payload.reversal || "").toLowerCase() === "true" || Number(amount) < 0;
       return {
         provider: "theorem",
         userId: payload.external_id || payload.user_id || payload.partner_user_id,
-        transactionId: payload.transaction_id,
-        offerId: payload.survey_id || payload.offer_id || payload.transaction_id,
-        amount: Number(payload.currency || payload.reward || payload.amount || 0),
-        status: payload.debug === "true" ? "debug" : payload.status || "approved",
+        transactionId,
+        offerId: payload.survey_id || payload.offer_id || payload.campaign_id || transactionId,
+        amount: Math.abs(Number(amount || 0)),
+        status: payload.debug === "true" ? "debug" : isReversal ? "reversed" : payload.status || "approved",
         raw: payload
       };
     }
