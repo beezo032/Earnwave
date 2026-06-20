@@ -57,7 +57,7 @@ function demoTicketWithContext(ticket) {
   }, messages);
 }
 
-async function createTicket({ userId, subject, category, message }) {
+async function createTicket({ userId, subject, category, message, priority }) {
   let ticket;
   if (!env.DATABASE_URL) {
     const row = {
@@ -67,7 +67,7 @@ async function createTicket({ userId, subject, category, message }) {
       category,
       message,
       status: "open",
-      priority: category === "payout" ? "high" : "normal",
+      priority: priority || (category === "payout" ? "high" : "normal"),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -77,7 +77,7 @@ async function createTicket({ userId, subject, category, message }) {
   } else {
     const result = await query(
       "INSERT INTO support_tickets (user_id, subject, category, message, priority) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [userId, subject, category, message, category === "payout" ? "high" : "normal"]
+      [userId, subject, category, message, priority || (category === "payout" ? "high" : "normal")]
     );
     await query("INSERT INTO support_messages (ticket_id, sender_id, message) VALUES ($1, $2, $3)", [result.rows[0].id, userId, message]);
     const tickets = await listTickets(userId, false);
@@ -142,7 +142,7 @@ async function listTickets(userId, isAdmin = false) {
   return tickets;
 }
 
-async function replyToTicket({ ticketId, senderId, message, status = "pending", internal = false }) {
+async function replyToTicket({ ticketId, senderId, message, status = "pending", internal = false, notifyUser = true }) {
   if (!env.DATABASE_URL) {
     const ticket = supportTickets.find(item => String(item.id) === String(ticketId));
     if (!ticket) throw new Error("Ticket not found");
@@ -157,7 +157,7 @@ async function replyToTicket({ ticketId, senderId, message, status = "pending", 
       created_at: ticket.updated_at
     });
     const owner = users.get(String(ticket.user_id));
-    if (!internal && owner?.email) {
+    if (notifyUser && !internal && owner?.email) {
       await queueEmail({
         userId: ticket.user_id,
         to: owner.email,
@@ -186,7 +186,7 @@ async function replyToTicket({ ticketId, senderId, message, status = "pending", 
   );
   if (!result.rows[0]) throw new Error("Ticket not found");
 
-  if (!internal && existing.rows[0].user_email) {
+  if (notifyUser && !internal && existing.rows[0].user_email) {
     await queueEmail({
       userId: existing.rows[0].user_id,
       to: existing.rows[0].user_email,
