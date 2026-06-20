@@ -2159,6 +2159,11 @@ function AdminPage({ navigate, api }) {
   ]);
   const [users, setUsers] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
+  const [selectedSupportTicket, setSelectedSupportTicket] = useState(null);
+  const [supportReply, setSupportReply] = useState("");
+  const [supportReplyStatus, setSupportReplyStatus] = useState("pending");
+  const [supportInternal, setSupportInternal] = useState(false);
+  const [supportNotice, setSupportNotice] = useState("Select a ticket to review and respond.");
   const [emails, setEmails] = useState([]);
   const [complianceUsers, setComplianceUsers] = useState([]);
   const [offerwallEconomics, setOfferwallEconomics] = useState([]);
@@ -2178,7 +2183,7 @@ function AdminPage({ navigate, api }) {
     api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
     refreshOfferwallCallbacks();
-    api.request("/account/admin/support/tickets").then(data => setSupportTickets(data.tickets || [])).catch(() => {});
+    refreshSupportTickets();
     api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
   }, []);
 
@@ -2214,6 +2219,36 @@ function AdminPage({ navigate, api }) {
     return (codes.length ? codes : ["BASELINE_LOW_RISK"]).map(code => `${code}: ${reasonCodes[code] || "Review this risk signal."}`);
   }
 
+  function refreshSupportTickets() {
+    api.request("/account/admin/support/tickets").then(data => {
+      const nextTickets = data.tickets || [];
+      setSupportTickets(nextTickets);
+      setSelectedSupportTicket(current => {
+        if (!current) return nextTickets[0] || null;
+        return nextTickets.find(ticket => String(ticket.id) === String(current.id)) || nextTickets[0] || null;
+      });
+    }).catch(() => {});
+  }
+
+  async function sendSupportReply(event) {
+    event.preventDefault();
+    if (!selectedSupportTicket?.id || !supportReply.trim()) return;
+    try {
+      const result = await api.request(`/account/admin/support/tickets/${selectedSupportTicket.id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ message: supportReply.trim(), status: supportReplyStatus, internal: supportInternal })
+      });
+      const updatedTicket = result.ticket;
+      setSupportTickets(current => current.map(ticket => String(ticket.id) === String(updatedTicket.id) ? updatedTicket : ticket));
+      setSelectedSupportTicket(updatedTicket);
+      setSupportReply("");
+      setSupportInternal(false);
+      setSupportNotice(supportInternal ? "Internal note saved." : "Reply saved and queued to email the user.");
+      api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
+    } catch (error) {
+      setSupportNotice(error.message);
+    }
+  }
   return (
     <DashboardLayout active="Admin" navigate={navigate} api={api}>
       <DashboardTop kicker="Operations" title="Admin moderation" copy="Review users, payout risk, offerwall callbacks, reversals, and suspicious completions." action={<span className="tag rose">Risk queue</span>} />
@@ -2330,13 +2365,20 @@ function AdminPage({ navigate, api }) {
           <RiskCard title="Anti-fraud signals" items={["VPN/proxy detection", "Device fingerprint reuse", "Duplicate account checks", "Withdrawal review pressure", "Suspicious activity flags"]} />
           <RiskCard title="Moderation actions" items={["Approve payout", "Reject payout", "Ban account", "Add internal note"]} />
         </div>
-        <div className="card">
-          <SectionTitle title="Support queue" copy="Admin support visibility for payout, account, offer, and fraud tickets." />
-          <DataTable rows={(supportTickets.length ? supportTickets : [
-            { subject: "Payout timing", category: "payout", priority: "high", status: "open" },
-            { subject: "Offer missing credit", category: "offer", priority: "normal", status: "pending" }
-          ]).map(item => [item.subject, item.category, item.priority, item.status])} />
-        </div>
+        <SupportAdminPanel
+          tickets={supportTickets}
+          selectedTicket={selectedSupportTicket}
+          setSelectedTicket={setSelectedSupportTicket}
+          reply={supportReply}
+          setReply={setSupportReply}
+          replyStatus={supportReplyStatus}
+          setReplyStatus={setSupportReplyStatus}
+          internal={supportInternal}
+          setInternal={setSupportInternal}
+          notice={supportNotice}
+          onReply={sendSupportReply}
+          onRefresh={refreshSupportTickets}
+        />
         <div className="card">
           <SectionTitle title="Email outbox" copy="Delivery trail for verification, reset, payout, and support messages." />
           <DataTable rows={(emails.length ? emails : [
@@ -2349,6 +2391,103 @@ function AdminPage({ navigate, api }) {
   );
 }
 
+function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, setReply, replyStatus, setReplyStatus, internal, setInternal, notice, onReply, onRefresh }) {
+  const visibleTickets = tickets.length ? tickets : [
+    { id: "preview-1", user_name: "Preview Member", user_email: "member@example.com", subject: "Payout timing", category: "payout", priority: "high", status: "open", message: "Preview ticket until live support requests arrive.", messages: [] },
+    { id: "preview-2", user_name: "Survey User", user_email: "survey@example.com", subject: "Offer missing credit", category: "offer", priority: "normal", status: "pending", message: "Example missing reward report.", messages: [] }
+  ];
+  const activeTicket = selectedTicket || visibleTickets[0];
+  const messages = activeTicket?.messages?.length ? activeTicket.messages : activeTicket ? [{
+    id: `${activeTicket.id}-initial`,
+    sender_name: activeTicket.user_name || activeTicket.user_email || "Member",
+    sender_email: activeTicket.user_email || "",
+    sender_role: "user",
+    message: activeTicket.message,
+    internal: false,
+    created_at: activeTicket.created_at
+  }] : [];
+
+  return (
+    <div className="card payout-queue-card support-admin-panel">
+      <SectionTitle
+        title="Support queue"
+        copy="Click a ticket to see the user, message history, and reply from admin."
+        action={<button className="btn alt" type="button" onClick={onRefresh}>Refresh</button>}
+      />
+      <div className="support-admin-grid">
+        <div className="support-ticket-list" aria-label="Support ticket list">
+          {visibleTickets.map(ticket => (
+            <button
+              className={activeTicket && String(activeTicket.id) === String(ticket.id) ? "support-ticket-row active" : "support-ticket-row"}
+              key={ticket.id}
+              type="button"
+              onClick={() => setSelectedTicket(ticket)}
+            >
+              <span className="avatar">{String(ticket.user_name || ticket.user_email || "M").slice(0, 1)}</span>
+              <div>
+                <strong>{ticket.subject}</strong>
+                <p>{ticket.user_name || "Member"} {ticket.user_email ? `- ${ticket.user_email}` : ""}</p>
+              </div>
+              <span className={ticket.priority === "high" ? "tag rose" : "tag"}>{ticket.status}</span>
+            </button>
+          ))}
+        </div>
+        <div className="support-ticket-detail">
+          {activeTicket ? (
+            <>
+              <div className="support-ticket-head">
+                <div>
+                  <span className="eyebrow">{activeTicket.category} support</span>
+                  <h3>{activeTicket.subject}</h3>
+                  <p>{activeTicket.user_name || "Member"} {activeTicket.username ? `@${activeTicket.username}` : ""}</p>
+                  <p>{activeTicket.user_email || "No email on ticket"} | User ID: {activeTicket.user_id || "preview"}</p>
+                </div>
+                <div className="support-ticket-badges">
+                  <span className={activeTicket.priority === "high" ? "tag rose" : "tag amber"}>{activeTicket.priority || "normal"}</span>
+                  <span className="pill blue">{activeTicket.status}</span>
+                </div>
+              </div>
+              <div className="support-message-thread">
+                {messages.map(message => (
+                  <div className={message.internal ? "support-message internal" : "support-message"} key={message.id || `${message.created_at}-${message.sender_id}`}>
+                    <div className="row">
+                      <strong>{message.sender_name || "EarnWave Support"}</strong>
+                      <span>{String(message.created_at || activeTicket.created_at || "").slice(0, 16).replace("T", " ")}</span>
+                    </div>
+                    <p>{message.message}</p>
+                    {message.internal && <span className="tag amber">Internal note</span>}
+                  </div>
+                ))}
+              </div>
+              <form className="support-reply-form" onSubmit={onReply}>
+                <label>Admin reply
+                  <textarea value={reply} onChange={event => setReply(event.target.value)} placeholder="Write a clear reply or internal note..." />
+                </label>
+                <div className="support-reply-controls">
+                  <label>Status
+                    <select value={replyStatus} onChange={event => setReplyStatus(event.target.value)}>
+                      <option value="open">Open</option>
+                      <option value="pending">Pending</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </label>
+                  <label className="toggle-row support-internal-toggle">
+                    <span>Internal note only</span>
+                    <input type="checkbox" checked={internal} onChange={event => setInternal(event.target.checked)} />
+                  </label>
+                  <button className="btn" type="submit">Send Reply</button>
+                </div>
+                <div className="notice">{notice}</div>
+              </form>
+            </>
+          ) : (
+            <div className="notice">No support tickets yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 function AnalyticsPage({ navigate, api }) {
   return (
     <DashboardLayout active="Analytics" navigate={navigate} api={api}>
