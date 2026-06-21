@@ -5,7 +5,7 @@ const { createApp } = require("../src/app");
 const { createToken } = require("../src/middleware/auth");
 const { env } = require("../src/config/env");
 const { listOfferwallCallbackEvents } = require("../src/services/offerwalls");
-const { releaseProviderReward } = require("../src/services/ledger");
+const { releaseProviderReward, rejectProviderReward, reverseProviderReward } = require("../src/services/ledger");
 const store = require("../src/db/demoStore");
 
 function resetDemoStore() {
@@ -266,8 +266,23 @@ test("CPX callback accepts configured postback secret and credits user split", a
     assert.equal(payload.event.transactionId, "txn-cpx-secret");
     assert.equal(user.balance_wavecoins - startingBalance, 0);
     assert.equal(store.ledgerEntries[0].status, "pending");
+
+    const userHeaders = { Authorization: `Bearer ${createToken(user)}`, "Content-Type": "application/json", "x-device-hash": "member-device" };
+    const pendingSession = await fetch(`${baseUrl}/api/auth/me`, { headers: userHeaders });
+    const pendingPayload = await pendingSession.json();
+    assert.equal(pendingSession.status, 200);
+    assert.equal(pendingPayload.user.pending_wavecoins, 70);
+    assert.equal(pendingPayload.user.balance_wavecoins, startingBalance);
+
     await releaseProviderReward({ id: store.ledgerEntries[0].id, adminId: "admin-test" });
     assert.equal(user.balance_wavecoins - startingBalance, 70);
+    assert.equal(store.ledgerEntries[0].status, "available");
+
+    const releasedSession = await fetch(`${baseUrl}/api/auth/me`, { headers: userHeaders });
+    const releasedPayload = await releasedSession.json();
+    assert.equal(releasedSession.status, 200);
+    assert.equal(releasedPayload.user.pending_wavecoins, 0);
+    assert.equal(releasedPayload.user.balance_wavecoins, startingBalance + 70);
     assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 100);
     assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 70);
     assert.equal(store.ledgerEntries[0].platform_margin_usd_cents, 30);
@@ -277,6 +292,62 @@ test("CPX callback accepts configured postback secret and credits user split", a
   }
 });
 
+test("admin can reject pending rewards and reverse released rewards", async () => {
+  env.DATABASE_URL = "";
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "Admin Control", email: "admin-control@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  user.balance_wavecoins = 1000;
+  user.balance = 10;
+  const startingBalance = user.balance_wavecoins;
+
+  store.ledgerEntries.unshift({
+    id: "pending-control",
+    user_id: user.id,
+    type: "offerwall_callback",
+    direction: "credit",
+    amount_wavecoins: 70,
+    usd_value_cents: 70,
+    provider_gross_usd_cents: 100,
+    user_reward_wavecoins: 70,
+    platform_margin_usd_cents: 30,
+    provider: "cpx",
+    provider_transaction_id: "txn-pending-control",
+    status: "pending",
+    payout_status: "pending",
+    created_at: new Date().toISOString()
+  });
+
+  const rejected = await rejectProviderReward({ id: "pending-control", adminId: "admin-test" });
+  assert.equal(rejected.status, "rejected");
+  assert.equal(user.balance_wavecoins, startingBalance);
+
+  store.ledgerEntries.unshift({
+    id: "released-control",
+    user_id: user.id,
+    type: "offerwall_callback",
+    direction: "credit",
+    amount_wavecoins: 140,
+    usd_value_cents: 140,
+    provider_gross_usd_cents: 200,
+    user_reward_wavecoins: 140,
+    platform_margin_usd_cents: 60,
+    provider: "theorem",
+    provider_transaction_id: "txn-released-control",
+    status: "pending",
+    payout_status: "pending",
+    created_at: new Date().toISOString()
+  });
+
+  const released = await releaseProviderReward({ id: "released-control", adminId: "admin-test" });
+  assert.equal(released.status, "available");
+  assert.equal(user.balance_wavecoins, startingBalance + 140);
+
+  const reversed = await reverseProviderReward({ id: "released-control", adminId: "admin-test" });
+  assert.equal(reversed.status, "reversed");
+  assert.equal(user.balance_wavecoins, startingBalance);
+});
 test("TheoremReach callback route verifies and records callback events", async () => {
   env.DATABASE_URL = "";
   env.THEOREM_SECRET_KEY = "theorem-secret";

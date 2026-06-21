@@ -5,7 +5,7 @@ const { listModerationQueue, recordModerationAction, listOffers } = require("../
 const { closeSuspiciousActivity, listSuspiciousActivity } = require("../services/fraud");
 const { approveAndDispatch, listPayoutQueue, rejectPayout } = require("../services/payouts");
 const { REASON_CODE_CATALOG } = require("../services/fraud");
-const { listProviderRewardEconomics, releaseProviderReward, reverseProviderReward } = require("../services/ledger");
+const { listProviderRewardEconomics, releaseProviderReward, rejectProviderReward, reverseProviderReward } = require("../services/ledger");
 const { listOfferwallCallbackEvents } = require("../services/offerwalls");
 const { listUsersForAdmin } = require("../services/users");
 const {
@@ -142,6 +142,14 @@ adminRouter.post("/provider-rewards/:id/release", async (req, res, next) => {
   }
 });
 
+adminRouter.post("/provider-rewards/:id/reject", async (req, res, next) => {
+  try {
+    const body = z.object({ note: z.string().max(1000).optional() }).parse(req.body);
+    res.json({ reward: await rejectProviderReward({ id: req.params.id, adminId: req.user.id, note: body.note }) });
+  } catch (error) {
+    next(error);
+  }
+});
 adminRouter.post("/provider-rewards/:id/reverse", async (req, res, next) => {
   try {
     const body = z.object({ note: z.string().max(1000).optional() }).parse(req.body);

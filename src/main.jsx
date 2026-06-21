@@ -321,17 +321,32 @@ function useApi() {
     return payload;
   }
 
+  async function refreshSession() {
+    if (!session?.token) return null;
+    try {
+      const data = await request("/auth/me");
+      if (data.user) {
+        const nextSession = { ...session, user: data.user };
+        localStorage.setItem("earnwave_session", JSON.stringify(nextSession));
+        setSession(nextSession);
+        return data.user;
+      }
+    } catch (error) {
+      return null;
+    }
+    return null;
+  }
+
   function save(nextSession) {
     localStorage.setItem("earnwave_session", JSON.stringify(nextSession));
     setSession(nextSession);
   }
-
   function logout() {
     localStorage.removeItem("earnwave_session");
     setSession(null);
   }
 
-  return { session, request, save, logout };
+  return { session, request, refreshSession, save, logout };
 }
 
 function Shell({ route, navigate, api, children }) {
@@ -352,6 +367,20 @@ function Shell({ route, navigate, api, children }) {
   ];
   const adminItems = isAdmin ? [["/analytics", "Analytics"], ["/admin", "Admin"]] : [];
   const navItems = isAuthed ? loggedInNavItems : loggedOutNavItems;
+
+  useEffect(() => {
+    if (!isAuthed || isAdmin) return undefined;
+    const refresh = () => api.refreshSession?.();
+    const interval = window.setInterval(refresh, 30000);
+    const onVisibility = () => { if (!document.hidden) refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [isAuthed, isAdmin, api.session?.token]);
 
   return (
     <>
@@ -1108,6 +1137,9 @@ function Dashboard({ api, navigate }) {
 
   }, []);
 
+  useEffect(() => {
+    if (api.session?.user) setUser(api.session.user);
+  }, [api.session?.user?.balance_wavecoins, api.session?.user?.pending_wavecoins, api.session?.user?.total_earned_wavecoins]);
   async function refreshUser() {
     try {
       const data = await api.request("/auth/me");
@@ -1639,6 +1671,9 @@ function WalletPage({ navigate, api }) {
     api.request("/wallet/withdrawals").then(data => setWithdrawals(data.withdrawals || [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (api.session?.user) setWalletUser(api.session.user);
+  }, [api.session?.user?.balance_wavecoins, api.session?.user?.pending_wavecoins, api.session?.user?.total_earned_wavecoins]);
   const availableWaveCoins = userAmountWaveCoins(walletUser, walletUser.balance);
   const pendingWaveCoins = Number(walletUser.pending_wavecoins ?? walletUser.pending_rewards_wavecoins ?? transactions
     .filter(item => item.direction === "credit" && String(item.status || "").toLowerCase() === "pending")
@@ -2426,6 +2461,19 @@ function AdminPage({ navigate, api }) {
     }
   }
 
+  async function rejectProviderReward(id) {
+    try {
+      const result = await api.request(`/admin/provider-rewards/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ note: "Rejected from admin reward review" })
+      });
+      setRewardNotice(`Reward ${result.reward.provider_transaction_id || id} rejected. No WaveCoins were released.`);
+      refreshRewardEconomics();
+      api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      setRewardNotice(error.message);
+    }
+  }
   async function reverseProviderReward(id) {
     try {
       const result = await api.request(`/admin/provider-rewards/${id}/reverse`, {
@@ -2567,6 +2615,7 @@ function AdminPage({ navigate, api }) {
           entries={offerwallEconomics}
           notice={rewardNotice}
           onRelease={releaseProviderReward}
+          onReject={rejectProviderReward}
           onReverse={reverseProviderReward}
         />
         <div className="card payout-queue-card">
@@ -2649,7 +2698,7 @@ function getCpxPostbackUrl() {
   return `${origin}/api/offerwalls/cpx/callback?user_id={user_id}&trans_id={trans_id}&amount_local={amount_local}&amount_usd={amount_usd}&status={status}&postback_secret=YOUR_CPX_POSTBACK_SECRET`;
 }
 
-function ProviderRewardReviewPanel({ entries, notice, onRelease, onReverse }) {
+function ProviderRewardReviewPanel({ entries, notice, onRelease, onReject, onReverse }) {
   const hasRealEntries = entries.length > 0;
 
   function releaseText(item) {
@@ -2666,15 +2715,15 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReverse }) {
   return (
     <div className="card payout-queue-card provider-reward-review">
       <SectionTitle
-        title="Provider reward review"
-        copy="Users see only their net WaveCoins. Admin sees provider gross payout, user reward, EarnWave margin, and pending release status."
-        action={<span className="tag amber">Pending funds</span>}
+        title="Provider reward control center"
+        copy="Release approved pending rewards, reject pending rewards without crediting, or reverse already released funds when a provider chargeback or fraud review requires it."
+        action={<span className="tag amber">Manual control</span>}
       />
       <div className="notice">{notice}</div>
       {!hasRealEntries ? (
         <div className="provider-reward-empty">
-          <strong>No real provider rewards are ready to release yet.</strong>
-          <p>Accepted CPX or TheoremReach callbacks will create pending rewards here. Rejected callbacks do not create funds, so there is nothing to release or reverse until callback verification passes.</p>
+          <strong>No real provider rewards are ready to review yet.</strong>
+          <p>Accepted CPX or TheoremReach callbacks will create pending rewards here. Rejected callbacks do not create funds, so there is nothing to release, reject, or reverse until callback verification passes.</p>
           <div className="reward-split-grid">
             <span><small>Example gross</small>$1.00</span>
             <span><small>User would get</small>70 WaveCoins ($0.70)</span>
@@ -2686,25 +2735,44 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReverse }) {
         <div className="provider-reward-list">
           {entries.map(item => {
             const userReward = Number(item.user_reward_wavecoins || item.amount_wavecoins || 0);
-            const isPending = item.status === "pending";
+            const status = String(item.status || "pending").toLowerCase();
+            const isPending = status === "pending";
+            const isAvailable = status === "available";
             return (
-              <div className="provider-reward-row" key={item.id}>
+              <div className="provider-reward-row detailed" key={item.id}>
                 <div>
                   <div className="provider-reward-head">
-                    <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
-                    <span className={isPending ? "tag amber" : item.status === "available" ? "tag" : "tag rose"}>{item.status}</span>
+                    <div>
+                      <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
+                      <p>{item.user_email || "No email"} | @{item.user_username || "no_username"}</p>
+                    </div>
+                    <span className={isPending ? "tag amber" : isAvailable ? "tag" : "tag rose"}>{status}</span>
                   </div>
-                  <p>{item.provider || "provider"} | {item.provider_transaction_id || "no transaction id"}</p>
+                  <div className="admin-user-context-grid">
+                    <span><small>User ID</small>{item.user_id || "Missing"}</span>
+                    <span><small>Account</small>{item.user_status || "active"}</span>
+                    <span><small>Country</small>{item.user_country || "Missing"}</span>
+                    <span><small>Fraud score</small>{Number(item.user_fraud_score || 0)}</span>
+                    <span><small>Balance</small>{Number(item.user_balance_wavecoins || 0).toLocaleString()} WaveCoins</span>
+                    <span><small>Total earned</small>{Number(item.user_total_earned_wavecoins || 0).toLocaleString()} WaveCoins</span>
+                  </div>
+                  <p className="provider-transaction-line">{item.provider || "provider"} | {item.provider_transaction_id || "no transaction id"}</p>
                   <div className="reward-split-grid">
                     <span><small>Provider gross</small>{money(Number(item.provider_gross_usd_cents || 0) / 100)}</span>
                     <span><small>User gets</small>{userReward.toLocaleString()} WaveCoins ({money(waveCoinsToUsd(userReward))})</span>
                     <span><small>EarnWave margin</small>{money(Number(item.platform_margin_usd_cents || 0) / 100)}</span>
                     <span><small>Release timer</small>{releaseText(item)}</span>
                   </div>
+                  <div className="admin-reward-notes">
+                    <span>Release: moves pending WaveCoins to available balance.</span>
+                    <span>Reject: closes pending reward with no user credit.</span>
+                    <span>Reverse: subtracts an already released reward from available balance.</span>
+                  </div>
                 </div>
                 <div className="provider-reward-actions">
                   <button className="btn" type="button" disabled={!isPending} onClick={() => onRelease(item.id)}>Release</button>
-                  <button className="btn alt" type="button" disabled={item.status === "reversed"} onClick={() => onReverse(item.id)}>Reverse</button>
+                  <button className="btn alt" type="button" disabled={!isPending} onClick={() => onReject(item.id)}>Reject</button>
+                  <button className="btn danger" type="button" disabled={!isAvailable} onClick={() => onReverse(item.id)}>Reverse</button>
                 </div>
               </div>
             );

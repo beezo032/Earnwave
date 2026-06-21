@@ -969,8 +969,18 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   border-radius: var(--radius);
   background: linear-gradient(135deg, rgba(50,230,161,.08), rgba(69,200,255,.045));
 }
+.provider-reward-row.detailed { align-items: start; }
 .provider-reward-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.provider-reward-head > div { min-width: 0; }
 .provider-reward-row p { color: var(--muted); overflow-wrap: anywhere; }
+.admin-user-context-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.admin-user-context-grid span { display: grid; gap: 3px; min-height: 58px; padding: 9px; border: 1px solid rgba(69,200,255,.18); border-radius: 12px; background: rgba(69,200,255,.045); font-weight: 900; overflow-wrap: anywhere; }
+.admin-user-context-grid small { color: var(--muted); font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
+.provider-transaction-line { margin-top: 10px; }
+.admin-reward-notes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.admin-reward-notes span { padding: 7px 9px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.04); color: var(--soft); font-size: .84rem; font-weight: 850; }
+.btn.danger { background: rgba(255,107,138,.14); border-color: rgba(255,107,138,.35); color: #ffd5de; }
+.btn.danger:hover:not(:disabled) { background: rgba(255,107,138,.22); }
 .reward-split-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .reward-split-grid span { display: grid; gap: 3px; min-height: 58px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.045); font-weight: 950; }
 .reward-split-grid small { color: var(--muted); font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
@@ -1009,6 +1019,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
 @media (max-width: 1040px) {
   .support-admin-grid { grid-template-columns: 1fr; }
   .provider-reward-row { grid-template-columns: 1fr; }
+  .admin-user-context-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .reward-split-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .provider-reward-actions { justify-content: flex-start; }
 }
@@ -1017,6 +1028,7 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   .support-ticket-row,
   .support-reply-controls { grid-template-columns: 1fr; }
   .admin-status-actions { grid-template-columns: 1fr; }
+  .admin-user-context-grid,
   .reward-split-grid { grid-template-columns: 1fr; }
   .support-ticket-head { flex-direction: column; }
   .support-ticket-badges { justify-content: flex-start; }
