@@ -31,7 +31,7 @@ const docs = {
     title: "Rewards Policy",
     body: [
       "EarnWave tracks balances in integer WaveCoins. 100 WaveCoins equals $1.00 when redeemed through an approved payout method. WaveCoins have no value outside EarnWave and cannot be transferred between users.",
-      "Rewards may appear as pending after an offer, survey, game, app install, referral, daily streak, bonus code, or quest. Pending rewards are not withdrawable until the provider confirms completion and EarnWave approves the reward.",
+      "Rewards may appear as pending after a survey, referral, daily streak, bonus code, or quest. Pending rewards are not withdrawable until the provider confirms completion and EarnWave approves the reward.",
       "Rewards may pend, reverse, or be denied because the user did not qualify, tracking was blocked, the offer was completed before launch through EarnWave, provider rules were not followed, duplicate completion was detected, a refund or chargeback occurred, the advertiser reversed credit, or fraud review found risk.",
       "Available rewards can be requested for payout only after the minimum cashout is reached and required account, compliance, and payout information is complete. The default minimum cashout is 500 WaveCoins, equal to $5.00.",
       "All withdrawals are reviewed before payment. Review may include account age, device and IP signals, provider reversal history, payout amount, country mismatch, duplicate household indicators, KYC/tax status, and prior suspicious activity.",
@@ -42,7 +42,7 @@ const docs = {
   fraud: {
     title: "Fraud and Account Policy",
     body: [
-      "EarnWave is built for real users completing real offers. Users may not use fake identities, stolen information, duplicate accounts, shared accounts, account farms, bots, scripts, emulators, tampered devices, click automation, artificial traffic, or misleading behavior to earn rewards.",
+      "EarnWave is built for real users completing real surveys and approved reward actions. Users may not use fake identities, stolen information, duplicate accounts, shared accounts, account farms, bots, scripts, emulators, tampered devices, click automation, artificial traffic, or misleading behavior to earn rewards.",
       "VPNs, proxies, hosting networks, datacenter IPs, location spoofing, device spoofing, Play Integrity or App Attest failures, repeated household duplication, suspicious referral rings, and unusual payout velocity may trigger holds or manual review.",
       "Users may not complete the same offer multiple times unless the provider clearly allows it, submit false survey responses, intentionally fail quality checks, use disposable contact information to bypass rules, or interfere with tracking systems.",
       "EarnWave may request additional verification before releasing rewards. Refusing verification, providing inconsistent information, or attempting to bypass review may result in denied payouts or account closure.",
