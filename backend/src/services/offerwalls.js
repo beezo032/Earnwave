@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const { env } = require("../config/env");
 const { paymentEvents, users } = require("../db/demoStore");
 const { query } = require("../db/postgres");
-const { recordLedgerEntry, reverseProviderRewardByTransaction } = require("./ledger");
+const { findProviderRewardByTransaction, recordLedgerEntry, reverseProviderRewardByTransaction } = require("./ledger");
 const { waveCoinsToUsdCents } = require("./currency");
 const { calculateRewardSplit } = require("./rewardSplit");
 
@@ -104,40 +104,47 @@ const providerAdapters = {
         return { verified: true, method: "postback_secret" };
       }
       if (env.CPX_POSTBACK_SECRET && postbackSecret && postbackSecret !== env.CPX_POSTBACK_SECRET) {
-        return { verified: false, reason: "CPX postback_secret did not match Render CPX_POSTBACK_SECRET." };
+        return { verified: false, reason: "CPX postback_secret did not match configured value." };
       }
       if (!env.CPX_SECURE_HASH_SECRET) {
         return {
           verified: false,
-          reason: "CPX callback missing postback_secret and CPX_SECURE_HASH_SECRET is not set. Add postback_secret=YOUR_CPX_POSTBACK_SECRET to the CPX Postback URL and set the same value in Render."
+          reason: "CPX secure hash secret is not configured."
         };
       }
-      const received = payload.secure_hash || payload.hash;
+      const received = payload.secure_hash || payload.hash || payload.signature;
       if (!received) {
         return {
           verified: false,
-          reason: "CPX callback missing postback_secret or secure_hash. Add postback_secret=YOUR_CPX_POSTBACK_SECRET to the CPX Postback URL and set the same CPX_POSTBACK_SECRET in Render."
+          reason: "CPX callback missing postback_secret or security hash."
         };
       }
-      const expected = sha256(sortedQuery(payload) + env.CPX_SECURE_HASH_SECRET);
       const userId = payload.ext_user_id || payload.user_id || payload.subid_2;
-      const entryHash = userId ? md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`) : "";
-      const verified = received === expected || received === entryHash;
+      const transactionId = payload.provider_transaction_id || payload.trans_id || payload.transaction_id || payload.survey_id || payload.offer_id;
+      const expectedSorted = sha256(sortedQuery(payload) + env.CPX_SECURE_HASH_SECRET);
+      const expectedEntry = userId ? md5(`${userId}-${env.CPX_SECURE_HASH_SECRET}`) : "";
+      const expectedTransaction = transactionId ? md5(`${transactionId}-${env.CPX_SECURE_HASH_SECRET}`) : "";
+      const verified = [expectedSorted, expectedEntry, expectedTransaction].filter(Boolean).includes(String(received));
       return {
         verified,
-        expected,
-        reason: verified ? undefined : "CPX secure_hash/hash did not match expected signature. Use the postback_secret URL option or confirm CPX_SECURE_HASH_SECRET matches CPX."
+        method: verified ? "security_hash" : undefined,
+        reason: verified ? undefined : "CPX security hash did not match."
       };
     },
     normalize(payload) {
+      const transactionId = payload.provider_transaction_id || payload.trans_id || payload.transaction_id || payload.survey_id || payload.offer_id;
+      const reversalFlag = String(payload.reversal || payload.reversed || payload.chargeback || "").toLowerCase();
+      const status = reversalFlag === "true" || reversalFlag === "1" || String(payload.status) === "2" || String(payload.type || "").toLowerCase().includes("reversal")
+        ? "reversed"
+        : payload.status || "approved";
       return {
         provider: "cpx",
         userId: payload.ext_user_id || payload.user_id || payload.subid_2,
-        transactionId: payload.trans_id || payload.transaction_id || payload.survey_id,
-        offerId: payload.survey_id || payload.offer_id,
-        amount: Number(payload.amount_usd || payload.amount || payload.reward || payload.payout || 0),
-        amount_wavecoins: payload.amount_local !== undefined ? Math.round(Number(payload.amount_local || 0)) : undefined,
-        status: payload.status || "approved",
+        transactionId,
+        offerId: payload.offer_id || payload.survey_id || payload.campaign_id || payload.cpx_message_id || transactionId,
+        amount: Math.abs(Number(payload.amount_usd || payload.amount || payload.reward || payload.payout || 0)),
+        amount_wavecoins: payload.amount_local !== undefined ? Math.abs(Math.round(Number(payload.amount_local || 0))) : undefined,
+        status,
         raw: payload
       };
     }
@@ -372,8 +379,13 @@ async function applyOfferwallLedgerEvent(event, signature) {
   const split = calculateRewardSplit({ provider: event.provider, grossUsdCents: providerGrossUsdCents });
   const amountWaveCoins = split.userRewardWaveCoins;
 
-  if (!event.userId || !amountWaveCoins || (!isReversal && !isCredit)) return null;
+  if (!event.userId || !event.transactionId || !amountWaveCoins || (!isReversal && !isCredit)) return null;
   if (!signature?.verified && !env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS) return null;
+
+  if (isCredit) {
+    const existing = await findProviderRewardByTransaction({ provider: event.provider, providerTransactionId: event.transactionId });
+    if (existing) return { ...existing, duplicate: true };
+  }
 
   if (isReversal) {
     const reversed = await reverseProviderRewardByTransaction({

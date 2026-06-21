@@ -270,8 +270,22 @@ async function reverseProviderRewardByTransaction({ provider, providerTransactio
   return result.rows[0] ? reverseProviderReward({ id: result.rows[0].id, adminId, note }) : null;
 }
 
+async function findProviderRewardByTransaction({ provider, providerTransactionId }) {
+  if (!provider || !providerTransactionId) return null;
+  if (!env.DATABASE_URL) {
+    const entry = ledgerEntries.find(item => String(item.provider) === String(provider) && String(item.provider_transaction_id) === String(providerTransactionId) && item.direction === "credit");
+    return entry ? serializeLedgerEntry(entry) : null;
+  }
+  const result = await query(
+    "SELECT * FROM ledger_entries WHERE provider = $1 AND provider_transaction_id = $2 AND direction = 'credit' ORDER BY created_at DESC LIMIT 1",
+    [provider, providerTransactionId]
+  );
+  return result.rows[0] ? serializeLedgerEntry(result.rows[0]) : null;
+}
+
 module.exports = {
   cents,
+  findProviderRewardByTransaction,
   listLedgerEntries,
   listProviderRewardEconomics,
   recordLedgerEntry,

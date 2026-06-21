@@ -32,6 +32,7 @@ const env = {
   CPX_API_KEY: process.env.CPX_API_KEY || "",
   CPX_SECURE_HASH_SECRET: process.env.CPX_SECURE_HASH_SECRET || "",
   CPX_POSTBACK_SECRET: process.env.CPX_POSTBACK_SECRET || "",
+  CPX_POSTBACK_URL: process.env.CPX_POSTBACK_URL || "",
   CPX_USER_REWARD_PERCENT: Number(process.env.CPX_USER_REWARD_PERCENT || 70),
   THEOREM_API_KEY: process.env.THEOREM_API_KEY || "",
   THEOREM_PARTNER_ID: process.env.THEOREM_PARTNER_ID || "",

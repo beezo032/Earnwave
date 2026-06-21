@@ -61,6 +61,79 @@ async function handleCallback(req, res, next) {
   }
 }
 
+function combinedProviderPayload(req) {
+  return { ...(req.query || {}), ...(req.body || {}) };
+}
+
+function cpxPostbackRequest(req, payload) {
+  return {
+    ...req,
+    method: req.method === "GET" ? "GET" : "POST",
+    query: payload,
+    body: payload
+  };
+}
+
+function cpxMissingFields(event) {
+  const missing = [];
+  if (!event.userId) missing.push("ext_user_id/user_id");
+  if (!event.transactionId) missing.push("provider_transaction_id/trans_id");
+  if (!event.offerId) missing.push("offer_id/survey_id");
+  if (!event.status) missing.push("status");
+  if (!event.amount && event.amount_wavecoins === undefined) missing.push("amount_usd/amount_local");
+  return missing;
+}
+
+async function handleCpxPostback(req, res, next) {
+  try {
+    const payload = combinedProviderPayload(req);
+    const postbackReq = cpxPostbackRequest(req, payload);
+    const signature = verifyCallbackSignature("cpx", postbackReq);
+    const event = normalizeCallback("cpx", payload);
+    const missing = cpxMissingFields(event);
+
+    if (missing.length) {
+      await recordOfferwallEvent(event, { verified: false, reason: `Missing required CPX postback fields: ${missing.join(", ")}` });
+      return res.status(400).json({
+        received: true,
+        verified: false,
+        accepted: false,
+        message: "CPX postback missing required parameters."
+      });
+    }
+
+    const recorded = await recordOfferwallEvent(event, signature);
+    if (recorded.rejected) {
+      return res.status(403).json({
+        received: true,
+        verified: false,
+        accepted: false,
+        message: "CPX postback rejected."
+      });
+    }
+
+    res.status(200).json({
+      received: true,
+      verified: true,
+      accepted: true,
+      duplicate: Boolean(recorded.duplicate),
+      event: {
+        provider: event.provider,
+        user_id: event.userId,
+        provider_transaction_id: event.transactionId,
+        offer_id: event.offerId,
+        amount_usd: event.amount,
+        amount_local: event.amount_wavecoins,
+        status: event.status
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+offerwallRouter.get("/cpx/postback", handleCpxPostback);
+offerwallRouter.post("/cpx/postback", handleCpxPostback);
+
 offerwallRouter.get("/:provider/callback", handleCallback);
 offerwallRouter.post("/:provider/callback", handleCallback);
 

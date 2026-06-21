@@ -292,6 +292,190 @@ test("CPX callback accepts configured postback secret and credits user split", a
   }
 });
 
+test("CPX postback credits a verified server-to-server reward split", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.CPX_POSTBACK_SECRET = "test-postback-secret";
+  env.CPX_USER_REWARD_PERCENT = 70;
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Postback Credit", email: "cpx-postback-credit@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const body = new URLSearchParams({
+      user_id: user.id,
+      trans_id: "txn-cpx-postback-credit",
+      amount_local: "100",
+      amount_usd: "1.00",
+      status: "1",
+      offer_id: "survey-abc",
+      postback_secret: "test-postback-secret"
+    });
+    const response = await fetch(`${baseUrl}/api/offerwalls/cpx/postback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+    const responseText = await response.text();
+    const payload = JSON.parse(responseText);
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.accepted, true);
+    assert.equal(payload.verified, true);
+    assert.equal(payload.event.provider_transaction_id, "txn-cpx-postback-credit");
+    assert.equal(responseText.includes("test-postback-secret"), false);
+    assert.equal(store.ledgerEntries.length, 1);
+    assert.equal(store.ledgerEntries[0].provider, "cpx");
+    assert.equal(store.ledgerEntries[0].provider_transaction_id, "txn-cpx-postback-credit");
+    assert.equal(store.ledgerEntries[0].status, "pending");
+    assert.equal(store.ledgerEntries[0].provider_gross_usd_cents, 100);
+    assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 70);
+    assert.equal(store.ledgerEntries[0].platform_margin_usd_cents, 30);
+    assert.equal(store.paymentEvents[0].verified, true);
+  } finally {
+    env.CPX_POSTBACK_SECRET = "";
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("CPX postback suppresses duplicate provider transaction credits", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.CPX_POSTBACK_SECRET = "test-postback-secret";
+  env.CPX_USER_REWARD_PERCENT = 70;
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Duplicate", email: "cpx-duplicate@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const params = {
+      ext_user_id: user.id,
+      provider_transaction_id: "txn-cpx-duplicate",
+      amount_local: "250",
+      amount_usd: "2.50",
+      status: "1",
+      survey_id: "survey-dup",
+      postback_secret: "test-postback-secret"
+    };
+    const first = await fetch(`${baseUrl}/api/offerwalls/cpx/postback?${new URLSearchParams(params)}`);
+    const second = await fetch(`${baseUrl}/api/offerwalls/cpx/postback?${new URLSearchParams(params)}`);
+    const secondPayload = await second.json();
+
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.equal(secondPayload.duplicate, true);
+    assert.equal(store.ledgerEntries.length, 1);
+    assert.equal(store.ledgerEntries[0].user_reward_wavecoins, 175);
+  } finally {
+    env.CPX_POSTBACK_SECRET = "";
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("CPX postback rejects invalid signatures without crediting or exposing secrets", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.CPX_POSTBACK_SECRET = "test-postback-secret";
+  env.CPX_USER_REWARD_PERCENT = 70;
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Bad Signature", email: "cpx-bad-signature@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const body = new URLSearchParams({
+      user_id: user.id,
+      trans_id: "txn-cpx-invalid",
+      amount_local: "100",
+      amount_usd: "1.00",
+      status: "1",
+      offer_id: "survey-invalid",
+      postback_secret: "wrong-secret"
+    });
+    const response = await fetch(`${baseUrl}/api/offerwalls/cpx/postback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+    const responseText = await response.text();
+    const payload = JSON.parse(responseText);
+
+    assert.equal(response.status, 403);
+    assert.equal(payload.accepted, false);
+    assert.equal(payload.verified, false);
+    assert.equal(responseText.includes("test-postback-secret"), false);
+    assert.equal(responseText.includes("wrong-secret"), false);
+    assert.equal(store.ledgerEntries.length, 0);
+    assert.equal(store.paymentEvents.length, 1);
+    assert.equal(store.paymentEvents[0].rejected, true);
+  } finally {
+    env.CPX_POSTBACK_SECRET = "";
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("CPX postback reversal marks original reward reversed and reconciles wallet", async () => {
+  env.DATABASE_URL = "";
+  env.CPX_SECURE_HASH_SECRET = "test-cpx-secret";
+  env.CPX_POSTBACK_SECRET = "test-postback-secret";
+  env.CPX_USER_REWARD_PERCENT = 70;
+  env.ALLOW_UNVERIFIED_OFFERWALL_CALLBACKS = false;
+  resetDemoStore();
+
+  const user = await store.createDemoUser({ name: "CPX Reversal", email: "cpx-reversal@example.com", password: "password123", role: "user" });
+  user.email_verified = true;
+  const startingBalance = user.balance_wavecoins;
+
+  const app = createApp();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const creditParams = {
+      user_id: user.id,
+      trans_id: "txn-cpx-reversal",
+      amount_local: "500",
+      amount_usd: "5.00",
+      status: "1",
+      offer_id: "survey-reversal",
+      postback_secret: "test-postback-secret"
+    };
+    const credit = await fetch(`${baseUrl}/api/offerwalls/cpx/postback?${new URLSearchParams(creditParams)}`);
+    assert.equal(credit.status, 200);
+    assert.equal(store.ledgerEntries.length, 1);
+    await releaseProviderReward({ id: store.ledgerEntries[0].id, adminId: "admin-test" });
+    assert.equal(user.balance_wavecoins, startingBalance + 350);
+
+    const reversalParams = { ...creditParams, status: "2" };
+    const reversal = await fetch(`${baseUrl}/api/offerwalls/cpx/postback?${new URLSearchParams(reversalParams)}`);
+    const reversalPayload = await reversal.json();
+
+    assert.equal(reversal.status, 200);
+    assert.equal(reversalPayload.accepted, true);
+    assert.equal(store.ledgerEntries.find(entry => entry.provider_transaction_id === "txn-cpx-reversal" && entry.direction === "credit").status, "reversed");
+    assert.equal(user.balance_wavecoins, startingBalance);
+  } finally {
+    env.CPX_POSTBACK_SECRET = "";
+    await new Promise(resolve => server.close(resolve));
+  }
+});
 test("admin can reject pending rewards and reverse released rewards", async () => {
   env.DATABASE_URL = "";
   resetDemoStore();
