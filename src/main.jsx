@@ -59,7 +59,7 @@ import "./styles.css";
 
 const demoOffers = [
   { id: 1, title: "CPX Research Survey Wall", category: "Surveys", reward: 2.98, description: "Answer matching CPX surveys and earn the displayed user reward when your responses qualify.", difficulty: "Easy", time: "5-18 min", provider: "CPX Research" },
-  { id: 2, title: "TheoremReach Survey Wall", category: "Surveys", reward: 3.85, description: "Open TheoremReach surveys with verified callback tracking and user-side reward estimates.", difficulty: "Easy", time: "6-20 min", provider: "TheoremReach" },
+  { id: 2, title: "TheoremReach Survey Wall", category: "Surveys", reward: 3.85, description: "Open TheoremReach surveys with verified reward tracking and user-side reward estimates.", difficulty: "Easy", time: "6-20 min", provider: "TheoremReach" },
   { id: 5, title: "Daily Check-in", category: "Bonus", reward: .75, description: "Claim today's streak reward and keep your bonus multiplier alive.", difficulty: "Easy", time: "1 min", provider: "EarnWave" },
   { id: 6, title: "Survey Streak Bonus", category: "Bonus", reward: 1.25, description: "Keep your survey streak active for better daily momentum.", difficulty: "Easy", time: "1 min", provider: "EarnWave" }
 ];
@@ -81,16 +81,10 @@ const categoryRows = [
 ];
 
 const earningsFeed = [
-  { user: "Maya", action: "completed a finance survey", amount: 6.25, time: "now" },
-  { user: "Jon", action: "hit a 9-day streak", amount: 1.45, time: "1m" },
-  { user: "Priya", action: "completed a profile-matched survey", amount: 3.20, time: "3m" },
-  { user: "Alex", action: "cashed out to PayPal", amount: 25.00, time: "5m" }
-];
-
-const testimonials = [
-  { name: "Nia R.", role: "College student", quote: "The dashboard makes it obvious what to do next. I use streaks between classes and cash out small wins weekly." },
-  { name: "Marcus T.", role: "Remote support lead", quote: "It feels more like a finance app than a rewards site. The payout review status and ledger history are what sold me." },
-  { name: "Elena G.", role: "Budget-focused parent", quote: "Simple, clear, and not noisy. I can check surveys, see payout review status, and move on with my day." }
+  { user: "Maya", action: "completed a survey", amount: 6.25, time: "now" },
+  { user: "Jon", action: "kept a daily streak", amount: 1.45, time: "1m" },
+  { user: "Priya", action: "started an app offer", amount: 3.20, time: "3m" },
+  { user: "Alex", action: "requested a PayPal payout", amount: 25.00, time: "5m" }
 ];
 
 const payoutProofPreview = [
@@ -102,7 +96,7 @@ const payoutProofPreview = [
 const faqs = [
   ["How do rewards get tracked?", "Your wallet shows pending and available WaveCoins so you can follow rewards from completion to payout."],
   ["When can I cash out?", "You can request a payout once you reach the minimum cashout. Payouts are reviewed before being sent through PayPal or gift cards."],
-  ["Is this only for survey users?", "EarnWave currently focuses on surveys through CPX Research and TheoremReach, with referrals, streaks, and payout tracking around that core flow."],
+  ["What can I earn from?", "EarnWave is built for surveys, games, apps, offers, referrals, and daily streaks. Available partners may vary by account and region."],
   ["Why are payouts reviewed?", "Reviews help reduce duplicate accounts, suspicious activity, and reversals so rewards stay fair for real members."]
 ];
 
@@ -144,8 +138,18 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 
 const trendingEarnCards = [
   {
-    id: "home-cpx-survey",
-    title: "CPX Survey Matches",
+    id: "home-game-offers",
+    title: "Game Rewards",
+    category: "Game",
+    provider: "EarnWave Partners",
+    rewardWaveCoins: null,
+    rewardUsdCents: null,
+    rewardLabel: "Reward varies",
+    label: "Curated"
+  },
+  {
+    id: "home-survey-offers",
+    title: "Survey Matches",
     category: "Survey",
     provider: "CPX Research",
     rewardWaveCoins: null,
@@ -154,30 +158,20 @@ const trendingEarnCards = [
     label: "Curated"
   },
   {
-    id: "home-theorem-survey",
-    title: "TheoremReach Surveys",
-    category: "Survey",
-    provider: "TheoremReach",
-    rewardWaveCoins: null,
-    rewardUsdCents: null,
-    rewardLabel: "Reward varies",
-    label: "Curated"
-  },
-  {
-    id: "home-daily-streak",
-    title: "Daily Streak Bonus",
-    category: "Bonus",
-    provider: "EarnWave",
+    id: "home-app-offers",
+    title: "App Offers",
+    category: "App",
+    provider: "Offerwall Partners",
     rewardWaveCoins: null,
     rewardUsdCents: null,
     rewardLabel: "Reward varies",
     label: "Member bonus"
   },
   {
-    id: "home-referral-progress",
-    title: "Referral Progress",
-    category: "Referral",
-    provider: "EarnWave",
+    id: "home-special-offers",
+    title: "Special Offers",
+    category: "Offer",
+    provider: "EarnWave Partners",
     rewardWaveCoins: null,
     rewardUsdCents: null,
     rewardLabel: "Reward varies",
@@ -434,7 +428,7 @@ function Footer({ navigate }) {
       <div className="container footer-inner">
         <div>
           <BrandLogo compact />
-          <p>A premium rewards platform for survey rewards, WaveCoins, referrals, streaks, support, and reviewed payouts.</p>
+          <p>A premium rewards marketplace for surveys, games, apps, offers, WaveCoins, referrals, streaks, and real payouts.</p>
         </div>
         <div className="footer-links">
           <button onClick={() => navigate("/how-it-works")}>How It Works</button>
@@ -460,10 +454,10 @@ function Landing({ navigate }) {
       <PlatformBenefitsSection />
       <section className="stats-section">
         <div className="container stats-hero">
-          <Metric value="2" label="Survey partners live" />
-          <Metric value="100%" label="Payouts reviewed first" />
+          <Metric value="4" label="Ways to earn" />
+          <Metric value="PayPal" label="And gift cards" />
           <Metric value="100 WC" label="Equals $1.00" />
-          <Metric value="Daily" label="Progress loops built in" />
+          <Metric value="Daily" label="Streaks and bonuses" />
         </div>
       </section>
       <FooterCTA navigate={navigate} />
@@ -477,37 +471,37 @@ function HeroSection({ navigate }) {
       <div className="hero-orbit" aria-hidden="true" />
       <div className="container hero-grid">
         <div className="hero-copy-block">
-          <div className="eyebrow"><ShieldCheck size={16} /> Reviewed payouts - clear WaveCoins - trusted survey walls</div>
-          <h1>Ride the Reward Wave.</h1>
-          <p className="hero-copy">Earn WaveCoins through trusted survey partners, daily streaks, and referrals. Redeem rewards through reviewed PayPal and gift card payouts.</p>
+          <div className="eyebrow"><ShieldCheck size={16} /> Surveys - games - apps - offers - real rewards</div>
+          <h1>Earn WaveCoins. Redeem Real Rewards.</h1>
+          <p className="hero-copy">Complete surveys, games, apps, and offers. Cash out with PayPal and gift cards.</p>
           <div className="actions">
             <button className="btn xl" onClick={() => navigate("/signup")}>Create Free Account <ArrowRight size={18} /></button>
             <button className="btn alt xl" onClick={() => navigate("/surveys")}>Browse Surveys</button>
           </div>
-          <p className="cta-helper">100 WaveCoins = $1.00. Payouts are reviewed before being sent.</p>
+          <p className="cta-helper">Start free, earn WaveCoins, and track every reward from pending to payout.</p>
           <div className="conversion-strip" aria-label="WaveCoins conversion examples">
-            <Metric value="500 WC" label="$5" />
-            <Metric value="1,000 WC" label="$10" />
-            <Metric value="2,500 WC" label="$25" />
+            <Metric value="100 WaveCoins" label="$1.00" />
+            <Metric value="500 WaveCoins" label="$5.00" />
+            <Metric value="1,000 WaveCoins" label="$10.00" />
           </div>
         </div>
         <div className="hero-product" aria-label="Animated earnings dashboard preview">
           <div className="dash-window">
-            <div className="window-top"><span /><span /><span /><strong>EarnWave Preview</strong></div>
+            <div className="window-top"><span /><span /><span /><strong>EarnWave Dashboard</strong></div>
             <div className="balance-panel hero-balance">
               <div>
-                <p>Example balance</p>
+                <p>Ready to redeem</p>
                 <div className="balance count-up">4,875 WaveCoins</div>
               </div>
               <span className="tag blue"><TrendingUp size={14} /> $48.75</span>
               <Meter value={76} />
-              <p>Example progress toward a reward goal</p>
+              <p>Track every reward from start to cashout</p>
             </div>
             <div className="hero-chart">
               {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%` }} />)}
             </div>
             <div className="feed-card">
-              <div className="feed-title"><Activity size={16} /> Example earning paths</div>
+              <div className="feed-title"><Activity size={16} /> Live activity</div>
               {earningsFeed.map(item => (
                 <div className="feed-row" key={`${item.user}-${item.time}`}>
                   <span className="avatar">{item.user.slice(0, 1)}</span>
@@ -528,7 +522,7 @@ function TrendingOffersSection({ navigate }) {
   return (
     <section className="home-section-tight">
       <div className="container">
-        <SectionTitle title="Trusted Ways to Earn" copy="EarnWave focuses on verified survey partners, streaks, referrals, and clear WaveCoin tracking." action={<span className="tag amber">Reward ranges vary</span>} />
+        <SectionTitle title="Trending Ways to Earn" copy="Pick the earning path that fits your time: games, surveys, apps, or featured offers." action={<span className="tag amber">Reward varies</span>} />
         <div className="trending-offers-grid">
           {cards.map(card => <OfferCard key={card.id} offer={{ ...card, isFeatured: true }} actionLabel="Start Earning" onStart={() => navigate("/signup")} />)}
         </div>
@@ -543,9 +537,9 @@ function WaveCoinsExplainer() {
       <div className="container">
         <SectionTitle title="WaveCoins made simple" copy="WaveCoins are EarnWave reward credits. 100 WaveCoins equals $1.00 when redeemed." />
         <div className="wavecoins-grid">
-          <Metric value="100 WC" label="$1" />
-          <Metric value="500 WC" label="$5" />
-          <Metric value="1,000 WC" label="$10" />
+          <Metric value="100 WaveCoins" label="$1.00" />
+          <Metric value="500 WaveCoins" label="$5.00" />
+          <Metric value="1,000 WaveCoins" label="$10.00" />
         </div>
       </div>
     </section>
@@ -556,11 +550,11 @@ function HowItWorksSection() {
   return (
     <section>
       <div className="container">
-        <SectionTitle title="How EarnWave Works" copy="Choose a survey partner, earn WaveCoins, track your progress, and cash out with confidence." />
+        <SectionTitle title="How EarnWave Works" copy="Start earning in minutes, then follow your WaveCoins all the way to payout." />
         <div className="process-grid">
-          <div className="card process-card"><span className="rank">1</span><h3>Choose a Survey Partner</h3><p>Start with CPX Research or TheoremReach when your account is verified.</p></div>
+          <div className="card process-card"><span className="rank">1</span><h3>Play Games & Complete Surveys</h3><p>Choose surveys, games, apps, and offers when they are available for your account.</p></div>
           <div className="card process-card"><span className="rank">2</span><h3>Earn WaveCoins</h3><p>Complete tasks and watch your WaveCoin balance grow.</p></div>
-          <div className="card process-card"><span className="rank">3</span><h3>Track Progress</h3><p>Monitor rewards, streaks, referrals, and account activity.</p></div>
+          <div className="card process-card"><span className="rank">3</span><h3>Track Progress</h3><p>See pending rewards, available WaveCoins, streaks, referrals, and payout progress.</p></div>
           <div className="card process-card"><span className="rank">4</span><h3>Cash Out</h3><p>Redeem PayPal cash or gift cards after payout review.</p></div>
         </div>
       </div>
@@ -573,19 +567,19 @@ function TrustSection() {
     <section className="split-section">
       <div className="container split-grid">
         <div>
-          <SectionTitle title="Trust built into every payout" copy="EarnWave reviews payouts before sending them to reduce fraud and protect the platform." />
+          <SectionTitle title="Rewards you can follow" copy="EarnWave shows clear reward status so users know what is pending, available, or paid." />
           <div className="security-list">
-            {["Fraud monitoring", "Device fingerprinting", "Payout review queue", "Ledger audit trail"].map(item => (
+            {["Clear reward status", "Account protection", "Payout review", "Balance history"].map(item => (
               <div className="security-row" key={item}><CheckCircle size={18} /><span>{item}</span></div>
             ))}
           </div>
         </div>
         <div className="card security-panel">
-          <div className="risk-score"><span>Payout review</span><strong>Manual first</strong></div>
+          <div className="risk-score"><span>Payout status</span><strong>Reviewed before sending</strong></div>
           <Meter value={72} />
-          <div className="row"><span>Provider callback</span><span className="pill">Tracked</span></div>
+          <div className="row"><span>Reward status</span><span className="pill">Visible</span></div>
           <div className="row"><span>Withdrawal status</span><span className="pill blue">Reviewed</span></div>
-          <div className="row"><span>Balance changes</span><span className="pill">Ledgered</span></div>
+          <div className="row"><span>Balance changes</span><span className="pill">Recorded</span></div>
         </div>
       </div>
     </section>
@@ -595,8 +589,8 @@ function TrustSection() {
 function PayoutMethodsSection() {
   const methods = [
     <PaymentMethod key="paypal" icon={<CreditCard />} title="PayPal Cash" copy="Receive cash to your PayPal account after review." />,
-    <PaymentMethod key="tremendous" icon={<Gift />} title="Tremendous Gift Cards" copy="Redeem gift cards through Tremendous." />,
-    <PaymentMethod key="manual" icon={<Wallet />} title="Manual Review" copy="Payouts are reviewed before being sent to protect members and the platform." />
+    <PaymentMethod key="tremendous" icon={<Gift />} title="Gift Cards" copy="Redeem popular gift cards after payout review." />,
+    <PaymentMethod key="manual" icon={<Wallet />} title="Payout Review" copy="Payouts are checked before they are sent." />
   ];
   if (ENABLE_CRYPTO_WITHDRAWALS) {
     methods.push(<PaymentMethod key="crypto" icon={<Bitcoin />} title="Crypto withdrawals" copy="Optional stablecoin-ready workflow when enabled." />);
@@ -623,14 +617,14 @@ function RecentPayoutsSection() {
 
 function PlatformBenefitsSection() {
   const benefitCards = [
-    { icon: <ClipboardList />, title: "Built for students", copy: "Quick surveys and simple progress tracking fit into small breaks without confusing payout rules." },
-    { icon: <ClipboardList />, title: "Built for survey users", copy: "Provider cards, reward ranges, and pending status make survey earning easier to understand." },
-    { icon: <Rocket />, title: "Built for side hustlers", copy: "Clear reward credits, reviewed cashouts, referrals, and streaks support consistent earning habits." }
+    { icon: <ClipboardList />, title: "Built for Students", copy: "Quick earning options, simple WaveCoin tracking, and payout progress that fits between classes or shifts." },
+    { icon: <Gamepad2 />, title: "Built for Gamers", copy: "Game-style goals, streaks, levels, and reward paths make earning feel active instead of boring." },
+    { icon: <Rocket />, title: "Built for Side Hustlers", copy: "Surveys, apps, offers, referrals, and reviewed payouts give casual earners a clear place to build momentum." }
   ];
   return (
     <section>
       <div className="container">
-        <SectionTitle title="What EarnWave is built for" copy="Clear survey rewards for people who want simple progress, honest status, and reviewed payouts." />
+        <SectionTitle title="Who EarnWave is built for" copy="A rewards marketplace for people who want simple earning paths, clear balances, and real cashout options." />
         <div className="benefit-grid">
           {benefitCards.map(item => <Feature key={item.title} {...item} />)}
         </div>
@@ -649,8 +643,8 @@ function FooterCTA({ navigate }) {
         </div>
         <div className="final-cta">
           <div>
-            <h2>Start earning WaveCoins with a reviewed payout path.</h2>
-            <p>Browse surveys, build progress, and redeem through PayPal or Tremendous gift cards after review.</p>
+            <h2>Start earning WaveCoins today.</h2>
+            <p>Complete surveys, games, apps, and offers, then redeem through PayPal or gift cards.</p>
           </div>
           <button className="btn xl" onClick={() => navigate("/signup")}>Create Free Account <ArrowRight size={18} /></button>
         </div>
@@ -854,7 +848,7 @@ export function SurveysPage({ api }) {
             <div>
               <span className="eyebrow"><Trophy size={15} /> Best Survey Right Now</span>
               <h2>{bestProvider.name}</h2>
-              <p>Highest current reward range with secure tracking and provider callback verification.</p>
+              <p>Highest current reward range with secure tracking and provider reward verification.</p>
             </div>
             <div className="best-survey-facts">
               <span className="tag amber">Up to {bestProvider.maxWaveCoins} WaveCoins</span>
@@ -899,7 +893,7 @@ export function SurveysPage({ api }) {
           </div>
         </section>
 
-        <SectionTitle title="Survey Partners" copy="Open survey walls in a focused modal without leaving EarnWave." action={<span className="tag">Pending rewards verify first</span>} />
+        <SectionTitle title="Survey Partners" copy="Open trusted survey partners without leaving EarnWave." action={<span className="tag">Pending rewards verify first</span>} />
         <div className="survey-provider-grid improved">
           {loading
             ? surveyProviders.map(provider => <SurveyProviderSkeleton key={provider.key} />)
@@ -918,13 +912,13 @@ export function SurveysPage({ api }) {
             [ShieldCheck, "Verified survey providers"],
             [KeyRound, "Secure tracking"],
             [Lock, "Fraud-protected withdrawals"],
-            [ClipboardList, "Provider callback verification"],
+            [ClipboardList, "Provider reward verification"],
             [CreditCard, "Clear payout rules"]
           ].map(([Icon, label]) => <div className="trust-signal-card" key={label}><Icon size={18} /><span>{label}</span></div>)}
         </section>
 
         <section className="survey-trust-section">
-          <SectionTitle title="How survey rewards work" copy="EarnWave tracks provider callbacks and reviews rewards before payout." />
+          <SectionTitle title="How survey rewards work" copy="EarnWave tracks provider verifications and reviews rewards before payout." />
           <div className="process-grid survey-process-grid">
             {[
               [Search, "Choose a provider", "Pick CPX Research or TheoremReach based on reward range, time, and fit."],
@@ -976,7 +970,7 @@ function SurveyProviderCard({ provider, enabled, onOpen }) {
           <span><ShieldCheck size={15} /> Trusted provider</span>
           <span><CheckCircle size={15} /> Status: {enabled ? "Live" : "Unavailable"}</span>
         </div>
-        <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider callback</div>
+        <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider review</div>
         <button className="btn" type="button" disabled={!enabled} onClick={onOpen}>{enabled ? "Open Surveys" : "Unavailable"} <ArrowRight size={17} /></button>
       </div>
     </article>
@@ -1398,7 +1392,7 @@ function AvailableSurveyOffers({ navigate }) {
 
   return (
     <section className="card dashboard-offer-panel">
-      <SectionTitle title="Available Offers" copy="Choose a trusted survey provider. Final rewards verify after the provider callback." action={<span className="tag">Available</span>} />
+      <SectionTitle title="Available Offers" copy="Choose a trusted survey provider. Final rewards verify after provider review." action={<span className="tag">Available</span>} />
       <div className="provider-action-grid">
         {providers.map(provider => (
           <div className="provider-action-card" key={provider.name}>
@@ -1412,7 +1406,7 @@ function AvailableSurveyOffers({ navigate }) {
               <span className="tag blue">Provider: {provider.provider}</span>
               <span className="tag amber">{provider.reward || "Reward varies"}</span>
             </div>
-            <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider callback</div>
+            <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider review</div>
             <button className="btn" onClick={() => navigate("/surveys")}>{provider.cta} <ArrowRight size={16} /></button>
           </div>
         ))}
@@ -1640,7 +1634,7 @@ function PayoutProofSection({ compact = false }) {
               <span>{money(waveCoinsToUsd(item.amountWaveCoins))}</span>
             </div>
             <div className="payout-proof-meta">
-              <span>Method: {item.method}</span>
+              <span>Method: <strong>{item.method}</strong></span>
               <strong>{item.preview ? "Preview example" : "Completed"}</strong>
             </div>
           </div>
@@ -1782,7 +1776,7 @@ function WalletPage({ navigate, api }) {
 
 function HowItWorksPage({ navigate }) {
   const steps = [
-    ["Choose a survey partner", "Start with CPX Research or TheoremReach after your account is verified."],
+    ["Play Games & Complete Surveys", "Choose surveys, games, apps, and offers when they are available for your account."],
     ["Earn WaveCoins", "Complete tasks and watch your WaveCoin balance grow."],
     ["Track Progress", "Monitor rewards, streaks, referrals, and account activity."],
     ["Cash Out", "Redeem PayPal cash or gift cards after payout review."]
@@ -1791,7 +1785,7 @@ function HowItWorksPage({ navigate }) {
   return (
     <main className="page">
       <div className="container">
-        <DashboardTop kicker="How it works" title="How EarnWave Works" copy="Choose survey partners, earn WaveCoins, track your progress, and cash out with confidence." action={<button className="btn" onClick={() => navigate("/signup")}>Create Account</button>} />
+        <DashboardTop kicker="How it works" title="How EarnWave Works" copy="Complete surveys, games, apps, and offers, earn WaveCoins, track your progress, and cash out with confidence." action={<button className="btn" onClick={() => navigate("/signup")}>Create Account</button>} />
         <div className="process-grid">
           {steps.map(([title, copy], index) => (
             <div className="card process-card" key={title}>
@@ -2204,7 +2198,7 @@ function SupportPage({ navigate, api }) {
   const lastUpdate = tickets[0]?.updated_at || tickets[0]?.created_at;
   const messages = activeTicket?.messages?.length ? activeTicket.messages : activeTicket ? [{ id: "initial", sender_name: user.name || "You", message: activeTicket.message, created_at: activeTicket.created_at }] : [];
   const faqs = [
-    ["appear", "How long do rewards take to appear?", "Many rewards appear as pending after the provider callback. Some surveys require additional provider verification before they become available."],
+    ["appear", "How long do rewards take to appear?", "Many rewards appear as pending after provider verification. Some surveys require additional provider verification before they become available."],
     ["pending", "Why is my reward pending?", "Pending means EarnWave has not yet received final provider approval or the reward is still under fraud/payout review."],
     ["proof", "What proof should I upload for missing rewards?", "Upload screenshots showing the provider, offer or survey name, completion confirmation, date, and expected reward if available."],
     ["payout", "How long do payout reviews take?", "Most payout review questions receive a support response within 24 hours, but fraud or provider checks can take longer."],
@@ -2567,7 +2561,7 @@ function AdminPage({ navigate, api }) {
       </div>
       <div className="workspace-grid">
         <div className="card payout-queue-card">
-          <SectionTitle title="Users and tracking IDs" copy="Use these IDs to confirm provider callbacks are mapped to real EarnWave accounts." />
+          <SectionTitle title="Users and tracking IDs" copy="Use these IDs to confirm provider verifications are mapped to real EarnWave accounts." />
           <DataTable rows={(users.length ? users : [
             { id: "none", username: "No test users found", email: "Create a normal user account first", email_verified: false, balance_wavecoins: 0, created_at: "" }
           ]).map(item => [
@@ -3394,19 +3388,6 @@ function PaymentMethod({ icon, title, copy }) {
   return <div className="card payment-card"><div className="icon">{icon}</div><h3>{title}</h3><p>{copy}</p></div>;
 }
 
-function Testimonial({ name, role, quote }) {
-  return (
-    <div className="card testimonial-card">
-      <div className="stars" aria-label="Five star review"><Star size={15} /><Star size={15} /><Star size={15} /><Star size={15} /><Star size={15} /></div>
-      <p>"{quote}"</p>
-      <div className="row">
-        <div><strong>{name}</strong><p>{role}</p></div>
-        <span className="pill blue">Verified</span>
-      </div>
-    </div>
-  );
-}
-
 function FaqItem({ question, answer, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -3450,7 +3431,7 @@ function OfferCard({ offer, actionLabel = "Start Offer", featured = false, onSta
         </div>
       </div>
       <div className="offer-head">
-        <div><h3>{offer.title}</h3><p>{offer.isDevelopmentOnly ? "Development-only mock card for local preview." : "Open the provider wall to see live eligibility, exact steps, and tracking rules."}</p></div>
+        <div><h3>{offer.title}</h3><p>{offer.isDevelopmentOnly ? "Development-only mock card for local preview." : "Open this earning path to see available rewards, steps, and timing."}</p></div>
         <div className="offer-reward-stack">
           <span className="reward">{rewardText}</span>
           <small>{usdText || "Exact payout shown by provider"}</small>
