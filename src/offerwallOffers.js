@@ -3,33 +3,6 @@ export const earnWaveFallbackImage =
 
 export const offerCategoryTabs = ["All", "Surveys"];
 
-export const developmentMockOffers = [
-  {
-    id: "dev-cpx-survey",
-    title: "Consumer Opinion Survey",
-    imageUrl: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80",
-    provider: "CPX Research",
-    providerKey: "cpx",
-    category: "Surveys",
-    rewardWaveCoins: 250,
-    estimatedMinutes: 8,
-    isFeatured: true,
-    label: "Development preview"
-  },
-  {
-    id: "dev-theorem-survey",
-    title: "Gaming Habits Survey",
-    imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=900&q=80",
-    provider: "TheoremReach",
-    providerKey: "theorem",
-    category: "Surveys",
-    rewardWaveCoins: null,
-    estimatedMinutes: 10,
-    isFeatured: true,
-    label: "Development preview"
-  }
-];
-
 const curatedProviderOffers = [
   {
     id: "curated-cpx-surveys",
@@ -109,11 +82,8 @@ export function formatRewardUsd(offer = {}) {
   return `$${(Number(cents) / 100).toFixed(2)}`;
 }
 
-export function offersForEnabledProviders(providers = {}, { includeDevelopmentMocks = false } = {}) {
+export function offersForEnabledProviders(providers = {}) {
   const enabledKeys = new Set(Object.entries(providers).filter(([, provider]) => provider?.enabled).map(([key]) => key));
-  if (includeDevelopmentMocks) {
-    return developmentMockOffers.map(offer => normalizeOffer({ ...offer, isDevelopmentOnly: true }));
-  }
   return curatedProviderOffers
     .filter(offer => enabledKeys.has(offer.providerKey))
     .map(normalizeOffer);

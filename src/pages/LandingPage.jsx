@@ -25,7 +25,7 @@ import {
 import { PayoutProofSection } from "../components/PayoutProofSection.jsx";
 import { rewardLabel } from "../utils.js";
 
-const ENABLE_TRENDING_MOCK_OFFERS = import.meta.env.VITE_ENABLE_TRENDING_MOCK_OFFERS === "true";
+
 const ENABLE_CRYPTO_WITHDRAWALS = import.meta.env.VITE_ENABLE_CRYPTO_WITHDRAWALS === "true";
 
 const analyticsSeries = [
@@ -172,7 +172,7 @@ function HeroSection({ navigate }) {
 }
 
 function TrendingOffersSection({ navigate }) {
-  const cards = ENABLE_TRENDING_MOCK_OFFERS ? trendingEarnCards : trendingEarnCards.map(card => ({ ...card, rewardWaveCoins: null, rewardUsdCents: null, rewardLabel: "Reward varies", label: "Curated" }));
+  const cards = trendingEarnCards.map(card => ({ ...card, rewardWaveCoins: null, rewardUsdCents: null, rewardLabel: "Reward varies", label: "Curated" }));
   return (
     <section className="home-section-tight">
       <div className="container">

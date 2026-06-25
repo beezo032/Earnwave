@@ -46,7 +46,7 @@ import {
   rewardLabel
 } from "../utils.js";
 
-const ENABLE_TRENDING_MOCK_OFFERS = import.meta.env.VITE_ENABLE_TRENDING_MOCK_OFFERS === "true";
+
 
 const analyticsSeries = [
   { day: "Mon", revenue: 2400, payouts: 980, users: 320 },

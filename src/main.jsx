@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { getDeviceFingerprint } from "./utils.js";
-import { Shell, AuthRequired, AdminGuard } from "./components/Shell.jsx";
+import { Shell, AuthRequired, AdminGuard } from "./components/Shell.jsx";\r\nimport { ErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { LandingPage } from "./pages/LandingPage.jsx";
 import { OffersPage, SurveysPage } from "./pages/OffersPage.jsx";
 import { Dashboard } from "./pages/DashboardPage.jsx";
@@ -142,7 +142,7 @@ export function App() {
     return <LandingPage navigate={navigate} />;
   }, [route, api.session]);
 
-  return <Shell route={route} navigate={navigate} api={api}>{page}</Shell>;
+  return (\r\n    <ErrorBoundary>\r\n      <Shell route={route} navigate={navigate} api={api}>{page}</Shell>\r\n    </ErrorBoundary>\r\n  );
 }
 
 const rootElement = document.getElementById("root");
