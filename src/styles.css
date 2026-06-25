@@ -461,7 +461,7 @@ button.topbar-balance:hover { border-color: rgba(50,230,161,.5); background: rgb
 .top-notifications { position: relative; }
 .top-bell { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(69, 200, 255, .34); border-radius: 999px; background: rgba(69, 200, 255, .10); color: var(--mint-2); cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
 .top-bell:hover { transform: translateY(-1px); border-color: rgba(50,230,161,.56); background: rgba(50,230,161,.13); }
-.notification-dropdown { position: absolute; top: calc(100% + 12px); right: 0; width: min(390px, calc(100vw - 28px)); max-height: min(680px, calc(100vh - 110px)); overflow: auto; padding: 16px; border: 1px solid rgba(255,255,255,.11); border-radius: 12px; background: linear-gradient(180deg, rgba(69,200,255,.08), transparent 34%), rgba(17,20,34,.98); box-shadow: 0 28px 80px rgba(0,0,0,.46); animation: fadeUp .18s ease both; }
+.notification-dropdown { position: absolute; top: calc(100% + 12px); right: 0; width: min(390px, calc(100vw - 28px)); max-height: min(680px, calc(100vh - 110px)); overflow: auto; padding: 16px; border: 1px solid rgba(255,255,255,.11); border-radius: 12px; background: linear-gradient(180deg, rgba(69,200,255,.08), transparent 34%), rgba(17,20,34,.98); box-shadow: 0 28px 80px rgba(0,0,0,.46); animation: fadeUp .18s ease both; z-index: 100; }
 .notification-dropdown-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .notification-dropdown-head div { display: grid; gap: 4px; }
 .notification-dropdown-head strong { font-size: 1.25rem; color: var(--soft); }
