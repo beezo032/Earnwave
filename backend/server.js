@@ -1,10 +1,12 @@
 require("dotenv").config();
 
+const http = require("http");
 const { createApp } = require("./src/app");
 const { env } = require("./src/config/env");
 const { connectRedis } = require("./src/cache/redis");
 const { migrate } = require("./src/db/migrate");
 const { bootstrapAdmin } = require("./src/scripts/bootstrapAdmin");
+const { initWebSocketServer } = require("./src/ws/manager");
 
 async function prepareProduction() {
   if (env.NODE_ENV !== "production" || !env.DATABASE_URL) return;
@@ -24,9 +26,13 @@ async function start() {
   await connectRedis();
 
   const app = createApp();
+  const server = http.createServer(app);
+  
+  // Attach WebSocket Server
+  initWebSocketServer(server);
 
-  app.listen(env.PORT, () => {
-    console.log(`EarnWave API running on http://localhost:${env.PORT}`);
+  server.listen(env.PORT, () => {
+    console.log(`EarnWave API and WebSocket running on http://localhost:${env.PORT}`);
   });
 }
 

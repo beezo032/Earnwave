@@ -70,6 +70,49 @@ function useApi() {
     }
   }, [session?.token]);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsHost = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
+    const wsUrl = `${wsHost}/ws?userId=${session.user.id}`;
+
+    let ws;
+    let reconnectTimer;
+
+    function connect() {
+      ws = new window.WebSocket(wsUrl);
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "NOTIFICATION") {
+            // Dispatch a global event so the notification bell can update
+            window.dispatchEvent(new CustomEvent("EarnWaveNotification", { detail: data }));
+            // Also proactively refresh the session to get updated balances
+            refreshSession();
+          }
+        } catch (e) {
+          console.error("WS message error", e);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, [session?.user?.id]);
+
   async function request(path, options = {}) {
     const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
     if (session?.token) headers.Authorization = `Bearer ${session.token}`;

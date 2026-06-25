@@ -9,6 +9,7 @@ const {
 } = require("../services/offerwalls");
 const { getClientIp } = require("../services/fraud");
 const { findUserById } = require("../services/users");
+const { notifyUser } = require("../ws/manager");
 
 const offerwallRouter = express.Router();
 
@@ -48,6 +49,14 @@ async function handleCallback(req, res, next) {
 
     if (provider === "lootably") {
       return res.type("text/plain").status(recorded.rejected ? 403 : 200).send(recorded.rejected ? "0" : "1");
+    }
+
+    if (!recorded.rejected && !recorded.duplicate && event.userId && event.status === "completed") {
+      notifyUser(event.userId, {
+        type: "NOTIFICATION",
+        title: "Reward credited!",
+        message: `You earned ${event.amount_wavecoins} WaveCoins from ${event.provider || provider}.`
+      });
     }
 
     res.status(recorded.rejected ? 403 : 200).json({
@@ -110,7 +119,7 @@ async function handleCpxPostback(req, res, next) {
         accepted: false,
         message: "CPX postback rejected."
       });
-    }
+    }\r\n\r\n    if (!recorded.duplicate && event.userId && event.status === "completed") {\r\n      notifyUser(event.userId, {\r\n        type: "NOTIFICATION",\r\n        title: "Reward credited!",\r\n        message: `You earned ${event.amount_wavecoins} WaveCoins from CPX Research.`\r\n      });\r\n    }
 
     res.status(200).json({
       received: true,

@@ -145,7 +145,7 @@ export function TopNotifications({ api, navigate }) {
       tone: "green"
     },
     {
-      id: "wavecoins",
+      id: "cashout-min",
       icon: <Wallet size={22} />,
       title: "WaveCoins minimum cashout",
       date: "Today",
@@ -174,17 +174,32 @@ export function TopNotifications({ api, navigate }) {
       to: "/dashboard",
       tone: "orange"
     }
-  ];
+  ]);
   const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
 
   useEffect(() => {
     function handleActivity(event) {
       setMetrics(event.detail || readActivityMetrics());
     }
+    function handleWsNotification(event) {
+      const data = event.detail;
+      setNotifications(prev => [{
+        id: `ws-${Date.now()}`,
+        icon: <PackageCheck size={22} />,
+        title: data.title || "New Notification",
+        date: "Just now",
+        body: data.message,
+        action: "Open dashboard",
+        to: "/dashboard",
+        tone: "green"
+      }, ...prev]);
+    }
     window.addEventListener("earnwave:activity", handleActivity);
+    window.addEventListener("EarnWaveNotification", handleWsNotification);
     window.addEventListener("storage", handleActivity);
     return () => {
       window.removeEventListener("earnwave:activity", handleActivity);
+      window.removeEventListener("EarnWaveNotification", handleWsNotification);
       window.removeEventListener("storage", handleActivity);
     };
   }, []);
