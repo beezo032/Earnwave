@@ -118,7 +118,18 @@ export function Footer({ navigate }) {
 
 export function TopNotifications({ api, navigate }) {
   const [open, setOpen] = useState(false);
-  const [readIds, setReadIds] = useState([]);
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("earnwave_read_notifications") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("earnwave_read_notifications", JSON.stringify(readIds));
+  }, [readIds]);
+
   const [metrics, setMetrics] = useState(readActivityMetrics);
   const user = api.session?.user || {};
   const notifications = [
