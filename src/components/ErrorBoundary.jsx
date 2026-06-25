@@ -1,1 +1,53 @@
-import React from "react";\r\nimport { AlertOctagon } from "lucide-react";\r\nimport { BrandLogo } from "./Shell.jsx";\r\n\r\nexport class ErrorBoundary extends React.Component {\r\n  constructor(props) {\r\n    super(props);\r\n    this.state = { hasError: false, error: null };\r\n  }\r\n\r\n  static getDerivedStateFromError(error) {\r\n    return { hasError: true, error };\r\n  }\r\n\r\n  componentDidCatch(error, errorInfo) {\r\n    console.error("ErrorBoundary caught an error:", error, errorInfo);\r\n  }\r\n\r\n  render() {\r\n    if (this.state.hasError) {\r\n      return (\r\n        <main className="page" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "var(--bg)" }}>\r\n          <header className="header" style={{ position: "static", borderBottom: "1px solid var(--line)", background: "rgba(9, 15, 24, .88)" }}>\r\n            <div className="container nav" style={{ justifyContent: "center", padding: "12px 24px" }}>\r\n              <BrandLogo />\r\n            </div>\r\n          </header>\r\n          <div className="container" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>\r\n            <div className="card form-card" style={{ textAlign: "center", maxWidth: "420px" }}>\r\n              <div className="icon" style={{ margin: "0 auto 16px", color: "var(--rose)", background: "rgba(239, 68, 68, 0.1)", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>\r\n                <AlertOctagon size={24} />\r\n              </div>\r\n              <h2 style={{ marginBottom: "8px" }}>Something went wrong</h2>\r\n              <p style={{ color: "var(--muted)", marginBottom: "24px" }}>\r\n                We encountered an unexpected error while loading this page. Our team has been notified.\r\n              </p>\r\n              <button \r\n                className="btn" \r\n                type="button" \r\n                onClick={() => window.location.reload()}\r\n                style={{ width: "100%", justifyContent: "center" }}\r\n              >\r\n                Reload Page\r\n              </button>\r\n            </div>\r\n          </div>\r\n        </main>\r\n      );\r\n    }\r\n\r\n    return this.props.children;\r\n  }\r\n}\r\n
+import React from "react";
+import { AlertOctagon } from "lucide-react";
+import { BrandLogo } from "./BrandLogo.jsx";
+
+export class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="page" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "var(--bg)" }}>
+          <header className="header" style={{ position: "static", borderBottom: "1px solid var(--line)", background: "rgba(9, 15, 24, .88)" }}>
+            <div className="container nav" style={{ justifyContent: "center", padding: "12px 24px" }}>
+              <BrandLogo />
+            </div>
+          </header>
+          <div className="container" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className="card form-card" style={{ textAlign: "center", maxWidth: "420px" }}>
+              <div className="icon" style={{ margin: "0 auto 16px", color: "var(--rose)", background: "rgba(239, 68, 68, 0.1)", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AlertOctagon size={24} />
+              </div>
+              <h2 style={{ marginBottom: "8px" }}>Something went wrong</h2>
+              <p style={{ color: "var(--muted)", marginBottom: "24px" }}>
+                We encountered an unexpected error while loading this page. Our team has been notified.
+              </p>
+              <button 
+                className="btn" 
+                type="button" 
+                onClick={() => window.location.reload()}
+                style={{ width: "100%", justifyContent: "center" }}
+              >
+                Reload Page
+              </button>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
+    return this.props.children;
+  }
+}

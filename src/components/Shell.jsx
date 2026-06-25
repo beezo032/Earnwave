@@ -133,7 +133,7 @@ export function TopNotifications({ api, navigate }) {
 
   const [metrics, setMetrics] = useState(readActivityMetrics);
   const user = api.session?.user || {};
-  const notifications = [
+  const [notifications, setNotifications] = useState([
     {
       id: "payout-review",
       icon: <ShieldCheck size={22} />,
