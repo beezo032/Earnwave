@@ -46,10 +46,9 @@ h3 { font-size: 1.06rem; line-height: 1.3; }
 .header {
   position: sticky;
   top: 0;
-  z-index: 30;
-  background: rgba(6, 9, 15, .78);
+  z-index: 50;
+  background: rgba(6, 9, 15, .98);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(20px);
 }
 .nav { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .logo { display: inline-flex; align-items: center; gap: 11px; }
@@ -434,34 +433,11 @@ input:focus, select:focus, textarea:focus {
 .dashboard { padding: 22px 0 52px; }
 .dashboard-layout { display: grid; grid-template-columns: 256px minmax(0, 1fr); gap: 18px; }
 .dashboard-main { min-width: 0; }
-.dashboard-topbar {
-  position: sticky;
-  top: 12px;
-  z-index: 40;
-  min-height: 66px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 18px;
-  padding: 10px 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: var(--radius);
-  background: rgba(10, 15, 25, .9);
-  box-shadow: 0 18px 48px rgba(0,0,0,.22);
-  backdrop-filter: blur(18px);
-}
-.dashboard-topbar > div:first-child { display: grid; gap: 3px; }
-.dashboard-topbar span { color: var(--muted); font-weight: 850; font-size: .84rem; }
-.dashboard-topbar strong { color: var(--soft); }
-.topbar-actions { position: relative; display: flex; align-items: center; gap: 10px; }
-.topbar-balance { display: inline-flex; align-items: center; min-height: 38px; padding: 0 12px; border: 1px solid rgba(50,230,161,.24); border-radius: 999px; background: rgba(50,230,161,.08); color: var(--mint) !important; white-space: nowrap; }
-button.topbar-balance { cursor: pointer; font-weight: 950; }
-button.topbar-balance:hover { border-color: rgba(50,230,161,.5); background: rgba(50,230,161,.14); transform: translateY(-1px); }
+
 .top-notifications { position: relative; }
 .top-bell { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(69, 200, 255, .34); border-radius: 999px; background: rgba(69, 200, 255, .10); color: var(--mint-2); cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
 .top-bell:hover { transform: translateY(-1px); border-color: rgba(50,230,161,.56); background: rgba(50,230,161,.13); }
-.notification-dropdown { position: absolute; top: calc(100% + 12px); right: 0; width: min(390px, calc(100vw - 28px)); max-height: min(680px, calc(100vh - 110px)); overflow: auto; padding: 16px; border: 1px solid rgba(255,255,255,.11); border-radius: 12px; background: linear-gradient(180deg, rgba(69,200,255,.08), transparent 34%), rgba(17,20,34,.98); box-shadow: 0 28px 80px rgba(0,0,0,.46); animation: fadeUp .18s ease both; z-index: 100; }
+.notification-dropdown { position: fixed; top: 80px; right: 24px; width: min(390px, calc(100vw - 28px)); max-height: min(680px, calc(100vh - 110px)); overflow: auto; padding: 16px; border: 1px solid rgba(255,255,255,.11); border-radius: 12px; background: linear-gradient(180deg, rgba(69,200,255,.08), transparent 34%), rgba(17,20,34,.98); box-shadow: 0 28px 80px rgba(0,0,0,.46); animation: fadeUp .18s ease both; z-index: 9999; }
 .notification-dropdown-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .notification-dropdown-head div { display: grid; gap: 4px; }
 .notification-dropdown-head strong { font-size: 1.25rem; color: var(--soft); }
@@ -481,11 +457,13 @@ button.topbar-balance:hover { border-color: rgba(50,230,161,.5); background: rgb
 .notification-item-title strong { color: var(--soft); }
 .notification-item p { margin: 7px 0 10px; color: var(--muted); line-height: 1.45; font-weight: 700; }
 .notification-item button { display: inline-flex; align-items: center; gap: 6px; padding: 0; }
-.sidebar { position: sticky; top: 96px; height: max-content; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(9, 15, 24, .88); padding: 12px; box-shadow: var(--shadow-soft); }
+.sidebar { position: sticky; top: 90px; height: max-content; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(9, 15, 24, .88); padding: 12px; box-shadow: var(--shadow-soft); display: flex; flex-direction: column; }
 .sidebar button { display: flex; width: 100%; align-items: center; gap: 10px; min-height: 44px; margin: 4px 0; padding: 10px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; font-weight: 850; }
 .sidebar button:hover, .sidebar button.active { background: rgba(255, 255, 255, .075); color: var(--text); }
 .sidebar .sidebar-brand { min-height: 54px; margin-bottom: 10px; color: var(--text); }
 .sidebar .sidebar-brand .brand-logo { width: 168px; height: 46px; }
+.sidebar-user { margin: 8px 0 4px; padding: 10px 12px; border-radius: 7px; border: 1px solid var(--line); background: rgba(255,255,255,.04); }
+.sidebar-user-label { font-size: .82rem; font-weight: 850; color: var(--muted); }
 .dashboard-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .dashboard-top h2 { margin-top: 4px; }
 .dashboard-top p:not(.green) { max-width: 720px; }
@@ -1095,8 +1073,6 @@ td, th { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: l
   .notification-card { grid-column: 1 / -1; }
   .sidebar { position: static; display: flex; flex-wrap: wrap; gap: 6px; }
   .sidebar button { width: auto; margin: 0; }
-  .dashboard-topbar { position: relative; top: auto; align-items: flex-start; flex-direction: column; }
-  .topbar-actions { width: 100%; justify-content: space-between; }
   .notification-dropdown { right: -2px; }
   .cards, .offers-grid, .offers-grid.compact, .provider-grid, .payment-grid, .testimonial-grid, .trending-offers-grid, .benefit-grid, .wavecoins-grid, .stats, .stats-hero, .process-grid, .readiness-grid, .earn-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .offerwall-hero, .offerwall-widgets { grid-template-columns: 1fr; }

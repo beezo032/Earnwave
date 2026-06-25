@@ -160,8 +160,8 @@ export function SupportPage({ navigate, api }) {
           <h1>How can we help?</h1>
           <p>Track missing rewards, payout reviews, account issues, and support conversations in one place.</p>
           <div className="actions">
-            <button className="btn" onClick={() => document.getElementById("support-ticket-form")?.scrollIntoView({ behavior: "smooth" })}>Open Support Ticket</button>
-            <button className="btn alt" onClick={startMissingRewardClaim}>Start Missing Reward Claim</button>
+            <button className="btn" type="button" onClick={() => document.getElementById("support-ticket-form")?.scrollIntoView({ behavior: "smooth" })}>Open Support Ticket</button>
+            <button className="btn alt" type="button" onClick={startMissingRewardClaim}>Start Missing Reward Claim</button>
           </div>
         </div>
         <div className="support-hero-stats">

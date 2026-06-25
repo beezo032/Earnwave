@@ -249,7 +249,7 @@ function DashboardRewardSummary({ user, growth, balanceWaveCoins, pendingWaveCoi
           <div className="row"><span>Cashout progress</span><strong>{balanceWaveCoins.toLocaleString()} / {minimumCashoutWaveCoins.toLocaleString()} WaveCoins</strong></div>
           <Meter value={cashoutProgress} />
         </div>
-        <button className="btn summary-cta" onClick={() => navigate("/surveys")}>Start Best Survey <ArrowRight size={17} /></button>
+        <button className="btn summary-cta" type="button" onClick={() => navigate("/surveys")}>Start Best Survey <ArrowRight size={17} /></button>
       </div>
       <div className="summary-metric-grid">
         {summaryCards.map(card => (
@@ -356,7 +356,7 @@ function AvailableSurveyOffers({ navigate }) {
               <span className="tag amber">{provider.reward || "Reward varies"}</span>
             </div>
             <div className="provider-trust-note"><ShieldCheck size={15} /> Rewards verify after provider review</div>
-            <button className="btn" onClick={() => navigate("/surveys")}>{provider.cta} <ArrowRight size={16} /></button>
+            <button className="btn" type="button" onClick={() => navigate("/surveys")}>{provider.cta} <ArrowRight size={16} /></button>
           </div>
         ))}
       </div>
@@ -376,9 +376,9 @@ function DailyBonusFeature({ growth, dailyQuest, claimStreak, completeQuest, gro
         {dailyQuest && <span className="tag blue">Quest: {dailyQuest.status || "available"}</span>}
       </div>
       <div className="daily-bonus-actions">
-        <button className="btn" onClick={claimStreak}>Claim Daily Bonus</button>
+        <button className="btn" type="button" onClick={claimStreak}>Claim Daily Bonus</button>
         {dailyQuest && (
-          <button className="btn alt" disabled={dailyQuest.status === "completed"} onClick={completeQuest}>
+          <button className="btn alt" type="button" disabled={dailyQuest.status === "completed"} onClick={completeQuest}>
             {dailyQuest.status === "completed" ? "Quest Complete" : "Complete Quest"}
           </button>
         )}
@@ -405,7 +405,7 @@ function ReferralProgressFeature({ growth }) {
       <div className="copy-box">{growth.referralUrl}</div>
       <Meter value={referralProgress.progress || 0} />
       <p>Invite verified users and earn referral rewards.</p>
-      <button className="btn alt" onClick={copyLink}>{copied ? "Copied" : "Copy Link"}</button>
+      <button className="btn alt" type="button" onClick={copyLink}>{copied ? "Copied" : "Copy Link"}</button>
     </section>
   );
 }

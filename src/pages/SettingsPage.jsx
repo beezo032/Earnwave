@@ -67,7 +67,7 @@ export function SettingsPage({ navigate, api }) {
             <ReadinessItem label="Payout review" ready={Boolean(security?.payoutReviewRequired)} />
             <ReadinessItem label="Ledger audit" ready={Boolean(security?.ledgerEnabled)} />
           </div>
-          <button className="btn" onClick={sendVerification}>Send Verification Email</button>
+          <button className="btn" type="button" onClick={sendVerification}>Send Verification Email</button>
         </div>
         <div className="stack">
           <div className="card">
@@ -78,7 +78,7 @@ export function SettingsPage({ navigate, api }) {
               ["payout_alerts", "Payout status alerts"],
               ["security_alerts", "Security and login alerts"]
             ].map(([key, label]) => (
-              <button className="toggle-row" key={key} onClick={() => savePreference(key)}>
+              <button className="toggle-row" type="button" key={key} onClick={() => savePreference(key)}>
                 <span>{label}</span>
                 <span className={preferences[key] ? "toggle on" : "toggle"} />
               </button>
