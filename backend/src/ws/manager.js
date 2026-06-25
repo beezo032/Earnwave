@@ -1,1 +1,70 @@
-const { WebSocketServer, WebSocket } = require("ws");\r\n\r\nlet wss = null;\r\n// Map of user_id to an array of active WebSocket connections\r\nconst activeConnections = new Map();\r\n\r\nfunction initWebSocketServer(server) {\r\n  wss = new WebSocketServer({ server, path: "/ws" });\r\n\r\n  wss.on("connection", (ws, req) => {\r\n    // Parse URL parameters (e.g. /ws?userId=123)\r\n    const url = new URL(req.url, `http://${req.headers.host}`);\r\n    const userId = url.searchParams.get("userId");\r\n\r\n    if (userId) {\r\n      if (!activeConnections.has(userId)) {\r\n        activeConnections.set(userId, new Set());\r\n      }\r\n      activeConnections.get(userId).add(ws);\r\n    }\r\n\r\n    ws.isAlive = true;\r\n    ws.on("pong", () => { ws.isAlive = true; });\r\n\r\n    ws.on("close", () => {\r\n      if (userId && activeConnections.has(userId)) {\r\n        activeConnections.get(userId).delete(ws);\r\n        if (activeConnections.get(userId).size === 0) {\r\n          activeConnections.delete(userId);\r\n        }\r\n      }\r\n    });\r\n  });\r\n\r\n  // Keep-alive heartbeat\r\n  const interval = setInterval(() => {\r\n    wss.clients.forEach((ws) => {\r\n      if (ws.isAlive === false) return ws.terminate();\r\n      ws.isAlive = false;\r\n      ws.ping();\r\n    });\r\n  }, 30000);\r\n\r\n  wss.on("close", () => clearInterval(interval));\r\n}\r\n\r\n/**\r\n * Push a notification to a specific connected user.\r\n * @param {string} userId The user to notify\r\n * @param {object} payload The JSON payload to send\r\n */\r\nfunction notifyUser(userId, payload) {\r\n  if (!userId || !activeConnections.has(String(userId))) return false;\r\n\r\n  const stringPayload = JSON.stringify(payload);\r\n  const connections = activeConnections.get(String(userId));\r\n\r\n  for (const ws of connections) {\r\n    if (ws.readyState === WebSocket.OPEN) {\r\n      ws.send(stringPayload);\r\n    }\r\n  }\r\n  \r\n  return true;\r\n}\r\n\r\nmodule.exports = {\r\n  initWebSocketServer,\r\n  notifyUser\r\n};\r\n
+const { WebSocketServer, WebSocket } = require("ws");
+
+let wss = null;
+// Map of user_id to an array of active WebSocket connections
+const activeConnections = new Map();
+
+function initWebSocketServer(server) {
+  wss = new WebSocketServer({ server, path: "/ws" });
+
+  wss.on("connection", (ws, req) => {
+    // Parse URL parameters (e.g. /ws?userId=123)
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const userId = url.searchParams.get("userId");
+
+    if (userId) {
+      if (!activeConnections.has(userId)) {
+        activeConnections.set(userId, new Set());
+      }
+      activeConnections.get(userId).add(ws);
+    }
+
+    ws.isAlive = true;
+    ws.on("pong", () => { ws.isAlive = true; });
+
+    ws.on("close", () => {
+      if (userId && activeConnections.has(userId)) {
+        activeConnections.get(userId).delete(ws);
+        if (activeConnections.get(userId).size === 0) {
+          activeConnections.delete(userId);
+        }
+      }
+    });
+  });
+
+  // Keep-alive heartbeat
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (ws.isAlive === false) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+
+  wss.on("close", () => clearInterval(interval));
+}
+
+/**
+ * Push a notification to a specific connected user.
+ * @param {string} userId The user to notify
+ * @param {object} payload The JSON payload to send
+ */
+function notifyUser(userId, payload) {
+  if (!userId || !activeConnections.has(String(userId))) return false;
+
+  const stringPayload = JSON.stringify(payload);
+  const connections = activeConnections.get(String(userId));
+
+  for (const ws of connections) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(stringPayload);
+    }
+  }
+  
+  return true;
+}
+
+module.exports = {
+  initWebSocketServer,
+  notifyUser
+};
