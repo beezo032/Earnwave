@@ -516,7 +516,7 @@ function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, 
                   </div>
                 ))}
               </div>
-              <form className="support-reply-form" onSubmit={sendSupportReply}>
+              <form className="support-reply-form" onSubmit={onReply}>
                 <label>Admin reply
                   <textarea value={reply} onChange={event => setReply(event.target.value)} placeholder="Write a clear reply or internal note..." />
                 </label>
