@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useStore } from "../store.js";
+import { toast } from "react-hot-toast";
 import {
   Mail,
   ShieldCheck,
@@ -16,15 +18,15 @@ import {
 import { DashboardLayout } from "../components/Shell.jsx";
 import { rewardLabel } from "../utils.js";
 
-export function SupportPage({ navigate, api }) {
-  const user = api.session?.user || {};
+export function SupportPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const user = session?.user || {};
   const emptyForm = { subject: "", category: "general", priority: "medium", provider: "EarnWave", rewardAmount: "", completionDate: "", message: "", attachmentNames: [], confirmed: false };
   const [form, setForm] = useState(emptyForm);
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [reply, setReply] = useState("");
   const [replyAttachments, setReplyAttachments] = useState([]);
-  const [notice, setNotice] = useState("Most tickets receive a response within 24 hours.");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [wizard, setWizard] = useState({ provider: "CPX Research", offerName: "", completionDate: "", rewardAmount: "", proofFiles: [], notes: "" });
@@ -35,7 +37,7 @@ export function SupportPage({ navigate, api }) {
   }, []);
 
   function refreshTickets() {
-    api.request("/account/support/tickets").then(data => {
+    request("/account/support/tickets").then(data => {
       const nextTickets = data.tickets || [];
       setTickets(nextTickets);
       setSelectedTicket(current => {
@@ -59,7 +61,7 @@ export function SupportPage({ navigate, api }) {
       fraud: { subject: "Trust and safety question", category: "fraud", priority: "high", provider: "EarnWave", message: "I need help with a trust and safety review." }
     };
     updateForm(presets[category] || {});
-    setNotice("Category selected. Add any dates, proof, and exact reward details before submitting.");
+    toast.success("Category selected. Add any dates, proof, and exact reward details before submitting.");
   }
 
   function handleFiles(event, target = "form") {
@@ -73,11 +75,11 @@ export function SupportPage({ navigate, api }) {
     event?.preventDefault?.();
     const payload = override || form;
     if (!payload.confirmed && !override) {
-      setNotice("Please confirm the details are accurate before submitting.");
+      toast.error("Please confirm the details are accurate before submitting.");
       return;
     }
     try {
-      const result = await api.request("/account/support/tickets", {
+      const result = await request("/account/support/tickets", {
         method: "POST",
         body: JSON.stringify(payload)
       });
@@ -85,11 +87,11 @@ export function SupportPage({ navigate, api }) {
       setTickets(nextTickets);
       setSelectedTicket(result.ticket);
       setForm(emptyForm);
-      setNotice("Support ticket created. You can track replies here and by email.");
+      toast.success("Support ticket created. You can track replies here and by email.");
       setWizardOpen(false);
       setWizardStep(1);
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
@@ -118,7 +120,7 @@ export function SupportPage({ navigate, api }) {
     event.preventDefault();
     if (!selectedTicket?.id || !reply.trim()) return;
     try {
-      const result = await api.request(`/account/support/tickets/${selectedTicket.id}/reply`, {
+      const result = await request(`/account/support/tickets/${selectedTicket.id}/reply`, {
         method: "POST",
         body: JSON.stringify({ message: reply.trim(), attachmentNames: replyAttachments })
       });
@@ -126,9 +128,9 @@ export function SupportPage({ navigate, api }) {
       setSelectedTicket(result.ticket);
       setReply("");
       setReplyAttachments([]);
-      setNotice("Reply added to your ticket. Support will see it in the queue.");
+      toast.success("Reply added to your ticket. Support will see it in the queue.");
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
@@ -153,7 +155,7 @@ export function SupportPage({ navigate, api }) {
   ];
 
   return (
-    <DashboardLayout active="Support" navigate={navigate} api={api}>
+    <DashboardLayout active="Support" navigate={navigate}>
       <section className="support-hero-panel">
         <div>
           <span className="eyebrow"><Mail size={16} /> Support center</span>
@@ -214,7 +216,6 @@ export function SupportPage({ navigate, api }) {
           <label>Message<textarea value={form.message} onChange={event => updateForm({ message: event.target.value })} placeholder="Tell us what happened. Include provider, offer or survey name, completion date, expected reward, and what page you saw after completion." required /></label>
           <label className="support-confirm-row"><input type="checkbox" checked={form.confirmed} onChange={event => updateForm({ confirmed: event.target.checked })} /> <span>I included accurate details and understand duplicate tickets can slow review.</span></label>
           <button className="btn" type="submit">Open Support Ticket</button>
-          <div className="notice">{notice}</div>
         </form>
 
         <div className="card support-ticket-dashboard">

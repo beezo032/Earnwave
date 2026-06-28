@@ -5,6 +5,7 @@ const { createWithdrawal, listWithdrawals } = require("../services/wallet");
 const { evaluatePayoutEligibility } = require("../services/compliance");
 const { buildRisk, duplicateAccountSignals, duplicatePayoutDestinationSignals, flagSuspiciousActivity, lookupIpReputation, persistRiskReview, providerReversalCountForUser, verifyTurnstileToken, withdrawalVelocitySignals } = require("../services/fraud");
 const { findUserById } = require("../services/users");
+const { acquireLock, releaseLock } = require("../services/mutex");
 const { env } = require("../config/env");
 
 const walletRouter = express.Router();
@@ -15,7 +16,19 @@ const withdrawalSchema = z.object({
   destinationType: z.string().max(32).optional(),
   destinationValue: z.string().min(3).max(255),
   turnstileToken: z.string().max(4096).optional()
-}).refine(body => body.amount || body.amountWaveCoins, { message: "Amount is required" });
+}).refine(body => body.amount || body.amountWaveCoins, { message: "Amount is required" })
+.refine(body => {
+  if (body.method === "Crypto") {
+    const network = body.destinationType || "ETH";
+    if (["ETH", "AVAX", "MATIC"].includes(network)) {
+      return /^0x[a-fA-F0-9]{40}$/.test(body.destinationValue);
+    }
+    if (network === "SOL") {
+      return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(body.destinationValue);
+    }
+  }
+  return true;
+}, { message: "Invalid destination address for the selected crypto network" });
 
 walletRouter.get("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
   try {
@@ -26,6 +39,11 @@ walletRouter.get("/withdrawals", requireAuth, requireVerifiedEmail, async (req, 
 });
 
 walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req, res, next) => {
+  const lockAcquired = await acquireLock(`payout:${req.user.id}`);
+  if (!lockAcquired) {
+    return res.status(429).json({ message: "A payout request is already processing. Please wait." });
+  }
+
   try {
     const input = withdrawalSchema.parse(req.body);
     const user = await findUserById(req.user.id);
@@ -110,6 +128,8 @@ walletRouter.post("/withdrawals", requireAuth, requireVerifiedEmail, async (req,
     res.json({ withdrawal, risk, compliance });
   } catch (error) {
     next(error);
+  } finally {
+    await releaseLock(`payout:${req.user.id}`);
   }
 });
 

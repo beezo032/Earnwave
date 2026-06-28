@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useStore } from "../store.js";
+import { toast } from "react-hot-toast";
 import {
   Activity,
   ArrowRight,
@@ -58,8 +60,9 @@ const analyticsSeries = [
   { day: "Sun", revenue: 4800, payouts: 1760, users: 640 }
 ];
 
-export function Dashboard({ api, navigate }) {
-  const [user, setUser] = useState(api.session?.user || { name: "EarnWave User", balance: 48.75, total_earned: 320.4 });
+export function Dashboard({ navigate }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const [user, setUser] = useState(session?.user || { name: "EarnWave User", balance: 48.75, total_earned: 320.4 });
   const [growth, setGrowth] = useState({
     referralCode: user.referral_code || "WAVE2026",
     referralUrl: `${window.location.origin}/signup?ref=${user.referral_code || "WAVE2026"}`,
@@ -76,27 +79,26 @@ export function Dashboard({ api, navigate }) {
   ]);
   const [dailyQuest, setDailyQuest] = useState(null);
   const [bonusCode, setBonusCode] = useState("");
-  const [growthNotice, setGrowthNotice] = useState("Claim daily streaks and redeem bonus codes to level up faster.");
 
   useEffect(() => {
     refreshUser();
-    api.request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
-    api.request("/growth/leaderboard/weekly").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {
-      api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
+    request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
+    request("/growth/leaderboard/weekly").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {
+      request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
     });
-    api.request("/growth/quests/daily").then(data => setDailyQuest(data.quest)).catch(() => {});
+    request("/growth/quests/daily").then(data => setDailyQuest(data.quest)).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (api.session?.user) setUser(api.session.user);
-  }, [api.session?.user?.balance_wavecoins, api.session?.user?.pending_wavecoins, api.session?.user?.total_earned_wavecoins]);
+    if (session?.user) setUser(session.user);
+  }, [session?.user?.balance_wavecoins, session?.user?.pending_wavecoins, session?.user?.total_earned_wavecoins]);
 
   async function refreshUser() {
     try {
-      const data = await api.request("/auth/me");
+      const data = await request("/auth/me");
       if (data.user) {
         setUser(data.user);
-        if (api.session) api.save({ ...api.session, user: data.user });
+        if (session) save({ ...session, user: data.user });
       }
     } catch (error) {
       // Dashboard can still render from the current session if refresh fails.
@@ -105,41 +107,42 @@ export function Dashboard({ api, navigate }) {
 
   async function claimStreak() {
     try {
-      const result = await api.request("/growth/streak/claim", { method: "POST", body: "{}" });
+      const result = await request("/growth/streak/claim", { method: "POST", body: "{}" });
       if (result.growth) setGrowth(result.growth);
       if (result.claimed) await refreshUser();
-      setGrowthNotice(result.claimed ? `Streak claimed: +${rewardLabel(result.reward)} and +${result.xp} XP.` : result.message);
+      if (result.claimed) toast.success(`Streak claimed: +${rewardLabel(result.reward)} and +${result.xp} XP.`);
+      else toast.error(result.message);
     } catch (error) {
-      setGrowthNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function redeemCode(event) {
     event.preventDefault();
     try {
-      const result = await api.request("/growth/bonus-codes/redeem", {
+      const result = await request("/growth/bonus-codes/redeem", {
         method: "POST",
         body: JSON.stringify({ code: bonusCode })
       });
       if (result.growth) setGrowth(result.growth);
       await refreshUser();
       setBonusCode("");
-      setGrowthNotice(`Code ${result.code} redeemed: +${rewardLabel(result.reward)} and +${result.xp} XP.`);
+      toast.success(`Code ${result.code} redeemed: +${rewardLabel(result.reward)} and +${result.xp} XP.`);
     } catch (error) {
-      setGrowthNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function completeQuest() {
     if (!dailyQuest?.id) return;
     try {
-      const result = await api.request(`/growth/quests/${dailyQuest.id}/complete`, { method: "POST", body: "{}" });
+      const result = await request(`/growth/quests/${dailyQuest.id}/complete`, { method: "POST", body: "{}" });
       if (result.quest) setDailyQuest(result.quest);
       if (result.growth) setGrowth(result.growth);
       await refreshUser();
-      setGrowthNotice(`Daily quest complete: +${rewardLabel(result.quest.reward)} and +${result.quest.xp} XP.`);
+      toast.success(`Daily quest complete: +${rewardLabel(result.quest.reward)} and +${result.quest.xp} XP.`);
     } catch (error) {
-      setGrowthNotice(error.message);
+      toast.error(error.message);
     }
   }
 
@@ -156,7 +159,7 @@ export function Dashboard({ api, navigate }) {
   const hasRealActivityData = completedSurveys > 0 && totalEarnedWaveCoins >= minimumCashoutWaveCoins;
 
   return (
-    <DashboardLayout active="Dashboard" navigate={navigate} api={api}>
+    <DashboardLayout active="Dashboard" navigate={navigate}>
       <DashboardRewardSummary
         user={user}
         growth={growth}
@@ -174,7 +177,7 @@ export function Dashboard({ api, navigate }) {
       <div className="dashboard-focus-grid">
         <AvailableSurveyOffers navigate={navigate} />
         <div className="dashboard-side-stack">
-          <DailyBonusFeature growth={growth} dailyQuest={dailyQuest} claimStreak={claimStreak} completeQuest={completeQuest} growthNotice={growthNotice} />
+          <DailyBonusFeature growth={growth} dailyQuest={dailyQuest} claimStreak={claimStreak} completeQuest={completeQuest} />
           <ReferralProgressFeature growth={growth} />
         </div>
       </div>
@@ -221,7 +224,6 @@ export function Dashboard({ api, navigate }) {
               <input value={bonusCode} onChange={event => setBonusCode(event.target.value)} placeholder="WELCOME" />
               <button className="btn" type="submit">Redeem</button>
             </form>
-            <div className="notice">{growthNotice}</div>
           </div>
         </div>
         <LeaderboardPreview leaderboard={leaderboard} />
@@ -364,7 +366,7 @@ function AvailableSurveyOffers({ navigate }) {
   );
 }
 
-function DailyBonusFeature({ growth, dailyQuest, claimStreak, completeQuest, growthNotice }) {
+function DailyBonusFeature({ growth, dailyQuest, claimStreak, completeQuest }) {
   return (
     <section className="card daily-bonus-feature">
       <div className="daily-bonus-glow"><Gift size={24} /></div>
@@ -383,7 +385,6 @@ function DailyBonusFeature({ growth, dailyQuest, claimStreak, completeQuest, gro
           </button>
         )}
       </div>
-      <div className="notice">{growthNotice}</div>
     </section>
   );
 }

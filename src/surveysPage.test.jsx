@@ -4,8 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, SurveysPage } from "./main.jsx";
 
-function mockApi() {
-  return {
+import { useStore } from "./store.js";
+
+function mockStore() {
+  useStore.setState({
     session: {
       user: {
         id: "user_123",
@@ -37,7 +39,7 @@ function mockApi() {
       if (path === "/offerwalls/theorem/launch") return { configured: true, url: "https://survey.example/theorem?user_id=user_123" };
       return {};
     })
-  };
+  });
 }
 
 describe("SurveysPage", () => {
@@ -80,19 +82,19 @@ describe("SurveysPage", () => {
   });
 
   it("opens provider cards in a survey modal and tracks close events", async () => {
-    const api = mockApi();
+    mockStore();
     const opened = vi.fn();
     const closed = vi.fn();
     window.addEventListener("earnwave:survey_provider_opened", opened);
     window.addEventListener("earnwave:survey_modal_closed", closed);
     const user = userEvent.setup();
 
-    render(<SurveysPage api={api} />);
+    render(<SurveysPage />);
 
     const buttons = await screen.findAllByRole("button", { name: "Open Surveys" });
     await user.click(buttons[0]);
 
-    expect(api.request).toHaveBeenCalledWith("/offerwalls/cpx/launch");
+    expect(useStore.getState().request).toHaveBeenCalledWith("/offerwalls/cpx/launch");
     expect(opened).toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "CPX Research survey wall" })).toBeInTheDocument();
     expect(screen.getByText("Loading CPX Research surveys")).toBeInTheDocument();

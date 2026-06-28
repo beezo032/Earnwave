@@ -1,4 +1,5 @@
 import React from "react";
+import { useStore } from "../store.js";
 import {
   Area,
   AreaChart,
@@ -29,9 +30,10 @@ const categoryRows = [
   { name: "Daily Bonuses", value: 10 }
 ];
 
-export function AnalyticsPage({ navigate, api }) {
+export function AnalyticsPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
   return (
-    <DashboardLayout active="Analytics" navigate={navigate} api={api}>
+    <DashboardLayout active="Analytics" navigate={navigate}>
       <DashboardTop kicker="Analytics" title="Performance dashboard" copy="Revenue, payout exposure, user growth, conversion, provider quality, and category mix." action={<span className="tag blue">Live API ready</span>} />
       <div className="stats">
         <Stat label="Revenue" value="$18,900" />

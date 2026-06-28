@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useStore } from "../store.js";
+import { toast } from "react-hot-toast";
 import {
   ClipboardList,
   Flame,
@@ -42,17 +44,17 @@ import { offersForEnabledProviders, filterOffersByCategory, offerCategoryTabs } 
 
 const ENABLE_PREVIEW_ACTIVITY = import.meta.env.VITE_ENABLE_PREVIEW_ACTIVITY === "true";
 
-export function OffersPage({ api }) {
+export function OffersPage({ }) {
+  const { session, request, save, refreshSession, logout } = useStore();
   const [offers, setOffers] = useState([]);
   const [providers, setProviders] = useState(defaultOfferwallProviders);
   const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get("category") || "All");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [providerNotice, setProviderNotice] = useState("Choose CPX Research or TheoremReach to open a secure survey wall.");
   const [modal, setModal] = useState(null);
 
   useEffect(() => {
-    api.request("/offerwalls/providers").then(data => {
+    request("/offerwalls/providers").then(data => {
       const nextProviders = data.providers || defaultOfferwallProviders;
       setProviders(nextProviders);
       const hasLiveProviders = Object.values(nextProviders).some(provider => ["cpx", "theorem"].includes(provider.key) && provider.enabled);
@@ -68,14 +70,14 @@ export function OffersPage({ api }) {
     recordActivityMetric("providerOpens");
     trackEvent("offer_card_clicked", { provider, offerId: offer?.id, category: offer?.category });
     try {
-      const launch = await api.request(`/offerwalls/${provider}/launch`);
+      const launch = await request(`/offerwalls/${provider}/launch`);
       if (!launch.configured) {
-        setProviderNotice(launch.message);
+        toast.error(launch.message);
         return;
       }
       setModal({ provider, name: providers[provider]?.name || offer?.provider || "Survey provider", url: launch.url, integration: launch.integration, scriptSrc: launch.scriptSrc, config: launch.config });
     } catch (error) {
-      setProviderNotice("Log in with a verified email before starting surveys.");
+      toast.error("Log in with a verified email before starting surveys.");
     }
   }
 
@@ -130,7 +132,6 @@ export function OffersPage({ api }) {
         <div className="featured-carousel" aria-label="Survey offers row">
           {(loading ? Array.from({ length: 3 }) : surveyOffers).map((offer, index) => loading ? <OfferSkeleton key={index} /> : <OfferCard key={offer.id} offer={offer} actionLabel="Start Offer" onStart={() => openProvider(offer.providerKey, offer)} />)}
         </div>
-        <div className="notice offerwall-notice">{providerNotice}</div>
         <div className="toolbar">
           <div className="search-box"><Search size={18} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search survey providers" /></div>
           <div className="filters"><Filter size={18} />{offerCategoryTabs.map(item => <button key={item} className={filter === item ? "filter active" : "filter"} onClick={() => setFilter(item)}>{item}</button>)}</div>
@@ -153,11 +154,11 @@ export function OffersPage({ api }) {
   );
 }
 
-export function SurveysPage({ api }) {
-  const user = api.session?.user || {};
+export function SurveysPage({ }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const user = session?.user || {};
   const [providers, setProviders] = useState(defaultOfferwallProviders);
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState("Choose a trusted survey provider to launch a secure survey wall.");
   const [modal, setModal] = useState(null);
   const balanceWaveCoins = userAmountWaveCoins(user, user.balance);
   const pendingWaveCoins = Number(user.pending_wavecoins ?? user.pending_rewards_wavecoins ?? dollarsToWaveCoins(user.pending_rewards || 0));
@@ -177,7 +178,7 @@ export function SurveysPage({ api }) {
   ];
 
   useEffect(() => {
-    api.request("/offerwalls/providers").then(data => {
+    request("/offerwalls/providers").then(data => {
       setProviders(data.providers || defaultOfferwallProviders);
     }).catch(() => {}).finally(() => {
       window.setTimeout(() => setLoading(false), 320);
@@ -188,15 +189,15 @@ export function SurveysPage({ api }) {
     recordActivityMetric("providerOpens");
     trackEvent("survey_provider_opened", { provider });
     try {
-      const launch = await api.request(`/offerwalls/${provider}/launch`);
+      const launch = await request(`/offerwalls/${provider}/launch`);
       if (!launch.configured) {
-        setNotice(launch.message || "This survey provider is waiting for credentials.");
+        toast.error(launch.message || "This survey provider is waiting for credentials.");
         return;
       }
       const providerName = providers[provider]?.name || surveyProviders.find(item => item.key === provider)?.name || "Survey provider";
       setModal({ provider, name: providerName, url: launch.url, integration: launch.integration, scriptSrc: launch.scriptSrc, config: launch.config });
     } catch (error) {
-      setNotice("Log in with a verified email before opening survey walls.");
+      toast.error("Log in with a verified email before opening survey walls.");
     }
   }
 
@@ -229,8 +230,6 @@ export function SurveysPage({ api }) {
             <small>100 WaveCoins = $1.00.</small>
           </div>
         </section>
-
-        <div className="notice offerwall-notice">{notice}</div>
 
         <section className="best-survey-grid">
           <div className="card best-survey-card">

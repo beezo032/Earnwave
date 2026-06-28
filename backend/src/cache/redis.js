@@ -36,4 +36,8 @@ async function cacheSet(key, value, ttlSeconds = 300) {
   await client.set(`earnwave:cache:${key}`, JSON.stringify(value), { EX: ttlSeconds });
 }
 
-module.exports = { connectRedis, redisStore, cacheGet, cacheSet };
+function getClient() {
+  return connected ? client : null;
+}
+
+module.exports = { connectRedis, redisStore, cacheGet, cacheSet, getClient };

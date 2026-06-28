@@ -7,7 +7,7 @@ export function SectionTitle({ title, copy, action }) {
 }
 
 export function DashboardTop({ kicker, title, copy, action }) {
-  return <div className="dashboard-top"><div><p className="green"><strong>{kicker}</strong></p><h2>{title}</h2><p>{copy}</p></div>{action}</div>;
+  return <div className="dashboard-top"><div><p className="green"><strong>{kicker}</strong></p><h2 className="text-gradient">{title}</h2><p>{copy}</p></div>{action}</div>;
 }
 
 export function Metric({ value, label }) {
@@ -15,11 +15,11 @@ export function Metric({ value, label }) {
 }
 
 export function Feature({ icon, title, copy }) {
-  return <div className="card feature-card"><div className="icon">{icon}</div><h3>{title}</h3><p>{copy}</p></div>;
+  return <div className="card feature-card"><div className="icon gradient-avatar" style={{ borderRadius: '12px' }}>{icon}</div><h3>{title}</h3><p>{copy}</p></div>;
 }
 
 export function PaymentMethod({ icon, title, copy }) {
-  return <div className="card payment-card"><div className="icon">{icon}</div><h3>{title}</h3><p>{copy}</p></div>;
+  return <div className="card payment-card"><div className="icon gradient-avatar" style={{ borderRadius: '12px' }}>{icon}</div><h3>{title}</h3><p>{copy}</p></div>;
 }
 
 export function FaqItem({ question, answer, defaultOpen = false }) {

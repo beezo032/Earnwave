@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useStore } from "../store.js";
 import {
   PackageCheck,
   ShieldCheck,
@@ -68,8 +69,9 @@ export function TrustPage({ navigate }) {
   );
 }
 
-export function ReferralPage({ navigate, api }) {
-  const user = api.session?.user || { referral_code: "WAVE2026", total_earned: 320.4 };
+export function ReferralPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const user = session?.user || { referral_code: "WAVE2026", total_earned: 320.4 };
   const [growth, setGrowth] = useState({
     referralCode: user.referral_code || "WAVE2026",
     referralUrl: `${window.location.origin}/signup?ref=${user.referral_code || "WAVE2026"}`,
@@ -81,11 +83,11 @@ export function ReferralPage({ navigate, api }) {
   });
 
   useEffect(() => {
-    api.request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
+    request("/growth/me").then(data => setGrowth(data.growth)).catch(() => {});
   }, []);
 
   return (
-    <DashboardLayout active="Referrals" navigate={navigate} api={api}>
+    <DashboardLayout active="Referrals" navigate={navigate}>
       <DashboardTop kicker="Growth" title="Referral center" copy="Share EarnWave with people who already trust your recommendations, then track progress in one place." action={<button className="btn" onClick={() => navigator.clipboard?.writeText(growth.referralUrl)}>Copy Link</button>} />
       <div className="dashboard-hero-card referral-hero">
         <div className="balance-card">
@@ -118,7 +120,8 @@ export function ReferralPage({ navigate, api }) {
   );
 }
 
-export function LeaderboardPage({ navigate, api }) {
+export function LeaderboardPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
   const [leaderboard, setLeaderboard] = useState([
     { name: "WaveHunter", total_earned: 184, level: 12, streak: 14 },
     { name: "NovaEarns", total_earned: 143, level: 10, streak: 9 },
@@ -126,18 +129,18 @@ export function LeaderboardPage({ navigate, api }) {
   ]);
 
   useEffect(() => {
-    api.request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
+    request("/growth/leaderboard").then(data => setLeaderboard(data.leaderboard || [])).catch(() => {});
   }, []);
 
   return (
-    <DashboardLayout active="Leaderboard" navigate={navigate} api={api}>
+    <DashboardLayout active="Leaderboard" navigate={navigate}>
       <DashboardTop kicker="Community" title="Leaderboard" copy="A clean competitive layer for members building consistent reward progress." action={<span className="tag"><Flame size={14} /> Weekly reset</span>} />
       <div className="leaderboard-stage">
         {leaderboard.slice(0, 3).map((row, index) => (
           <div className={`podium-card podium-${index + 1}`} key={row.name}>
             <span className="rank">{index + 1}</span>
             <h3>{row.name}</h3>
-            <strong>{formatBalance(api.session?.user || {}, dollarsToWaveCoins(row.total_earned))}</strong>
+            <strong>{formatBalance(session?.user || {}, dollarsToWaveCoins(row.total_earned))}</strong>
             <p>Level {row.level} - {row.streak} day streak</p>
           </div>
         ))}
@@ -147,7 +150,7 @@ export function LeaderboardPage({ navigate, api }) {
         <DataTable rows={leaderboard.map((row, index) => [
           `#${index + 1}`,
           row.name,
-          formatBalance(api.session?.user || {}, dollarsToWaveCoins(row.total_earned)),
+          formatBalance(session?.user || {}, dollarsToWaveCoins(row.total_earned)),
           `Level ${row.level}`,
           `${row.streak} days`
         ])} />

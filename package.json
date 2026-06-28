@@ -20,11 +20,13 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.11",
+    "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "lucide-react": "^0.468.0",
-    "recharts": "^2.15.0"
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^2.15.0",
+    "vite": "^6.0.11",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

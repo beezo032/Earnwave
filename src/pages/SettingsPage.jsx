@@ -1,28 +1,30 @@
 import React, { useEffect, useState } from "react";
+import { useStore } from "../store.js";
+import { toast } from "react-hot-toast";
 import { CheckCircle } from "lucide-react";
 import { DashboardLayout } from "../components/Shell.jsx";
 import { DashboardTop, SectionTitle } from "../components/OfferCard.jsx";
 import { formatBalance, dollarsToWaveCoins } from "../utils.js";
 
-export function SettingsPage({ navigate, api }) {
-  const user = api.session?.user || { name: "EarnWave User", email: "demo@example.com", email_verified: false };
+export function SettingsPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const user = session?.user || { name: "EarnWave User", email: "demo@example.com", email_verified: false };
   const [security, setSecurity] = useState(null);
   const [preferences, setPreferences] = useState({ marketing_opt_in: true, payout_alerts: true, security_alerts: true });
-  const [notice, setNotice] = useState("Manage account trust, alerts, and security preferences.");
 
   useEffect(() => {
-    api.request("/account/security").then(data => setSecurity(data.security)).catch(() => {});
-    api.request("/account/preferences").then(data => setPreferences(data.preferences)).catch(() => {});
+    request("/account/security").then(data => setSecurity(data.security)).catch(() => {});
+    request("/account/preferences").then(data => setPreferences(data.preferences)).catch(() => {});
   }, []);
 
   async function savePreference(key) {
     const next = { ...preferences, [key]: !preferences[key] };
     setPreferences(next);
     try {
-      await api.request("/account/preferences", { method: "PATCH", body: JSON.stringify(next) });
-      setNotice("Preferences saved.");
+      await request("/account/preferences", { method: "PATCH", body: JSON.stringify(next) });
+      toast.success("Preferences saved.");
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
@@ -30,33 +32,33 @@ export function SettingsPage({ navigate, api }) {
     const next = { ...preferences, preferredBalanceDisplay };
     setPreferences(next);
     try {
-      await api.request("/account/preferences", { method: "PATCH", body: JSON.stringify({ preferredBalanceDisplay }) });
-      if (api.session?.user) api.save({ ...api.session, user: { ...api.session.user, preferredBalanceDisplay } });
-      setNotice("Balance display saved.");
+      await request("/account/preferences", { method: "PATCH", body: JSON.stringify({ preferredBalanceDisplay }) });
+      if (session?.user) save({ ...session, user: { ...session.user, preferredBalanceDisplay } });
+      toast.success("Balance display saved.");
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function sendVerification() {
     try {
-      const result = await api.request("/auth/verify-email/send", { method: "POST", body: "{}" });
+      const result = await request("/auth/verify-email/send", { method: "POST", body: "{}" });
       if (result.verification?.previewUrl) {
-        setNotice(`Verification email ready. Local preview: ${result.verification.previewUrl}`);
+        toast.success(`Verification email ready. Local preview: ${result.verification.previewUrl}`);
       } else if (result.verification?.status === "sent") {
-        setNotice("Verification email sent. Check your inbox.");
+        toast.success("Verification email sent. Check your inbox.");
       } else if (result.verification?.status === "failed") {
-        setNotice("Verification email could not be sent. Check email provider settings in Render.");
+        toast.error("Verification email could not be sent. Check email provider settings in Render.");
       } else {
-        setNotice("Verification email queued in the admin outbox. Connect an email provider to send it.");
+        toast.success("Verification email queued in the admin outbox. Connect an email provider to send it.");
       }
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   return (
-    <DashboardLayout active="Settings" navigate={navigate} api={api}>
+    <DashboardLayout active="Settings" navigate={navigate}>
       <DashboardTop kicker="Account" title="Settings and security" copy="Manage verification, payout alerts, and account preferences with clarity." />
       <div className="workspace-grid">
         <div className="card">
@@ -84,7 +86,6 @@ export function SettingsPage({ navigate, api }) {
               </button>
             ))}
           </div>
-          <div className="notice">{notice}</div>
         </div>
       </div>
     </DashboardLayout>
@@ -95,8 +96,9 @@ function ReadinessItem({ label, ready }) {
   return <div className={ready ? "readiness-item ready" : "readiness-item"}><CheckCircle size={17} /><span>{label}</span><strong>{ready ? "Ready" : "Needed"}</strong></div>;
 }
 
-export function ProfilePage({ navigate, api }) {
-  const user = api.session?.user || { name: "EarnWave User", username: "earnwave_user", email: "demo@example.com" };
+export function ProfilePage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const user = session?.user || { name: "EarnWave User", username: "earnwave_user", email: "demo@example.com" };
   const [profile, setProfile] = useState({
     name: user.name || "",
     username: user.username || "",
@@ -105,7 +107,6 @@ export function ProfilePage({ navigate, api }) {
     timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "",
     earning_interests: user.earning_interests || ""
   });
-  const [notice, setNotice] = useState("Update your username, display name, and public profile info.");
   const interestOptions = ["surveys", "consumer research", "daily streaks", "referrals"];
 
   function toggleInterest(interest) {
@@ -119,19 +120,19 @@ export function ProfilePage({ navigate, api }) {
   async function saveProfile(event) {
     event.preventDefault();
     try {
-      const result = await api.request("/account/profile", {
+      const result = await request("/account/profile", {
         method: "PATCH",
         body: JSON.stringify(profile)
       });
-      api.save({ ...api.session, user: result.user });
-      setNotice("Profile updated.");
+      save({ ...session, user: result.user });
+      toast.success("Profile updated.");
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   return (
-    <DashboardLayout active="Profile" navigate={navigate} api={api}>
+    <DashboardLayout active="Profile" navigate={navigate}>
       <DashboardTop kicker="Account" title="Profile settings" copy="Choose how your EarnWave account appears across referrals, support, and community surfaces." />
       <div className="wallet-grid">
         <form className="card form-grid" onSubmit={saveProfile}>
@@ -151,7 +152,6 @@ export function ProfilePage({ navigate, api }) {
           </div>
           <label>Bio<textarea value={profile.bio} onChange={event => setProfile({ ...profile, bio: event.target.value })} maxLength="280" placeholder="Tell us what kind of rewards you like." /></label>
           <button className="btn" type="submit">Save Profile</button>
-          <div className="notice">{notice}</div>
         </form>
         <div className="card">
           <h3>Account status</h3>

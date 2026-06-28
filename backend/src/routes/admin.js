@@ -158,6 +158,34 @@ adminRouter.post("/provider-rewards/:id/reverse", async (req, res, next) => {
     next(error);
   }
 });
+
+adminRouter.post("/provider-rewards/batch-release", async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string()).max(100),
+      note: z.string().max(1000).optional()
+    }).parse(req.body);
+    const results = await Promise.allSettled(body.ids.map(id => releaseProviderReward({ id, adminId: req.user.id, note: body.note })));
+    const success = results.filter(r => r.status === "fulfilled").length;
+    res.json({ message: `Successfully released ${success} out of ${body.ids.length} rewards.` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/provider-rewards/batch-reject", async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string()).max(100),
+      note: z.string().max(1000).optional()
+    }).parse(req.body);
+    const results = await Promise.allSettled(body.ids.map(id => rejectProviderReward({ id, adminId: req.user.id, note: body.note })));
+    const success = results.filter(r => r.status === "fulfilled").length;
+    res.json({ message: `Successfully rejected ${success} out of ${body.ids.length} rewards.` });
+  } catch (error) {
+    next(error);
+  }
+});
 adminRouter.get("/offerwall-callbacks", async (req, res, next) => {
   try {
     res.json({ callbacks: await listOfferwallCallbackEvents({ limit: Number(req.query.limit || 50) }) });
@@ -179,6 +207,34 @@ adminRouter.post("/payouts/:id/reject", async (req, res, next) => {
   try {
     const body = z.object({ note: z.string().max(1000).optional() }).parse(req.body);
     res.json(await rejectPayout({ id: req.params.id, moderatorId: req.user.id, note: body.note }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/payouts/batch-approve", async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string()).max(100),
+      note: z.string().max(1000).optional()
+    }).parse(req.body);
+    const results = await Promise.allSettled(body.ids.map(id => approveAndDispatch({ id, moderatorId: req.user.id, note: body.note })));
+    const success = results.filter(r => r.status === "fulfilled").length;
+    res.json({ message: `Successfully approved ${success} out of ${body.ids.length} payouts.` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/payouts/batch-reject", async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string()).max(100),
+      note: z.string().max(1000).optional()
+    }).parse(req.body);
+    const results = await Promise.allSettled(body.ids.map(id => rejectPayout({ id, moderatorId: req.user.id, note: body.note })));
+    const success = results.filter(r => r.status === "fulfilled").length;
+    res.json({ message: `Successfully rejected ${success} out of ${body.ids.length} payouts.` });
   } catch (error) {
     next(error);
   }

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useStore } from "../store.js";
+import { toast } from "react-hot-toast";
 import { DashboardLayout } from "../components/Shell.jsx";
 import {
   DashboardTop,
@@ -11,7 +13,8 @@ import { money, rewardLabel, waveCoinsToUsd } from "../utils.js";
 
 const ENABLE_CRYPTO_WITHDRAWALS = import.meta.env.VITE_ENABLE_CRYPTO_WITHDRAWALS === "true";
 
-export function AdminPage({ navigate, api }) {
+export function AdminPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
   const [moderation, setModeration] = useState({
     queue: [],
     flags: [
@@ -24,108 +27,176 @@ export function AdminPage({ navigate, api }) {
     { id: "demo-pay-2", user_name: "GiftAce", method: "Gift Card", amount: 10, status: "review", risk_score: 18, destination_value: "gift@example.com" },
     { id: "demo-pay-3", user_name: "GiftReview", method: "Gift Card", amount: 42, status: "held", risk_score: 61, destination_value: "reward@example.com" }
   ]);
+  const [selectedPayouts, setSelectedPayouts] = useState(new Set());
   const [users, setUsers] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [selectedSupportTicket, setSelectedSupportTicket] = useState(null);
   const [supportReply, setSupportReply] = useState("");
   const [supportReplyStatus, setSupportReplyStatus] = useState("pending");
   const [supportInternal, setSupportInternal] = useState(false);
-  const [supportNotice, setSupportNotice] = useState("Select a ticket to review and respond.");
   const [emails, setEmails] = useState([]);
   const [complianceUsers, setComplianceUsers] = useState([]);
   const [offerwallEconomics, setOfferwallEconomics] = useState([]);
   const [offerwallCallbacks, setOfferwallCallbacks] = useState([]);
   const [reasonCodes, setReasonCodes] = useState({});
-  const [payoutNotice, setPayoutNotice] = useState("Manual approval is required before any automated payout is sent.");
-  const [rewardNotice, setRewardNotice] = useState("Provider rewards stay pending until you release or reverse them.");
 
   function refreshOfferwallCallbacks() {
-    api.request("/admin/offerwall-callbacks").then(data => setOfferwallCallbacks(data.callbacks || [])).catch(() => {});
+    request("/admin/offerwall-callbacks").then(data => setOfferwallCallbacks(data.callbacks || [])).catch(() => {});
   }
 
   function refreshRewardEconomics() {
-    api.request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
+    request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
   }
 
   useEffect(() => {
-    api.request("/admin/moderation").then(setModeration).catch(() => {});
-    api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
-    api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
-    api.request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
-    api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
+    request("/admin/moderation").then(setModeration).catch(() => {});
+    request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+    request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+    request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
+    request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     refreshRewardEconomics();
     refreshOfferwallCallbacks();
     refreshSupportTickets();
-    api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
+    request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
   }, []);
+
+  function togglePayoutSelection(id) {
+    const next = new Set(selectedPayouts);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedPayouts(next);
+  }
+
+  function toggleAllPayouts() {
+    if (selectedPayouts.size === payouts.length && payouts.length > 0) setSelectedPayouts(new Set());
+    else setSelectedPayouts(new Set(payouts.map(p => p.id)));
+  }
+
+  async function batchApprovePayouts() {
+    try {
+      const result = await request("/admin/payouts/batch-approve", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedPayouts) })
+      });
+      toast.success(result.message);
+      setSelectedPayouts(new Set());
+      request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+      request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  async function batchRejectPayouts() {
+    try {
+      const result = await request("/admin/payouts/batch-reject", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedPayouts) })
+      });
+      toast.success(result.message);
+      setSelectedPayouts(new Set());
+      request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+      request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
 
   async function approvePayout(id) {
     try {
-      const result = await api.request(`/admin/payouts/${id}/approve`, {
+      const result = await request(`/admin/payouts/${id}/approve`, {
         method: "POST",
         body: JSON.stringify({ note: "Approved from admin queue" })
       });
-      setPayoutNotice(result.message);
-      api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
-      api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
+      toast.success(result.message);
+      request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+      request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     } catch (error) {
-      setPayoutNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function rejectQueuedPayout(id) {
     try {
-      const result = await api.request(`/admin/payouts/${id}/reject`, {
+      const result = await request(`/admin/payouts/${id}/reject`, {
         method: "POST",
         body: JSON.stringify({ note: "Rejected from admin queue" })
       });
-      setPayoutNotice(result.message);
-      api.request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
-      api.request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
+      toast.success(result.message);
+      request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
+      request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     } catch (error) {
-      setPayoutNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function releaseProviderReward(id) {
     try {
-      const result = await api.request(`/admin/provider-rewards/${id}/release`, {
+      const result = await request(`/admin/provider-rewards/${id}/release`, {
         method: "POST",
         body: JSON.stringify({ note: "Released from admin reward review" })
       });
-      setRewardNotice(`${Number(result.reward.user_reward_wavecoins || result.reward.amount_wavecoins || 0).toLocaleString()} WaveCoins released to the user.`);
+      toast.success(`${Number(result.reward.user_reward_wavecoins || result.reward.amount_wavecoins || 0).toLocaleString()} WaveCoins released to the user.`);
       refreshRewardEconomics();
-      api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+      request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
     } catch (error) {
-      setRewardNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function rejectProviderReward(id) {
     try {
-      const result = await api.request(`/admin/provider-rewards/${id}/reject`, {
+      const result = await request(`/admin/provider-rewards/${id}/reject`, {
         method: "POST",
         body: JSON.stringify({ note: "Rejected from admin reward review" })
       });
-      setRewardNotice(`Reward ${result.reward.provider_transaction_id || id} rejected. No WaveCoins were released.`);
+      toast.success(`Reward ${result.reward.provider_transaction_id || id} rejected. No WaveCoins were released.`);
       refreshRewardEconomics();
-      api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+      request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
     } catch (error) {
-      setRewardNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   async function reverseProviderReward(id) {
     try {
-      const result = await api.request(`/admin/provider-rewards/${id}/reverse`, {
+      const result = await request(`/admin/provider-rewards/${id}/reverse`, {
         method: "POST",
         body: JSON.stringify({ note: "Reversed from admin reward review" })
       });
-      setRewardNotice(`Reward ${result.reward.provider_transaction_id || id} reversed.`);
+      toast.success(`Reward ${result.reward.provider_transaction_id || id} reversed.`);
       refreshRewardEconomics();
-      api.request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+      request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
     } catch (error) {
-      setRewardNotice(error.message);
+      toast.error(error.message);
+    }
+  }
+
+  async function batchReleaseProviderRewards(ids) {
+    try {
+      const result = await request("/admin/provider-rewards/batch-release", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(ids) })
+      });
+      toast.success(result.message);
+      refreshRewardEconomics();
+      request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  async function batchRejectProviderRewards(ids) {
+    try {
+      const result = await request("/admin/provider-rewards/batch-reject", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(ids) })
+      });
+      toast.success(result.message);
+      refreshRewardEconomics();
+      request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
+    } catch (error) {
+      toast.error(error.message);
     }
   }
 
@@ -134,7 +205,7 @@ export function AdminPage({ navigate, api }) {
   }
 
   function refreshSupportTickets() {
-    api.request("/account/admin/support/tickets").then(data => {
+    request("/account/admin/support/tickets").then(data => {
       const nextTickets = data.tickets || [];
       setSupportTickets(nextTickets);
       setSelectedSupportTicket(current => {
@@ -154,17 +225,17 @@ export function AdminPage({ navigate, api }) {
     event.preventDefault();
     if (!selectedSupportTicket?.id || !supportReply.trim()) return;
     try {
-      const result = await api.request(`/account/admin/support/tickets/${selectedSupportTicket.id}/reply`, {
+      const result = await request(`/account/admin/support/tickets/${selectedSupportTicket.id}/reply`, {
         method: "POST",
         body: JSON.stringify({ message: supportReply.trim(), status: supportReplyStatus, internal: supportInternal })
       });
       updateSelectedSupportTicket(result.ticket);
       setSupportReply("");
       setSupportInternal(false);
-      setSupportNotice(supportInternal ? "Internal note saved." : "Reply saved and queued to email the user.");
-      api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
+      toast.success(supportInternal ? "Internal note saved." : "Reply saved and queued to email the user.");
+      request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
     } catch (error) {
-      setSupportNotice(error.message);
+      toast.error(error.message);
     }
   }
 
@@ -179,20 +250,20 @@ export function AdminPage({ navigate, api }) {
       denied: "Support status updated: this request was denied after review."
     };
     try {
-      const result = await api.request(`/account/admin/support/tickets/${selectedSupportTicket.id}/reply`, {
+      const result = await request(`/account/admin/support/tickets/${selectedSupportTicket.id}/reply`, {
         method: "POST",
         body: JSON.stringify({ message: statusMessages[status] || `Support status updated: ${status}.`, status, internal: false })
       });
       updateSelectedSupportTicket(result.ticket);
-      setSupportNotice(`Ticket status changed to ${status.replace("_", " ")}.`);
-      api.request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
+      toast.success(`Ticket status changed to ${status.replace("_", " ")}.`);
+      request("/account/admin/email-outbox").then(data => setEmails(data.emails || [])).catch(() => {});
     } catch (error) {
-      setSupportNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   return (
-    <DashboardLayout active="Admin" navigate={navigate} api={api}>
+    <DashboardLayout active="Admin" navigate={navigate}>
       <DashboardTop kicker="Operations" title="Admin moderation" copy="Review users, payout risk, offerwall callbacks, reversals, and suspicious completions." action={<span className="tag rose">Risk queue</span>} />
       <div className="stats">
         <Stat label="Pending Payouts" value="$4,280" />
@@ -224,15 +295,31 @@ export function AdminPage({ navigate, api }) {
         </div>
         <div className="card payout-queue-card">
           <SectionTitle title="Manual payout approval" copy={ENABLE_CRYPTO_WITHDRAWALS ? "PayPal, Tremendous gift cards, and crypto withdrawals only dispatch after approval." : "PayPal and Tremendous gift card payouts only dispatch after approval."} />
-          <div className="notice">{payoutNotice}</div>
+          {payouts.length > 0 && (
+            <div className="payout-batch-actions">
+              <label className="toggle-row">
+                <input type="checkbox" checked={selectedPayouts.size === payouts.length && payouts.length > 0} onChange={toggleAllPayouts} />
+                <span>Select All</span>
+              </label>
+              {selectedPayouts.size > 0 && (
+                <div className="batch-buttons">
+                  <button className="btn" type="button" onClick={batchApprovePayouts}>Approve Selected ({selectedPayouts.size})</button>
+                  <button className="btn alt" type="button" onClick={batchRejectPayouts}>Reject Selected ({selectedPayouts.size})</button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="payout-list">
             {payouts.map(item => (
-              <div className="payout-row" key={item.id}>
-                <div>
-                  <strong>{item.user_name || item.user_id || "Member"} - {item.method}</strong>
-                  <p>{rewardLabel(item.amount)} ({money(item.amount)}) to {item.destination_value || "destination pending"} | risk {item.risk_score || 0} | {item.status}</p>
-                  <div className="reason-list">
-                    {reasonSummary(item.risk_reason_codes).map(reason => <span key={reason}>{reason}</span>)}
+              <div className={selectedPayouts.has(item.id) ? "payout-row selected" : "payout-row"} key={item.id}>
+                <div className="payout-row-main">
+                  <input type="checkbox" checked={selectedPayouts.has(item.id)} onChange={() => togglePayoutSelection(item.id)} />
+                  <div>
+                    <strong>{item.user_name || item.user_id || "Member"} - {item.method}</strong>
+                    <p>{rewardLabel(item.amount)} ({money(item.amount)}) to {item.destination_value || "destination pending"} | risk {item.risk_score || 0} | {item.status}</p>
+                    <div className="reason-list">
+                      {reasonSummary(item.risk_reason_codes).map(reason => <span key={reason}>{reason}</span>)}
+                    </div>
                   </div>
                 </div>
                 <div className="payout-actions">
@@ -256,10 +343,11 @@ export function AdminPage({ navigate, api }) {
         </div>
         <ProviderRewardReviewPanel
           entries={offerwallEconomics}
-          notice={rewardNotice}
           onRelease={releaseProviderReward}
           onReject={rejectProviderReward}
           onReverse={reverseProviderReward}
+          onBatchRelease={batchReleaseProviderRewards}
+          onBatchReject={batchRejectProviderRewards}
         />
         <div className="card payout-queue-card">
           <SectionTitle
@@ -319,7 +407,6 @@ export function AdminPage({ navigate, api }) {
           setReplyStatus={setSupportReplyStatus}
           internal={supportInternal}
           setInternal={setSupportInternal}
-          notice={supportNotice}
           onReply={sendSupportReply}
           onRefresh={refreshSupportTickets}
           onStatusChange={updateSupportTicketStatus}
@@ -341,8 +428,22 @@ function getCpxPostbackUrl() {
   return `${origin}/api/offerwalls/cpx/callback?user_id={user_id}&trans_id={trans_id}&amount_local={amount_local}&amount_usd={amount_usd}&status={status}&postback_secret=YOUR_CPX_POSTBACK_SECRET`;
 }
 
-function ProviderRewardReviewPanel({ entries, notice, onRelease, onReject, onReverse }) {
+function ProviderRewardReviewPanel({ entries, onRelease, onReject, onReverse, onBatchRelease, onBatchReject }) {
   const hasRealEntries = entries.length > 0;
+  const [selectedRewards, setSelectedRewards] = useState(new Set());
+  const pendingEntries = entries.filter(e => String(e.status || "pending").toLowerCase() === "pending");
+
+  function toggleRewardSelection(id) {
+    const next = new Set(selectedRewards);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedRewards(next);
+  }
+
+  function toggleAllRewards() {
+    if (selectedRewards.size === pendingEntries.length && pendingEntries.length > 0) setSelectedRewards(new Set());
+    else setSelectedRewards(new Set(pendingEntries.map(p => p.id)));
+  }
 
   function releaseText(item) {
     if (item.status !== "pending") return item.status;
@@ -362,7 +463,6 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReject, onRev
         copy="Release approved pending rewards, reject pending rewards without crediting, or reverse already released funds when a provider chargeback or fraud review requires it."
         action={<span className="tag amber">Manual control</span>}
       />
-      <div className="notice">{notice}</div>
       {!hasRealEntries ? (
         <div className="provider-reward-empty">
           <strong>No real provider rewards are ready to review yet.</strong>
@@ -376,17 +476,33 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReject, onRev
         </div>
       ) : (
         <div className="provider-reward-list">
+          {pendingEntries.length > 0 && (
+            <div className="payout-batch-actions">
+              <label className="toggle-row">
+                <input type="checkbox" checked={selectedRewards.size === pendingEntries.length && pendingEntries.length > 0} onChange={toggleAllRewards} />
+                <span>Select All Pending</span>
+              </label>
+              {selectedRewards.size > 0 && (
+                <div className="batch-buttons">
+                  <button className="btn" type="button" onClick={() => { onBatchRelease(selectedRewards); setSelectedRewards(new Set()); }}>Release Selected ({selectedRewards.size})</button>
+                  <button className="btn alt" type="button" onClick={() => { onBatchReject(selectedRewards); setSelectedRewards(new Set()); }}>Reject Selected ({selectedRewards.size})</button>
+                </div>
+              )}
+            </div>
+          )}
           {entries.map(item => {
             const userReward = Number(item.user_reward_wavecoins || item.amount_wavecoins || 0);
             const status = String(item.status || "pending").toLowerCase();
             const isPending = status === "pending";
             const isAvailable = status === "available";
             return (
-              <div className="provider-reward-row detailed" key={item.id}>
-                <div>
-                  <div className="provider-reward-head">
-                    <div>
-                      <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
+              <div className={selectedRewards.has(item.id) ? "provider-reward-row detailed selected" : "provider-reward-row detailed"} key={item.id}>
+                <div className="provider-reward-row-main">
+                  {isPending && <input type="checkbox" checked={selectedRewards.has(item.id)} onChange={() => toggleRewardSelection(item.id)} />}
+                  <div className="provider-reward-content">
+                    <div className="provider-reward-head">
+                      <div>
+                        <strong>{item.user_name || item.user_email || item.user_id || "Member"}</strong>
                       <p>{item.user_email || "No email"} | @{item.user_username || "no_username"}</p>
                     </div>
                     <span className={isPending ? "tag amber" : isAvailable ? "tag" : "tag rose"}>{status}</span>
@@ -412,6 +528,7 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReject, onRev
                     <span>Reverse: subtracts an already released reward from available balance.</span>
                   </div>
                 </div>
+                </div>
                 <div className="provider-reward-actions">
                   <button className="btn" type="button" disabled={!isPending} onClick={() => onRelease(item.id)}>Release</button>
                   <button className="btn alt" type="button" disabled={!isPending} onClick={() => onReject(item.id)}>Reject</button>
@@ -426,7 +543,7 @@ function ProviderRewardReviewPanel({ entries, notice, onRelease, onReject, onRev
   );
 }
 
-function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, setReply, replyStatus, setReplyStatus, internal, setInternal, notice, onReply, onRefresh, onStatusChange }) {
+function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, setReply, replyStatus, setReplyStatus, internal, setInternal, onReply, onRefresh, onStatusChange }) {
   const visibleTickets = tickets.length ? tickets : [
     { id: "preview-1", user_name: "Preview Member", user_email: "member@example.com", subject: "Payout timing", category: "payout", priority: "high", status: "open", message: "Preview ticket until live support requests arrive.", messages: [] },
     { id: "preview-2", user_name: "Survey User", user_email: "survey@example.com", subject: "Offer missing credit", category: "offer", priority: "normal", status: "pending", message: "Example missing reward report.", messages: [] }
@@ -533,7 +650,6 @@ function SupportAdminPanel({ tickets, selectedTicket, setSelectedTicket, reply, 
                   <button className="btn alt" type="button" onClick={() => onStatusChange(replyStatus)}>Update Status</button>
                   <button className="btn" type="submit">Send Reply</button>
                 </div>
-                <div className="notice">{notice}</div>
               </form>
             </>
           ) : (

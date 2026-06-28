@@ -24,6 +24,9 @@ const { readiness } = require("./services/readiness");
 const { notFound, errorHandler } = require("./middleware/errors");
 
 function createApp() {
+  if (env.NODE_ENV === "production" && !env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is required in production environments to prevent demoStore fallback.");
+  }
   const app = express();
 
   app.set("trust proxy", 1);

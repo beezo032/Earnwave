@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useStore } from "../store.js";
+import { toast } from "react-hot-toast";
 import { DashboardLayout } from "../components/Shell.jsx";
 import {
   DashboardTop,
@@ -17,11 +19,11 @@ import {
 
 const ENABLE_CRYPTO_WITHDRAWALS = import.meta.env.VITE_ENABLE_CRYPTO_WITHDRAWALS === "true";
 
-export function WalletPage({ navigate, api }) {
-  const [walletUser, setWalletUser] = useState(api.session?.user || { balance: 48.75 });
+export function WalletPage({ navigate, }) {
+  const { session, request, save, refreshSession, logout } = useStore();
+  const [walletUser, setWalletUser] = useState(session?.user || { balance: 48.75 });
   const minimumCashoutWaveCoins = 500;
   const [withdrawal, setWithdrawal] = useState({ method: "PayPal", amountWaveCoins: "", destinationType: "EMAIL", destinationValue: "", turnstileToken: "" });
-  const [notice, setNotice] = useState("All cashouts enter review before approval.");
   const [withdrawals, setWithdrawals] = useState([]);
   const [transactions, setTransactions] = useState([
     { created_at: "2026-06-05", type: "survey_completion", description: "Completed survey reward", amount: 2.84, direction: "credit" },
@@ -29,19 +31,19 @@ export function WalletPage({ navigate, api }) {
   ]);
 
   useEffect(() => {
-    api.request("/auth/me").then(data => {
+    request("/auth/me").then(data => {
       if (data.user) {
         setWalletUser(data.user);
-        if (api.session) api.save({ ...api.session, user: data.user });
+        if (session) save({ ...session, user: data.user });
       }
     }).catch(() => {});
-    api.request("/account/transactions").then(data => setTransactions(data.transactions || [])).catch(() => {});
-    api.request("/wallet/withdrawals").then(data => setWithdrawals(data.withdrawals || [])).catch(() => {});
+    request("/account/transactions").then(data => setTransactions(data.transactions || [])).catch(() => {});
+    request("/wallet/withdrawals").then(data => setWithdrawals(data.withdrawals || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (api.session?.user) setWalletUser(api.session.user);
-  }, [api.session?.user?.balance_wavecoins, api.session?.user?.pending_wavecoins, api.session?.user?.total_earned_wavecoins]);
+    if (session?.user) setWalletUser(session.user);
+  }, [session?.user?.balance_wavecoins, session?.user?.pending_wavecoins, session?.user?.total_earned_wavecoins]);
 
   const availableWaveCoins = userAmountWaveCoins(walletUser, walletUser.balance);
   const pendingWaveCoins = Number(walletUser.pending_wavecoins ?? walletUser.pending_rewards_wavecoins ?? transactions
@@ -54,19 +56,19 @@ export function WalletPage({ navigate, api }) {
   async function submitWithdrawal(event) {
     event.preventDefault();
     try {
-      const result = await api.request("/wallet/withdrawals", {
+      const result = await request("/wallet/withdrawals", {
         method: "POST",
         body: JSON.stringify({ ...withdrawal, amountWaveCoins: Number(withdrawal.amountWaveCoins), balance: walletUser.balance })
       });
       setWithdrawals([result.withdrawal, ...withdrawals]);
-      setNotice(`Withdrawal ${result.withdrawal.status}: risk score ${result.risk.score} (${result.risk.signals.join(", ")}).`);
+      toast.success(`Withdrawal ${result.withdrawal.status}: risk score ${result.risk.score} (${result.risk.signals.join(", ")}).`);
     } catch (error) {
-      setNotice(error.message);
+      toast.error(error.message);
     }
   }
 
   return (
-    <DashboardLayout active="Wallet" navigate={navigate} api={api}>
+    <DashboardLayout active="Wallet" navigate={navigate}>
       <DashboardTop kicker="Wallet" title="Payout center" copy="WaveCoins are EarnWave reward credits. 100 WaveCoins equals $1.00 when redeemed." action={<span className="tag">500 WaveCoins minimum cashout</span>} />
       <div className="wallet-summary-grid">
         <MiniStat label="Available balance" value={formatBalance(walletUser, availableWaveCoins)} />
@@ -89,8 +91,8 @@ export function WalletPage({ navigate, api }) {
             const preferredBalanceDisplay = event.target.value;
             const nextUser = { ...walletUser, preferredBalanceDisplay };
             setWalletUser(nextUser);
-            if (api.session) api.save({ ...api.session, user: nextUser });
-            await api.request("/account/preferences", { method: "PATCH", body: JSON.stringify({ preferredBalanceDisplay }) }).catch(() => {});
+            if (session) save({ ...session, user: nextUser });
+            await request("/account/preferences", { method: "PATCH", body: JSON.stringify({ preferredBalanceDisplay }) }).catch(() => {});
           }}><option value="coins">WaveCoins</option><option value="usd">USD</option><option value="both">WaveCoins + USD</option></select></label>
           <div className="method-grid">
             <Method title="PayPal" copy="Payouts after approval" />
@@ -113,7 +115,6 @@ export function WalletPage({ navigate, api }) {
             <label>{ENABLE_CRYPTO_WITHDRAWALS && withdrawal.method === "Crypto" ? "Wallet address" : "Recipient email"}<input required placeholder={ENABLE_CRYPTO_WITHDRAWALS && withdrawal.method === "Crypto" ? "0x..." : "member@example.com"} value={withdrawal.destinationValue} onChange={event => setWithdrawal({ ...withdrawal, destinationValue: event.target.value })} /></label>
             <TurnstileField onToken={token => setWithdrawal(current => ({ ...current, turnstileToken: token }))} />
             <button className="btn">Request Withdrawal</button>
-            <div className="notice">{notice}</div>
           </form>
         </div>
         <div className="card">

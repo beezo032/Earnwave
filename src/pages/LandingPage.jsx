@@ -1,4 +1,5 @@
 import React from "react";
+import { useStore } from "../store.js";
 import {
   Activity,
   ArrowRight,
@@ -122,14 +123,16 @@ export function LandingPage({ navigate }) {
 function HeroSection({ navigate }) {
   return (
     <section className="hero">
-      <div className="hero-orbit" aria-hidden="true" />
+      <div className="hero-orbit" aria-hidden="true">
+        <div className="glow-sphere"></div>
+      </div>
       <div className="container hero-grid">
         <div className="hero-copy-block">
-          <div className="eyebrow"><ShieldCheck size={16} /> Surveys - games - apps - offers - real rewards</div>
-          <h1>Earn WaveCoins. Redeem Real Rewards.</h1>
-          <p className="hero-copy">Complete surveys, games, apps, and offers. Cash out with PayPal and gift cards.</p>
+          <div className="eyebrow glass-pill"><ShieldCheck size={16} color="var(--mint)" /> Surveys • Games • Apps • Real Rewards</div>
+          <h1 className="hero-heading">Earn WaveCoins.<br/>Redeem <span className="text-gradient">Real Rewards.</span></h1>
+          <p className="hero-copy">Complete surveys, games, apps, and offers. Cash out with PayPal and gift cards seamlessly.</p>
           <div className="actions">
-            <button className="btn xl" onClick={() => navigate("/signup")}>Create Free Account <ArrowRight size={18} /></button>
+            <button className="btn xl pulse-btn" onClick={() => navigate("/signup")}>Create Free Account <ArrowRight size={18} /></button>
             <button className="btn alt xl" onClick={() => navigate("/surveys")}>Browse Surveys</button>
           </div>
           <p className="cta-helper">Start free, earn WaveCoins, and track every reward from pending to payout.</p>
@@ -139,28 +142,29 @@ function HeroSection({ navigate }) {
             <Metric value="1,000 WaveCoins" label="$10.00" />
           </div>
         </div>
-        <div className="hero-product" aria-label="Animated earnings dashboard preview">
-          <div className="dash-window">
+        <div className="hero-product float-anim" aria-label="Animated earnings dashboard preview">
+          <div className="dash-window glass-panel">
             <div className="window-top"><span /><span /><span /><strong>EarnWave Dashboard</strong></div>
-            <div className="balance-panel hero-balance">
+            <div className="balance-panel hero-balance relative overflow-hidden">
+              <div className="glow-backdrop"></div>
               <div>
                 <p>Ready to redeem</p>
-                <div className="balance count-up">4,875 WaveCoins</div>
+                <div className="balance count-up">4,875 <span className="text-muted text-sm">WaveCoins</span></div>
               </div>
-              <span className="tag blue"><TrendingUp size={14} /> $48.75</span>
+              <span className="tag blue glass-tag"><TrendingUp size={14} /> $48.75</span>
               <Meter value={76} />
               <p>Track every reward from start to cashout</p>
             </div>
             <div className="hero-chart">
-              {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%` }} />)}
+              {analyticsSeries.map((item, index) => <span key={item.day} style={{ height: `${32 + index * 7}%`, animationDelay: `${index * 0.1}s` }} className="chart-bar" />)}
             </div>
-            <div className="feed-card">
-              <div className="feed-title"><Activity size={16} /> Live activity</div>
-              {earningsFeed.map(item => (
-                <div className="feed-row" key={`${item.user}-${item.time}`}>
-                  <span className="avatar">{item.user.slice(0, 1)}</span>
+            <div className="feed-card glass-card">
+              <div className="feed-title"><Activity size={16} color="var(--cyan)" /> Live activity</div>
+              {earningsFeed.map((item, index) => (
+                <div className="feed-row fade-in-row" key={`${item.user}-${item.time}`} style={{ animationDelay: `${0.3 + index * 0.1}s` }}>
+                  <span className="avatar gradient-avatar">{item.user.slice(0, 1)}</span>
                   <p><strong>{item.user}</strong> {item.action}</p>
-                  <strong>+{rewardLabel(item.amount)}</strong>
+                  <strong className="text-mint">+{rewardLabel(item.amount)}</strong>
                 </div>
               ))}
             </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useStore } from "../store.js";
 import {
   Activity,
   ArrowRight,
@@ -22,9 +23,10 @@ import {
 import { BrandLogo } from "./BrandLogo.jsx";
 import { formatBalance, dollarsToWaveCoins, readActivityMetrics, trackEvent } from "../utils.js";
 
-export function Shell({ route, navigate, api, children }) {
-  const isAuthed = Boolean(api.session?.user);
-  const isAdmin = api.session?.user?.role === "admin";
+export function Shell({ route, navigate, children }) {
+  const { session, logout } = useStore();
+  const isAuthed = Boolean(session?.user);
+  const isAdmin = session?.user?.role === "admin";
   const loggedInNavItems = [
     ["/surveys", "Surveys"],
     ["/dashboard", "Dashboard"],
@@ -43,7 +45,7 @@ export function Shell({ route, navigate, api, children }) {
 
   useEffect(() => {
     if (!isAuthed || isAdmin) return undefined;
-    const refresh = () => api.refreshSession?.();
+    const refresh = () => useStore.getState().refreshSession();
     const interval = window.setInterval(refresh, 30000);
     const onVisibility = () => { if (!document.hidden) refresh(); };
     window.addEventListener("focus", refresh);
@@ -53,7 +55,7 @@ export function Shell({ route, navigate, api, children }) {
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [isAuthed, isAdmin, api.session?.token]);
+  }, [isAuthed, isAdmin, session?.token]);
 
   return (
     <>
@@ -78,10 +80,10 @@ export function Shell({ route, navigate, api, children }) {
                   aria-label="Open wallet balance"
                   title="Open wallet"
                 >
-                  {formatBalance(api.session?.user || {}, api.session?.user?.balance_wavecoins ?? dollarsToWaveCoins(api.session?.user?.balance || 0))}
+                  {formatBalance(session?.user || {}, session?.user?.balance_wavecoins ?? dollarsToWaveCoins(session?.user?.balance || 0))}
                 </button>
-                <TopNotifications api={api} navigate={navigate} />
-                <button className="icon-link" type="button" onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
+                <TopNotifications navigate={navigate} />
+                <button className="icon-link" type="button" onClick={() => { logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
               </>
             ) : (
               <>
@@ -117,7 +119,8 @@ export function Footer({ navigate }) {
   );
 }
 
-export function TopNotifications({ api, navigate }) {
+export function TopNotifications({ navigate }) {
+  const { session } = useStore();
   const [open, setOpen] = useState(false);
   const [readIds, setReadIds] = useState(() => {
     try {
@@ -132,7 +135,7 @@ export function TopNotifications({ api, navigate }) {
   }, [readIds]);
 
   const [metrics, setMetrics] = useState(readActivityMetrics);
-  const user = api.session?.user || {};
+  const user = session?.user || {};
   const [notifications, setNotifications] = useState([
     {
       id: "payout-review",
@@ -294,8 +297,9 @@ export function TopNotifications({ api, navigate }) {
   );
 }
 
-export function DashboardLayout({ active, navigate, api, children }) {
-  const isAdmin = api.session?.user?.role === "admin";
+export function DashboardLayout({ active, navigate, children }) {
+  const { session, logout } = useStore();
+  const isAdmin = session?.user?.role === "admin";
   const items = [
     ["Dashboard", "/dashboard", <LayoutDashboard size={17} />],
     ["Surveys", "/surveys", <ClipboardList size={17} />],
@@ -310,9 +314,9 @@ export function DashboardLayout({ active, navigate, api, children }) {
       ["Admin", "/admin", <ShieldCheck size={17} />]
     ] : [])
   ];
-  const userLabel = api.session?.user?.username
-    ? `@${api.session.user.username}`
-    : api.session?.user?.email || "EarnWave";
+  const userLabel = session?.user?.username
+    ? `@${session.user.username}`
+    : session?.user?.email || "EarnWave";
 
   return (
     <main className="dashboard">
@@ -323,7 +327,7 @@ export function DashboardLayout({ active, navigate, api, children }) {
           <div className="sidebar-user">
             <span className="sidebar-user-label">{userLabel}</span>
           </div>
-          <button type="button" onClick={() => { api.logout(); navigate("/"); }}><LogOut size={17} />Logout</button>
+          <button type="button" onClick={() => { logout(); navigate("/"); }}><LogOut size={17} />Logout</button>
         </aside>
         <div className="dashboard-main">
           {children}
@@ -333,28 +337,27 @@ export function DashboardLayout({ active, navigate, api, children }) {
   );
 }
 
-export function AdminGuard({ api, navigate, children }) {
-  if (api.session?.user?.role === "admin") return children;
+export function AdminGuard({ navigate, children }) {
+  const { session } = useStore();
+  const isAdmin = session?.user?.role === "admin";
 
-  return (
-    <main className="page">
-      <div className="container">
-        <div className="card form-card">
-          <div className="icon"><Lock size={20} /></div>
-          <h2>Admin access required</h2>
-          <p>This area is hidden from regular users and requires an admin session.</p>
-          <button className="btn" type="button" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
-        </div>
-      </div>
-    </main>
-  );
+  useEffect(() => {
+    if (!isAdmin) navigate("/dashboard");
+  }, [isAdmin, navigate]);
+
+  if (!isAdmin) return null;
+
+  return children;
 }
 
-export function AuthRequired({ api, navigate, children }) {
-  if (api.session?.token && api.session?.user?.role === "admin") return children;
-  if (api.session?.token && api.session?.user?.email_verified) return children;
+export function AuthRequired({ navigate, children }) {
+  const { session, logout } = useStore();
+  const isAuthed = Boolean(session?.user);
 
-  if (api.session?.token && api.session?.user && !api.session.user.email_verified) {
+  if (isAuthed && session.user.role === "admin") return children;
+  if (isAuthed && session.user.email_verified) return children;
+
+  if (isAuthed && !session.user.email_verified) {
     return (
       <main className="page">
         <div className="container">
@@ -362,8 +365,8 @@ export function AuthRequired({ api, navigate, children }) {
             <div className="icon"><Mail size={20} /></div>
             <h2>Verify your email</h2>
             <p>You need to verify your email before entering your account dashboard.</p>
-            <button className="btn" type="button" onClick={() => navigate(`/verify-email?email=${encodeURIComponent(api.session.user.email || "")}`)}>Verify Email</button>
-            <button className="btn alt" type="button" onClick={() => { api.logout(); navigate("/login"); }}>Back to Login</button>
+            <button className="btn" type="button" onClick={() => navigate(`/verify-email?email=${encodeURIComponent(session.user.email || "")}`)}>Verify Email</button>
+            <button className="btn alt" type="button" onClick={() => { logout(); navigate("/login"); }}>Back to Login</button>
           </div>
         </div>
       </main>
