@@ -374,28 +374,31 @@ function SurveyProviderCard({ provider, enabled, onOpen }) {
 }
 
 function ClipboardSurveyIcon({ name }) {
-  if (name === "CPX Research") {
+  let domain = "";
+  if (name === "CPX Research") domain = "cpx-research.com";
+  else if (name === "TheoremReach") domain = "theoremreach.com";
+  else if (name === "BitLabs") domain = "bitlabs.ai";
+  else if (name === "Inbrain") domain = "inbrain.ai";
+
+  if (domain) {
     return (
-      <div className="provider-brand-logo cpx">
-        <div className="cpx-icon"><PieChart size={28} strokeWidth={2.5} /></div>
-        <div className="cpx-text">
-          <strong>CPX</strong>
-          <span>RESEARCH</span>
+      <div className="provider-real-logo">
+        <img 
+          src={`https://logo.clearbit.com/${domain}`} 
+          alt={`${name} logo`}
+          onError={(e) => {
+            e.target.style.display = 'none';
+            e.target.nextSibling.style.display = 'flex';
+          }}
+        />
+        <div className="fallback-icon" style={{ display: 'none' }}>
+          <PackageCheck size={30} />
+          <strong>{name.split(" ").map(part => part[0]).join("").slice(0, 3)}</strong>
         </div>
       </div>
     );
   }
-  if (name === "TheoremReach") {
-    return (
-      <div className="provider-brand-logo theorem">
-        <div className="theorem-icon"><Hexagon size={28} strokeWidth={2.5} /></div>
-        <div className="theorem-text">
-          <strong>Theorem</strong>
-          <span>Reach</span>
-        </div>
-      </div>
-    );
-  }
+
   return (
     <div className="survey-logo-mark">
       <PackageCheck size={30} />
