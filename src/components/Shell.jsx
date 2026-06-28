@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "../store.js";
 import {
   Activity,
@@ -9,16 +10,19 @@ import {
   ClipboardList,
   Clock,
   Flame,
+  Home,
   LayoutDashboard,
   Lock,
   LogOut,
+  Menu,
   Mail,
   PackageCheck,
   ShieldCheck,
   Settings,
   Trophy,
   Users,
-  Wallet
+  Wallet,
+  X
 } from "lucide-react";
 import { BrandLogo } from "./BrandLogo.jsx";
 import { formatBalance, dollarsToWaveCoins, readActivityMetrics, trackEvent } from "../utils.js";
@@ -42,6 +46,20 @@ export function Shell({ route, navigate, children }) {
   ];
   const adminItems = isAdmin ? [["/analytics", "Analytics"], ["/admin", "Admin"]] : [];
   const navItems = isAuthed ? loggedInNavItems : loggedOutNavItems;
+  
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const userLabel = session?.user?.username ? `@${session.user.username}` : session?.user?.email || "EarnWave";
+
+  const drawerItems = [
+    ["Dashboard", "/dashboard", <LayoutDashboard size={18} />],
+    ["Earn", "/surveys", <ClipboardList size={18} />],
+    ["Referrals", "/referrals", <Users size={18} />],
+    ["Wallet", "/wallet", <Wallet size={18} />],
+    ["Leaderboard", "/leaderboard", <Trophy size={18} />],
+    ["Support", "/support", <Activity size={18} />],
+    ["Settings", "/settings", <Settings size={18} />],
+    ...(isAdmin ? [["Admin", "/admin", <ShieldCheck size={18} />]] : [])
+  ];
 
   useEffect(() => {
     if (!isAuthed || isAdmin) return undefined;
@@ -60,11 +78,14 @@ export function Shell({ route, navigate, children }) {
   return (
     <>
       <header className="header">
-        <div className="container nav">
+        <MobileDrawer isOpen={isDrawerOpen} setIsOpen={setIsDrawerOpen} navigate={navigate} items={drawerItems} userLabel={userLabel} logout={logout} />
+        <BottomNav navigate={navigate} route={route} isAuthed={isAuthed} />
+        <div className="container nav mobile-nav-container">
+          <button className="mobile-only hamburger ghost" onClick={() => setIsDrawerOpen(true)} aria-label="Open menu"><Menu size={24} /></button>
           <button className="logo ghost" type="button" onClick={() => navigate("/")} aria-label="EarnWave home">
             <BrandLogo />
           </button>
-          <nav className="nav-links">
+          <nav className="nav-links desktop-only">
             {[...navItems, ...adminItems].map(([path, label]) => (
               <button key={path} type="button" className={route === path ? "active-link" : ""} onClick={() => {
                 if (path === "/surveys") trackEvent("surveys_nav_click", { route: path });
@@ -82,7 +103,6 @@ export function Shell({ route, navigate, children }) {
                 >
                   {formatBalance(session?.user || {}, session?.user?.balance_wavecoins ?? dollarsToWaveCoins(session?.user?.balance || 0))}
                 </button>
-                <TopNotifications navigate={navigate} />
                 <button className="icon-link" type="button" onClick={() => { logout(); navigate("/"); }}><LogOut size={17} /> Logout</button>
               </>
             ) : (
@@ -92,6 +112,9 @@ export function Shell({ route, navigate, children }) {
               </>
             )}
           </nav>
+          <div className="header-right">
+            {isAuthed && <TopNotifications navigate={navigate} />}
+          </div>
         </div>
       </header>
       {children}
@@ -116,6 +139,75 @@ export function Footer({ navigate }) {
         </div>
       </div>
     </footer>
+  );
+}
+
+export function MobileDrawer({ isOpen, setIsOpen, navigate, items, userLabel, logout }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="mobile-overlay"
+            onClick={() => setIsOpen(false)}
+          />
+          <motion.nav
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="mobile-drawer"
+          >
+            <div className="drawer-header">
+              <BrandLogo compact />
+              <button className="ghost" onClick={() => setIsOpen(false)} aria-label="Close menu"><X size={24} /></button>
+            </div>
+            <div className="sidebar-user" style={{ marginBottom: '24px' }}>
+              <span className="sidebar-user-label" style={{ fontSize: '1.1rem', fontWeight: 600 }}>{userLabel}</span>
+            </div>
+            <div className="drawer-links">
+              {items.map(([label, path, icon]) => (
+                <button 
+                  key={label} 
+                  type="button" 
+                  className="btn alt drawer-btn" 
+                  onClick={() => { setIsOpen(false); navigate(path); }}
+                >
+                  {icon}{label}
+                </button>
+              ))}
+            </div>
+            <button className="btn drawer-logout" type="button" onClick={() => { setIsOpen(false); logout(); navigate("/"); }}>
+              <LogOut size={18} /> Logout
+            </button>
+          </motion.nav>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function BottomNav({ navigate, route, isAuthed }) {
+  if (!isAuthed) return null;
+  const tabs = [
+    { label: "Home", path: "/dashboard", icon: <Home size={22} /> },
+    { label: "Earn", path: "/surveys", icon: <ClipboardList size={22} /> },
+    { label: "Wallet", path: "/wallet", icon: <Wallet size={22} /> },
+    { label: "Referrals", path: "/referrals", icon: <Users size={22} /> },
+    { label: "Profile", path: "/settings", icon: <Settings size={22} /> }
+  ];
+  return (
+    <nav className="bottom-nav">
+      {tabs.map(tab => (
+        <button key={tab.label} type="button" className={route === tab.path ? "active" : ""} onClick={() => navigate(tab.path)}>
+          {tab.icon}
+          <span>{tab.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 
