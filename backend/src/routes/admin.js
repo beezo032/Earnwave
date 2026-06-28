@@ -110,7 +110,11 @@ adminRouter.get("/compliance/payout-readiness", async (req, res, next) => {
 
 adminRouter.get("/payouts", async (req, res, next) => {
   try {
-    res.json({ payouts: await listPayoutQueue() });
+    const result = await listPayoutQueue({
+      limit: Number(req.query.limit || 100),
+      page: Number(req.query.page || 1)
+    });
+    res.json(result); // Sends { payouts, total, page, totalPages }
   } catch (error) {
     next(error);
   }
@@ -118,7 +122,12 @@ adminRouter.get("/payouts", async (req, res, next) => {
 
 adminRouter.get("/users", async (req, res, next) => {
   try {
-    res.json({ users: await listUsersForAdmin({ limit: Number(req.query.limit || 100) }) });
+    const result = await listUsersForAdmin({
+      limit: Number(req.query.limit || 50),
+      page: Number(req.query.page || 1),
+      search: req.query.search || ""
+    });
+    res.json(result); // Sends { users, total, page, totalPages }
   } catch (error) {
     next(error);
   }

@@ -145,24 +145,58 @@ async function findUserByEmail(email) {
   return result.rows[0] ? attachPendingRewards(result.rows[0], await pendingRewardWaveCoinsForUser(result.rows[0].id)) : null;
 }
 
-async function listUsersForAdmin({ limit = 100 } = {}) {
+async function listUsersForAdmin({ limit = 100, page = 1, search = "" } = {}) {
+  const offset = (page - 1) * limit;
+  const searchLower = search.toLowerCase();
+  
   if (!env.DATABASE_URL) {
-    return [...users.values()]
-      .slice()
-      .sort((a, b) => Number(b.id) - Number(a.id))
-      .slice(0, limit)
-      .map(serializeUser);
+    let allUsers = [...users.values()].sort((a, b) => Number(b.id) - Number(a.id));
+    
+    if (searchLower) {
+      allUsers = allUsers.filter(u => 
+        (u.email || "").toLowerCase().includes(searchLower) ||
+        (u.name || "").toLowerCase().includes(searchLower) ||
+        String(u.id).includes(searchLower)
+      );
+    }
+    
+    const total = allUsers.length;
+    const paginated = allUsers.slice(offset, offset + limit).map(serializeUser);
+    
+    return {
+      users: paginated,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
+  let baseQuery = `FROM users`;
+  const queryParams = [];
+  
+  if (searchLower) {
+    baseQuery += ` WHERE LOWER(email) LIKE $1 OR LOWER(name) LIKE $1 OR id::text = $1`;
+    queryParams.push(`%${searchLower}%`);
+  }
+  
+  const countResult = await query(`SELECT COUNT(*) FROM users ${searchLower ? `WHERE LOWER(email) LIKE $1 OR LOWER(name) LIKE $1 OR id::text = $1` : ""}`, queryParams);
+  const total = Number(countResult.rows[0].count);
+  
   const result = await query(
     `SELECT id, name, username, email, role, status, email_verified, balance_wavecoins,
             total_earned_wavecoins, fraud_score, referral_code, created_at
-     FROM users
+     ${baseQuery}
      ORDER BY created_at DESC
-     LIMIT $1`,
-    [limit]
+     LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`,
+    [...queryParams, limit, offset]
   );
-  return result.rows.map(serializeUser);
+  
+  return {
+    users: result.rows.map(serializeUser),
+    total,
+    page,
+    totalPages: Math.ceil(total / limit)
+  };
 }
 
 module.exports = { createUser, findUserByEmail, listUsersForAdmin, normalizeUsername, verifyUser, findUserById, serializeUser, pendingRewardWaveCoinsForUser };

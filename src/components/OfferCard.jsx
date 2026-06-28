@@ -98,6 +98,17 @@ export function Method({ title, copy }) {
   return <div className="method"><strong>{title}</strong><p>{copy}</p></div>;
 }
 
+export function Pagination({ page, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '16px' }}>
+      <button className="btn sm alt" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</button>
+      <span className="text-muted text-sm">Page {page} of {totalPages}</span>
+      <button className="btn sm alt" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Next</button>
+    </div>
+  );
+}
+
 export function DataTable({ rows }) {
   return (
     <div className="table-wrap">

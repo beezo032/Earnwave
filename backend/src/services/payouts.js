@@ -140,10 +140,23 @@ async function dispatchPayout(withdrawal) {
   return { configured: Boolean(env.MANUAL_PAYOUTS_ENABLED), provider: "manual", message: env.MANUAL_PAYOUTS_ENABLED ? "Manual payout mode is enabled." : "No automated provider for this payout method." };
 }
 
-async function listPayoutQueue() {
+async function listPayoutQueue({ limit = 100, page = 1 } = {}) {
+  const offset = (page - 1) * limit;
+  
   if (!env.DATABASE_URL) {
-    return withdrawals.filter(item => ["review", "held", "approved", "processing"].includes(item.status));
+    const queue = withdrawals.filter(item => ["review", "held", "approved", "processing"].includes(item.status));
+    const total = queue.length;
+    const paginated = queue.slice(offset, offset + limit);
+    return {
+      payouts: paginated,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
+
+  const countResult = await query(`SELECT COUNT(*) FROM withdrawals WHERE status IN ('review', 'held', 'approved', 'processing')`);
+  const total = Number(countResult.rows[0].count);
 
   const result = await query(`
     SELECT w.*, u.name AS user_name, u.email AS user_email
@@ -151,26 +164,33 @@ async function listPayoutQueue() {
     JOIN users u ON u.id = w.user_id
     WHERE w.status IN ('review', 'held', 'approved', 'processing')
     ORDER BY w.created_at DESC
-  `);
-  return result.rows.map(row => ({
-    id: row.id,
-    user_id: row.user_id,
-    user_name: row.user_name,
-    user_email: row.user_email,
-    method: row.method,
-    amount: Number(row.amount_cents || 0) / 100,
-    amount_wavecoins: row.amount_wavecoins ?? row.amount_cents ?? 0,
-    usd_value_cents: row.usd_value_cents ?? row.amount_cents ?? 0,
-    status: row.status,
-    risk_score: row.risk_score,
-    fraud_action: row.fraud_action,
-    risk_reason_codes: row.risk_reason_codes || [],
-    destination_type: row.destination_type,
-    destination_value: row.destination_value,
-    payout_provider: row.payout_provider,
-    provider_reference: row.provider_reference,
-    created_at: row.created_at
-  }));
+    LIMIT $1 OFFSET $2
+  `, [limit, offset]);
+  
+  return {
+    payouts: result.rows.map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      user_name: row.user_name,
+      user_email: row.user_email,
+      method: row.method,
+      amount: Number(row.amount_cents || 0) / 100,
+      amount_wavecoins: row.amount_wavecoins ?? row.amount_cents ?? 0,
+      usd_value_cents: row.usd_value_cents ?? row.amount_cents ?? 0,
+      status: row.status,
+      risk_score: row.risk_score,
+      fraud_action: row.fraud_action,
+      risk_reason_codes: row.risk_reason_codes || [],
+      destination_type: row.destination_type,
+      destination_value: row.destination_value,
+      payout_provider: row.payout_provider,
+      provider_reference: row.provider_reference,
+      created_at: row.created_at
+    })),
+    total,
+    page,
+    totalPages: Math.ceil(total / limit)
+  };
 }
 
 async function updateWithdrawalStatus({ id, status, moderatorId, note, provider, reference }) {

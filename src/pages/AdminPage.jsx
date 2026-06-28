@@ -7,7 +7,8 @@ import {
   Stat,
   SectionTitle,
   DataTable,
-  RiskCard
+  RiskCard,
+  Pagination
 } from "../components/OfferCard.jsx";
 import { money, rewardLabel, waveCoinsToUsd } from "../utils.js";
 
@@ -28,6 +29,14 @@ export function AdminPage({ navigate, }) {
     { id: "demo-pay-3", user_name: "GiftReview", method: "Gift Card", amount: 42, status: "held", risk_score: 61, destination_value: "reward@example.com" }
   ]);
   const [selectedPayouts, setSelectedPayouts] = useState(new Set());
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const [userPage, setUserPage] = useState(1);
+  const [userTotalPages, setUserTotalPages] = useState(1);
+  const [userSearch, setUserSearch] = useState("");
+
+  const [payoutPage, setPayoutPage] = useState(1);
+  const [payoutTotalPages, setPayoutTotalPages] = useState(1);
   const [users, setUsers] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [selectedSupportTicket, setSelectedSupportTicket] = useState(null);
@@ -44,14 +53,31 @@ export function AdminPage({ navigate, }) {
     request("/admin/offerwall-callbacks").then(data => setOfferwallCallbacks(data.callbacks || [])).catch(() => {});
   }
 
+  function fetchUsers() {
+    request(`/admin/users?page=${userPage}&limit=25&search=${encodeURIComponent(userSearch)}`)
+      .then(data => {
+        setUsers(data.users || []);
+        setUserTotalPages(data.totalPages || 1);
+      }).catch(() => {});
+  }
+
+  function fetchPayouts() {
+    request(`/admin/payouts?page=${payoutPage}&limit=25`)
+      .then(data => {
+        setPayouts(data.payouts || []);
+        setPayoutTotalPages(data.totalPages || 1);
+      }).catch(() => {});
+  }
+
+  useEffect(() => { fetchUsers(); }, [userPage, userSearch]);
+  useEffect(() => { fetchPayouts(); }, [payoutPage]);
+
   function refreshRewardEconomics() {
     request("/admin/offerwall-economics").then(data => setOfferwallEconomics(data.entries || [])).catch(() => {});
   }
 
   useEffect(() => {
     request("/admin/moderation").then(setModeration).catch(() => {});
-    request("/admin/payouts").then(data => setPayouts(data.payouts || [])).catch(() => {});
-    request("/admin/users").then(data => setUsers(data.users || [])).catch(() => {});
     request("/admin/fraud/reason-codes").then(data => setReasonCodes(data.reasonCodes || {})).catch(() => {});
     request("/admin/compliance/payout-readiness?amountCents=2500").then(data => setComplianceUsers(data.users || [])).catch(() => {});
     refreshRewardEconomics();
@@ -264,16 +290,36 @@ export function AdminPage({ navigate, }) {
 
   return (
     <DashboardLayout active="Admin" navigate={navigate}>
-      <DashboardTop kicker="Operations" title="Admin moderation" copy="Review users, payout risk, offerwall callbacks, reversals, and suspicious completions." action={<span className="tag rose">Risk queue</span>} />
-      <div className="stats">
-        <Stat label="Pending Payouts" value="$4,280" />
-        <Stat label="Flagged Users" value="37" />
-        <Stat label="Reversals" value="2.1%" />
-        <Stat label="Avg Review" value="19h" />
+      <div className="admin-tabs" style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+        {["overview", "users", "payouts", "providers", "support"].map(tab => (
+          <button 
+            key={tab} 
+            className={`btn sm ${activeTab === tab ? '' : 'alt'}`} 
+            onClick={() => setActiveTab(tab)}
+            style={{ textTransform: 'capitalize' }}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
+      {activeTab === "overview" && (
+        <>
+          <DashboardTop kicker="Operations" title="Admin moderation" copy="Review users, payout risk, offerwall callbacks, reversals, and suspicious completions." action={<span className="tag rose">Risk queue</span>} />
+          <div className="stats">
+            <Stat label="Pending Payouts" value="$4,280" />
+            <Stat label="Flagged Users" value="37" />
+            <Stat label="Reversals" value="2.1%" />
+            <Stat label="Avg Review" value="19h" />
+          </div>
+        </>
+      )}
       <div className="workspace-grid">
+        {activeTab === "users" && (
         <div className="card payout-queue-card">
           <SectionTitle title="Users and tracking IDs" copy="Use these IDs to confirm provider verifications are mapped to real EarnWave accounts." />
+          <div style={{ marginBottom: '16px' }}>
+            <input type="text" placeholder="Search by email, name, or ID..." value={userSearch} onChange={e => { setUserSearch(e.target.value); setUserPage(1); }} className="input" style={{ width: '100%', maxWidth: '400px' }} />
+          </div>
           <DataTable rows={(users.length ? users : [
             { id: "none", username: "No test users found", email: "Create a normal user account first", email_verified: false, balance_wavecoins: 0, created_at: "" }
           ]).map(item => [
@@ -284,7 +330,11 @@ export function AdminPage({ navigate, }) {
             `${Number(item.balance_wavecoins || 0).toLocaleString()} WaveCoins`,
             String(item.created_at || "").slice(0, 10) || item.status || "active"
           ])} />
+          <Pagination page={userPage} totalPages={userTotalPages} onPageChange={setUserPage} />
         </div>
+        )}
+        
+        {activeTab === "overview" && (
         <div className="card">
           <SectionTitle title="Moderation queue" copy="Admin endpoints support approve, reject, hold, ban, and note actions." />
           <DataTable rows={(moderation.queue.length ? moderation.queue : [
@@ -293,6 +343,9 @@ export function AdminPage({ navigate, }) {
             { user: "NovaEarns", reason: "Provider reversal", amount: 43.9, status: "Reject" }
           ]).map(item => [item.user, item.reason, `${rewardLabel(item.amount)} (${money(item.amount)})`, item.status])} />
         </div>
+        )}
+
+        {activeTab === "payouts" && (
         <div className="card payout-queue-card">
           <SectionTitle title="Manual payout approval" copy={ENABLE_CRYPTO_WITHDRAWALS ? "PayPal, Tremendous gift cards, and crypto withdrawals only dispatch after approval." : "PayPal and Tremendous gift card payouts only dispatch after approval."} />
           {payouts.length > 0 && (
@@ -329,7 +382,11 @@ export function AdminPage({ navigate, }) {
               </div>
             ))}
           </div>
+          <Pagination page={payoutPage} totalPages={payoutTotalPages} onPageChange={setPayoutPage} />
         </div>
+        )}
+        
+        {activeTab === "payouts" && (
         <div className="card payout-queue-card">
           <SectionTitle title="Compliance payout readiness" copy="Shows which users can be paid now and exactly why blocked accounts need more data." />
           <DataTable rows={(complianceUsers.length ? complianceUsers : [
@@ -341,6 +398,10 @@ export function AdminPage({ navigate, }) {
             item.profile?.country || "Missing"
           ])} />
         </div>
+        )}
+
+        {activeTab === "providers" && (
+        <>
         <ProviderRewardReviewPanel
           entries={offerwallEconomics}
           onRelease={releaseProviderReward}
@@ -379,6 +440,11 @@ export function AdminPage({ navigate, }) {
             ];
           })} />
         </div>
+        </>
+        )}
+
+        {activeTab === "overview" && (
+        <>
         <div className="card">
           <SectionTitle title="Suspicious activity flags" copy="Open flags from VPN/proxy checks, device fingerprint reuse, duplicate account signals, and withdrawal reviews." />
           <div className="flag-list">
@@ -397,6 +463,11 @@ export function AdminPage({ navigate, }) {
           <RiskCard title="Anti-fraud signals" items={["VPN/proxy detection", "Device fingerprint reuse", "Duplicate account checks", "Withdrawal review pressure", "Suspicious activity flags"]} />
           <RiskCard title="Moderation actions" items={["Approve payout", "Reject payout", "Ban account", "Add internal note"]} />
         </div>
+        </>
+        )}
+
+        {activeTab === "support" && (
+        <>
         <SupportAdminPanel
           tickets={supportTickets}
           selectedTicket={selectedSupportTicket}
@@ -418,6 +489,8 @@ export function AdminPage({ navigate, }) {
             { to_email: "member@example.com", subject: "Reset your EarnWave password", status: "queued", provider: "local" }
           ]).map(item => [item.to_email, item.subject, item.provider, item.status])} />
         </div>
+        </>
+        )}
       </div>
     </DashboardLayout>
   );
