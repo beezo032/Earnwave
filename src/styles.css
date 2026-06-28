@@ -1571,6 +1571,8 @@ overflow-wrap: anywhere;
 }
 
 /* --- Mobile Navigation Overrides --- */
+.bottom-nav { display: none; }
+
 .mobile-only { display: none; }
 .desktop-only { display: inherit; }
 
@@ -1578,6 +1580,10 @@ overflow-wrap: anywhere;
   .mobile-only { display: inherit; }
   .desktop-only { display: none !important; }
   
+  /* Fix GPU render flashing on mobile by hiding heavy filters/animations */
+  .glow-backdrop { display: none; }
+  .float-anim { animation: none !important; transform: none !important; }
+
   /* Mobile padding to prevent content from hiding behind bottom nav */
   body, #root { padding-bottom: 70px; }
 
